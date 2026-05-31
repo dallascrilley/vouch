@@ -48,10 +48,10 @@
 - [X] T020 Create S3-compatible artifact storage interface in src/adapters/storage/artifact-store.ts
 - [X] T021 Create pg-boss queue adapter interface and job names in src/adapters/queue/queue.ts
 - [X] T022 Create Pino and OpenTelemetry observability adapter interfaces in src/adapters/observability/observability.ts
-- [ ] T023 Implement append-only verdict ledger service in src/domain/ledger/ledger-service.ts
-- [ ] T024 Add ledger state-transition unit tests in tests/unit/ledger-service.test.ts
-- [ ] T025 Implement budget policy model and cap evaluator in src/domain/jobs/budget-policy.ts
-- [ ] T026 Add budget cap unit tests in tests/unit/budget-policy.test.ts
+- [X] T023 Implement append-only verdict ledger service in src/domain/ledger/ledger-service.ts
+- [X] T024 Add ledger state-transition unit tests in tests/unit/ledger-service.test.ts
+- [X] T025 Implement budget policy model and cap evaluator in src/domain/jobs/budget-policy.ts
+- [X] T026 Add budget cap unit tests in tests/unit/budget-policy.test.ts
 
 **Checkpoint**: Foundation ready; user story implementation can now begin in priority order or in parallel by separate contributors.
 
