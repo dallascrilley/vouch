@@ -163,12 +163,12 @@
 
 **Purpose**: Hardening and documentation that cut across all user stories.
 
-- [ ] T081 [P] Update README.md with local setup, service commands, and contract validation commands
-- [ ] T082 [P] Add architecture overview in docs/architecture/verification-control-plane.md
-- [ ] T083 [P] Add threat model and privacy externalization checklist in docs/security/privacy-gate-threat-model.md
-- [ ] T084 Add end-to-end quickstart validation scenario in tests/integration/quickstart-e2e.test.ts
-- [ ] T085 Add CI workflow for lint, tests, OpenAPI validation, and markdown link checks in .github/workflows/ci.yml
-- [ ] T086 Run quickstart validation and record evidence in docs/ops/verification-control-plane-validation.md
+- [X] T081 [P] Update README.md with local setup, service commands, and contract validation commands
+- [X] T082 [P] Add architecture overview in docs/architecture/verification-control-plane.md
+- [X] T083 [P] Add threat model and privacy externalization checklist in docs/security/privacy-gate-threat-model.md
+- [X] T084 Add end-to-end quickstart validation scenario in tests/integration/quickstart-e2e.test.ts
+- [X] T085 Add CI workflow for lint, tests, OpenAPI validation, and markdown link checks in .github/workflows/ci.yml
+- [X] T086 Run quickstart validation and record evidence in docs/ops/verification-control-plane-validation.md
 
 ---
 
