@@ -1,0 +1,589 @@
+openapi: 3.1.0
+info:
+  title: Verification Control Plane API
+  version: 0.1.0
+  description: Provider-neutral API for evidence intake, verification lifecycle, human review, adjudication, verdicts, and agent feedback.
+servers:
+  - url: https://verification-control-plane.example.test
+    description: Placeholder staging endpoint for contract validation
+paths:
+  /verification-jobs:
+    post:
+      summary: Create or retrieve a verification job
+      operationId: createVerificationJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVerificationJobRequest'
+      responses:
+        '202':
+          description: Job accepted or existing active job returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationJob'
+        '400':
+          description: Invalid or non-observable acceptance criteria
+        '409':
+          description: Conflicting idempotency key with incompatible payload
+  /verification-jobs/{jobId}:
+    get:
+      summary: Get verification job status
+      operationId: getVerificationJob
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+      responses:
+        '200':
+          description: Current job state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerificationJob'
+        '404':
+          description: Job not found
+  /verification-jobs/{jobId}/artifacts:
+    post:
+      summary: Attach an artifact manifest to a job
+      operationId: attachArtifacts
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArtifactManifest'
+      responses:
+        '202':
+          description: Artifact manifest accepted for privacy classification
+        '400':
+          description: Missing hashes, provenance, or required evidence
+  /verification-jobs/{jobId}/privacy-classification:
+    post:
+      summary: Record privacy classification and externalization decision
+      operationId: recordPrivacyClassification
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PrivacyClassification'
+      responses:
+        '202':
+          description: Privacy decision recorded
+        '422':
+          description: Classification violates policy or cannot be externalized
+  /verification-jobs/{jobId}/self-verification-results:
+    post:
+      summary: Record automated self-verification result
+      operationId: recordSelfVerificationResult
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SelfVerificationResult'
+      responses:
+        '202':
+          description: Self-verification result accepted for escalation decision
+  /verification-jobs/{jobId}/human-review-tasks:
+    post:
+      summary: Create a sanitized human review task
+      operationId: createHumanReviewTask
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanReviewTask'
+      responses:
+        '202':
+          description: Human review task queued
+        '403':
+          description: Privacy policy blocks requested reviewer route
+  /human-review-tasks/{reviewTaskId}/responses:
+    post:
+      summary: Ingest a normalized human review response
+      operationId: ingestHumanResponse
+      parameters:
+        - $ref: '#/components/parameters/reviewTaskId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HumanResponse'
+      responses:
+        '202':
+          description: Response accepted for validation and consensus
+        '422':
+          description: Response missing required structured fields or failed quality validation
+  /verification-jobs/{jobId}/consensus:
+    post:
+      summary: Record consensus result
+      operationId: recordConsensusResult
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsensusResult'
+      responses:
+        '202':
+          description: Consensus result accepted
+  /verification-jobs/{jobId}/adjudications:
+    post:
+      summary: Create or decide an adjudication case
+      operationId: upsertAdjudication
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjudicationCase'
+      responses:
+        '202':
+          description: Adjudication case recorded
+  /verification-jobs/{jobId}/verdict:
+    get:
+      summary: Get final verdict when available
+      operationId: getFinalVerdict
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+      responses:
+        '200':
+          description: Final verdict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinalVerdict'
+        '404':
+          description: Final verdict not available
+  /verification-jobs/{jobId}/feedback:
+    get:
+      summary: Get machine-readable feedback for agent or release gate
+      operationId: getAgentFeedback
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+      responses:
+        '200':
+          description: Agent feedback signal
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentFeedbackSignal'
+        '404':
+          description: Feedback not available
+components:
+  parameters:
+    jobId:
+      name: jobId
+      in: path
+      required: true
+      schema:
+        type: string
+    reviewTaskId:
+      name: reviewTaskId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    CreateVerificationJobRequest:
+      type: object
+      required: [idempotency_key, source, risk_tier, acceptance_criteria, deadline_at, budget_policy]
+      properties:
+        idempotency_key:
+          type: string
+        agent_run_id:
+          type: string
+        parent_job_id:
+          type: string
+        source:
+          $ref: '#/components/schemas/JobSource'
+        risk_tier:
+          $ref: '#/components/schemas/RiskTier'
+        acceptance_criteria:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/AcceptanceCriterion'
+        deadline_at:
+          type: string
+          format: date-time
+        budget_policy:
+          $ref: '#/components/schemas/BudgetPolicy'
+    VerificationJob:
+      allOf:
+        - $ref: '#/components/schemas/CreateVerificationJobRequest'
+        - type: object
+          required: [job_id, state, created_at, updated_at]
+          properties:
+            job_id:
+              type: string
+            state:
+              $ref: '#/components/schemas/JobState'
+            artifact_manifest_id:
+              type: string
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+    JobSource:
+      type: object
+      required: [repository, commit, environment, route]
+      properties:
+        repository:
+          type: string
+        branch:
+          type: string
+        commit:
+          type: string
+        build_id:
+          type: string
+        environment:
+          type: string
+        route:
+          type: string
+        viewport:
+          type: string
+        locale:
+          type: string
+    RiskTier:
+      type: string
+      enum: [low, medium, high, regulated, release_gating]
+    JobState:
+      type: string
+      enum:
+        - created
+        - artifacts_collected
+        - privacy_classified
+        - self_verifying
+        - decision_point
+        - external_review_queued
+        - internal_review_queued
+        - human_responses_received
+        - consensus_running
+        - adjudication_required
+        - final_pass
+        - final_fail
+        - agent_retry_requested
+        - artifact_recapture_requested
+        - fail_closed
+        - canceled
+    AcceptanceCriterion:
+      type: object
+      required: [criterion_id, human_visible_text, criticality, evidence_requirements]
+      properties:
+        criterion_id:
+          type: string
+        human_visible_text:
+          type: string
+        criticality:
+          type: string
+          enum: [critical, major, minor, audit]
+        evidence_requirements:
+          type: array
+          items:
+            type: string
+        pass_threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+    BudgetPolicy:
+      type: object
+      required: [max_job_cost, max_assignments, max_retries]
+      properties:
+        max_job_cost:
+          type: number
+          minimum: 0
+        max_assignments:
+          type: integer
+          minimum: 0
+        max_retries:
+          type: integer
+          minimum: 0
+    ArtifactManifest:
+      type: object
+      required: [manifest_id, job_id, raw_artifacts, environment]
+      properties:
+        manifest_id:
+          type: string
+        job_id:
+          type: string
+        raw_artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactRef'
+        sanitized_packages:
+          type: array
+          items:
+            $ref: '#/components/schemas/SanitizedPackageRef'
+        artifact_quality:
+          type: string
+          enum: [sufficient, blank, loading, cropped, too_redacted, missing_required_evidence]
+        environment:
+          $ref: '#/components/schemas/JobSource'
+    ArtifactRef:
+      type: object
+      required: [artifact_id, artifact_type, content_hash, provenance]
+      properties:
+        artifact_id:
+          type: string
+        artifact_type:
+          type: string
+          enum: [screenshot, before_after_screenshot, dom_snapshot, accessibility_tree, console_summary, network_summary, trace_summary, video, ocr_output, layout_map]
+        content_hash:
+          type: string
+        provenance:
+          type: string
+    SanitizedPackageRef:
+      type: object
+      required: [package_id, package_hash, redaction_policy_version, transform_hash, externalization_decision]
+      properties:
+        package_id:
+          type: string
+        package_hash:
+          type: string
+        redaction_policy_version:
+          type: string
+        transform_hash:
+          type: string
+        externalization_decision:
+          type: string
+    PrivacyClassification:
+      type: object
+      required: [classification_id, job_id, data_class, redaction_status, externalization_decision, policy_version]
+      properties:
+        classification_id:
+          type: string
+        job_id:
+          type: string
+        data_class:
+          type: string
+          enum: [public, internal_low, sensitive_internal, regulated_or_secret]
+        redaction_status:
+          type: string
+          enum: [not_required, completed, failed, insufficient_confidence]
+        allowed_reviewer_routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewerPoolType'
+        blocked_reasons:
+          type: array
+          items:
+            type: string
+        policy_version:
+          type: string
+        externalization_decision:
+          type: string
+          enum: [allowed, internal_only, managed_only, blocked_fail_closed, recapture_required]
+    SelfVerificationResult:
+      type: object
+      required: [result_id, job_id, confidence, recommended_action, criterion_results]
+      properties:
+        result_id:
+          type: string
+        job_id:
+          type: string
+        confidence:
+          type: string
+          enum: [low, medium, high]
+        recommended_action:
+          type: string
+          enum: [pass, fail, retry, recapture, human_review, internal_review, fail_closed]
+        criterion_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CriterionResult'
+        failure_categories:
+          type: array
+          items:
+            type: string
+    CriterionResult:
+      type: object
+      required: [criterion_id, status, confidence]
+      properties:
+        criterion_id:
+          type: string
+        status:
+          type: string
+          enum: [pass, fail, unclear, not_visible]
+        confidence:
+          type: string
+          enum: [low, medium, high]
+    HumanReviewTask:
+      type: object
+      required: [review_task_id, job_id, criterion_ids, reviewer_pool, sanitized_package_id, task_template]
+      properties:
+        review_task_id:
+          type: string
+        job_id:
+          type: string
+        criterion_ids:
+          type: array
+          items:
+            type: string
+        reviewer_pool:
+          $ref: '#/components/schemas/ReviewerPoolType'
+        sanitized_package_id:
+          type: string
+        task_template:
+          type: string
+        provider_adapter:
+          type: string
+        provider_task_ref:
+          type: string
+    ReviewerPoolType:
+      type: string
+      enum: [public_crowd, qualified_crowd, internal, managed, domain_expert]
+    HumanResponse:
+      type: object
+      required: [response_id, review_task_id, overall_verdict, criterion_results, severity, defect_category, confidence]
+      properties:
+        response_id:
+          type: string
+        review_task_id:
+          type: string
+        provider_assignment_ref:
+          type: string
+        reviewer_pseudonymous_id:
+          type: string
+        overall_verdict:
+          type: string
+          enum: [pass, fail, unclear, artifact_insufficient]
+        criterion_results:
+          type: array
+          items:
+            $ref: '#/components/schemas/CriterionResult'
+        severity:
+          type: string
+          enum: [S0, S1, S2, S3, S4]
+        defect_category:
+          type: string
+        confidence:
+          type: string
+          enum: [low, medium, high]
+        evidence_note:
+          type: string
+        artifact_issue_flags:
+          type: array
+          items:
+            type: string
+    ConsensusResult:
+      type: object
+      required: [consensus_id, job_id, valid_response_count, quorum_state, recommended_outcome]
+      properties:
+        consensus_id:
+          type: string
+        job_id:
+          type: string
+        valid_response_count:
+          type: integer
+          minimum: 0
+        quorum_state:
+          type: string
+          enum: [met, needs_more, maxed_out]
+        disagreement_level:
+          type: string
+          enum: [none, low, medium, high]
+        recommended_outcome:
+          type: string
+          enum: [pass, fail, retry, recapture, adjudicate, fail_closed]
+        adjudication_trigger:
+          type: string
+    AdjudicationCase:
+      type: object
+      required: [adjudication_id, job_id, trigger_reason]
+      properties:
+        adjudication_id:
+          type: string
+        job_id:
+          type: string
+        trigger_reason:
+          type: string
+        assigned_pool:
+          $ref: '#/components/schemas/ReviewerPoolType'
+        decision:
+          type: string
+          enum: [pass, fail, retry, recapture, fail_closed]
+        decision_notes:
+          type: string
+    FinalVerdict:
+      type: object
+      required: [verdict_id, job_id, final_verdict, confidence, max_severity, release_gate_effect]
+      properties:
+        verdict_id:
+          type: string
+        job_id:
+          type: string
+        final_verdict:
+          type: string
+          enum: [pass, fail, unclear, retry, recapture, fail_closed]
+        confidence:
+          type: string
+          enum: [low, medium, high]
+        max_severity:
+          type: string
+          enum: [S0, S1, S2, S3, S4, none]
+        evidence_refs:
+          type: array
+          items:
+            type: string
+        cost:
+          type: number
+        latency_seconds:
+          type: integer
+        retry_recommendation:
+          type: string
+        release_gate_effect:
+          type: string
+          enum: [allow, block, needs_review, no_effect]
+    AgentFeedbackSignal:
+      type: object
+      required: [feedback_id, job_id, final_verdict, retry_allowed]
+      properties:
+        feedback_id:
+          type: string
+        job_id:
+          type: string
+        final_verdict:
+          type: string
+        failed_criteria:
+          type: array
+          items:
+            type: string
+        severity:
+          type: string
+        defect_category:
+          type: string
+        evidence_pointers:
+          type: array
+          items:
+            type: string
+        retry_allowed:
+          type: boolean
+        retry_reason:
+          type: string
+        repair_hint:
+          type: string
+        budget_state:
+          type: string
+        policy_constraints:
+          type: array
+          items:
+            type: string
