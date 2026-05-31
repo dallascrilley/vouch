@@ -2,19 +2,35 @@ import Fastify, { type FastifyInstance } from "fastify";
 
 import type {
   AcceptanceCriterionRepository,
+  AdjudicationCaseRepository,
   AgentFeedbackRepository,
   ArtifactManifestRepository,
+  ConsensusResultRepository,
   FinalVerdictRepository,
+  HumanResponseRepository,
+  HumanReviewTaskRepository,
   PrivacyClassificationRepository,
   SelfVerificationResultRepository,
   VerificationJobRepository,
   VerdictLedgerRepository
 } from "../adapters/storage/repositories.js";
+import { publicProviderCapability } from "../adapters/providers/public-provider-adapter.js";
+import { internalReviewerCapability } from "../adapters/providers/internal-reviewer-adapter.js";
 import type { ArtifactManifest } from "../domain/artifacts/models.js";
 import { ArtifactService } from "../domain/artifacts/artifact-service.js";
+import { AdjudicationService } from "../domain/adjudication/adjudication-service.js";
+import { ConsensusService } from "../domain/consensus/consensus-service.js";
+import type {
+  AdjudicationCase,
+  ConsensusResult
+} from "../domain/consensus/models.js";
 import { FeedbackService } from "../domain/feedback/feedback-service.js";
 import type { AgentFeedbackSignal, FinalVerdict, VerdictLedgerEvent } from "../domain/feedback/models.js";
 import { VerdictService } from "../domain/feedback/verdict-service.js";
+import type { HumanResponse, HumanReviewTask } from "../domain/human-review/models.js";
+import { HumanReviewTaskService } from "../domain/human-review/human-review-task-service.js";
+import { ProviderCapabilityRegistry } from "../domain/human-review/provider-capability-registry.js";
+import { ResponseValidationService } from "../domain/human-review/response-validation-service.js";
 import { JobService } from "../domain/jobs/job-service.js";
 import type { AcceptanceCriterion, VerificationJob } from "../domain/jobs/models.js";
 import { AcceptanceCriteriaService } from "../domain/jobs/acceptance-criteria-service.js";
@@ -25,6 +41,7 @@ import type { SelfVerificationResult } from "../domain/self-verification/models.
 import { SelfVerificationService } from "../domain/self-verification/self-verification-service.js";
 import { loadRuntimeConfig } from "../config/runtime.js";
 import { registerEvidenceRoutes } from "./routes/evidence.js";
+import { registerHumanReviewRoutes } from "./routes/human-review.js";
 import { registerVerificationJobRoutes } from "./routes/verification-jobs.js";
 import { registerVerdictFeedbackRoutes } from "./routes/verdict-feedback.js";
 
@@ -86,6 +103,56 @@ class InMemorySelfVerificationResultRepository implements SelfVerificationResult
   }
 }
 
+class InMemoryHumanReviewTaskRepository implements HumanReviewTaskRepository {
+  private readonly reviewTasks = new Map<string, HumanReviewTask>();
+
+  findById(reviewTaskId: string) {
+    return Promise.resolve(this.reviewTasks.get(reviewTaskId) ?? null);
+  }
+
+  save(task: HumanReviewTask) {
+    this.reviewTasks.set(task.reviewTaskId, task);
+    return Promise.resolve();
+  }
+}
+
+class InMemoryHumanResponseRepository implements HumanResponseRepository {
+  private readonly responses = new Map<string, HumanResponse[]>();
+
+  findByReviewTaskId(reviewTaskId: string) {
+    return Promise.resolve(this.responses.get(reviewTaskId) ?? []);
+  }
+
+  save(response: HumanResponse) {
+    const existingResponses = this.responses.get(response.reviewTaskId) ?? [];
+    this.responses.set(response.reviewTaskId, [...existingResponses, response]);
+    return Promise.resolve();
+  }
+}
+
+class InMemoryConsensusResultRepository implements ConsensusResultRepository {
+  private readonly results = new Map<string, string>();
+
+  markAdjudicated(jobId: string) {
+    this.results.set(jobId, "adjudicated");
+    return Promise.resolve();
+  }
+
+  save(result: ConsensusResult) {
+    this.results.set(result.jobId, result.consensusId);
+    return Promise.resolve();
+  }
+}
+
+class InMemoryAdjudicationCaseRepository implements AdjudicationCaseRepository {
+  private readonly cases = new Map<string, string>();
+
+  save(caseFile: AdjudicationCase) {
+    this.cases.set(caseFile.jobId, caseFile.adjudicationId);
+    return Promise.resolve();
+  }
+}
+
 class InMemoryFinalVerdictRepository implements FinalVerdictRepository {
   private readonly verdicts = new Map<string, FinalVerdict>();
 
@@ -122,10 +189,14 @@ class InMemoryVerdictLedgerRepository implements VerdictLedgerRepository {
 }
 
 export type AppServices = {
+  adjudicationService: AdjudicationService;
   artifactService: ArtifactService;
+  consensusService: ConsensusService;
   feedbackRepository: InMemoryAgentFeedbackRepository;
+  humanReviewTaskService: HumanReviewTaskService;
   jobService: JobService;
   privacyGate: PrivacyGate;
+  responseValidationService: ResponseValidationService;
   selfVerificationService: SelfVerificationService;
   verdictRepository: InMemoryFinalVerdictRepository;
 };
@@ -149,6 +220,10 @@ export function buildApp(): FastifyInstance {
   const artifactRepository = new InMemoryArtifactManifestRepository();
   const privacyRepository = new InMemoryPrivacyClassificationRepository();
   const selfVerificationRepository = new InMemorySelfVerificationResultRepository();
+  const reviewTaskRepository = new InMemoryHumanReviewTaskRepository();
+  const responseRepository = new InMemoryHumanResponseRepository();
+  const consensusRepository = new InMemoryConsensusResultRepository();
+  const adjudicationRepository = new InMemoryAdjudicationCaseRepository();
   const verdictRepository = new InMemoryFinalVerdictRepository();
   const feedbackRepository = new InMemoryAgentFeedbackRepository();
   const ledgerRepository = new InMemoryVerdictLedgerRepository();
@@ -159,6 +234,37 @@ export function buildApp(): FastifyInstance {
   const verdictService = new VerdictService(verdictRepository, jobService, ledgerService);
   const feedbackService = new FeedbackService(feedbackRepository);
   const artifactService = new ArtifactService(artifactRepository, jobService, ledgerService);
+  const providerCapabilityRegistry = new ProviderCapabilityRegistry([
+    internalReviewerCapability,
+    publicProviderCapability
+  ]);
+  const humanReviewTaskService = new HumanReviewTaskService(
+    reviewTaskRepository,
+    jobService,
+    ledgerService,
+    providerCapabilityRegistry
+  );
+  const responseValidationService = new ResponseValidationService(
+    responseRepository,
+    reviewTaskRepository,
+    jobService,
+    ledgerService
+  );
+  const consensusService = new ConsensusService(
+    consensusRepository,
+    responseRepository,
+    reviewTaskRepository,
+    jobService,
+    ledgerService
+  );
+  const adjudicationService = new AdjudicationService(
+    adjudicationRepository,
+    consensusRepository,
+    jobService,
+    ledgerService,
+    verdictService,
+    feedbackService
+  );
   const privacyGate = new PrivacyGate(
     privacyRepository,
     jobService,
@@ -175,10 +281,14 @@ export function buildApp(): FastifyInstance {
   );
 
   app.decorate("services", {
+    adjudicationService,
     artifactService,
+    consensusService,
     feedbackRepository,
+    humanReviewTaskService,
     jobService,
     privacyGate,
+    responseValidationService,
     selfVerificationService,
     verdictRepository
   });
@@ -189,6 +299,7 @@ export function buildApp(): FastifyInstance {
 
   void registerVerificationJobRoutes(app);
   void registerEvidenceRoutes(app);
+  void registerHumanReviewRoutes(app);
   void registerVerdictFeedbackRoutes(app);
 
   return app;

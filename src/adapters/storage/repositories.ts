@@ -30,14 +30,17 @@ export interface SelfVerificationResultRepository {
 }
 
 export interface HumanReviewTaskRepository {
+  findById(reviewTaskId: string): Promise<HumanReviewTask | null>;
   save(task: HumanReviewTask): Promise<void>;
 }
 
 export interface HumanResponseRepository {
+  findByReviewTaskId(reviewTaskId: string): Promise<HumanResponse[]>;
   save(response: HumanResponse): Promise<void>;
 }
 
 export interface ConsensusResultRepository {
+  markAdjudicated(jobId: string): Promise<void>;
   save(result: ConsensusResult): Promise<void>;
 }
 

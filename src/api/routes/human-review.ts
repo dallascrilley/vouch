@@ -1,0 +1,168 @@
+import type { FastifyInstance } from "fastify";
+
+import type { AdjudicationDecision, ConsensusOutcome, DisagreementLevel, QuorumState } from "../../domain/consensus/models.js";
+import type { HumanReviewVerdict, Severity } from "../../domain/human-review/models.js";
+import type { ReviewerPoolType } from "../../domain/shared/types.js";
+
+type HumanReviewTaskBody = {
+  criterion_ids: string[];
+  deadline_at: string;
+  provider_adapter?: string;
+  quality_policy: string;
+  reviewer_pool: ReviewerPoolType;
+  sanitized_package_id: string;
+  task_template: string;
+};
+
+type HumanResponseBody = {
+  confidence: "low" | "medium" | "high";
+  criterion_results: Array<{
+    criterion_id: string;
+    status: "pass" | "fail" | "unclear" | "not_visible";
+    confidence: "low" | "medium" | "high";
+  }>;
+  defect_category: string;
+  evidence_note: string;
+  overall_verdict: HumanReviewVerdict;
+  quality_flags?: string[];
+  reviewer_pseudonymous_id: string;
+  severity: Severity;
+};
+
+type ConsensusBody = {
+  adjudication_trigger?: string;
+  artifact_sufficiency: "sufficient" | "insufficient";
+  disagreement_level: DisagreementLevel;
+  quorum_state: QuorumState;
+  recommended_outcome: ConsensusOutcome;
+  review_task_id: string;
+  severity_summary: Severity | "none";
+  valid_response_count: number;
+};
+
+type AdjudicationBody = {
+  assigned_pool?: ReviewerPoolType;
+  decision: AdjudicationDecision;
+  decision_notes?: string;
+  normalized_evidence_refs?: string[];
+  trigger_reason: string;
+};
+
+export function registerHumanReviewRoutes(app: FastifyInstance) {
+  app.post<{ Params: { jobId: string }; Body: HumanReviewTaskBody }>(
+    "/verification-jobs/:jobId/human-review-tasks",
+    async (request, reply) => {
+      try {
+        const reviewTask = await app.services.humanReviewTaskService.create({
+          criterionIds: request.body.criterion_ids,
+          deadlineAt: new Date(request.body.deadline_at),
+          jobId: request.params.jobId,
+          providerAdapter: request.body.provider_adapter,
+          qualityPolicy: request.body.quality_policy,
+          reviewerPool: request.body.reviewer_pool,
+          sanitizedPackageId: request.body.sanitized_package_id,
+          taskTemplate: request.body.task_template
+        });
+
+        return reply.code(202).send({
+          job_id: reviewTask.jobId,
+          provider_adapter: reviewTask.providerAdapter,
+          review_task_id: reviewTask.reviewTaskId,
+          reviewer_pool: reviewTask.reviewerPool
+        });
+      } catch (error) {
+        return reply.code(403).send({
+          message: error instanceof Error ? error.message : "Human review task rejected"
+        });
+      }
+    }
+  );
+
+  app.post<{ Params: { reviewTaskId: string }; Body: HumanResponseBody }>(
+    "/human-review-tasks/:reviewTaskId/responses",
+    async (request, reply) => {
+      try {
+        await app.services.responseValidationService.record({
+          responseId: `response_${crypto.randomUUID()}`,
+          reviewTaskId: request.params.reviewTaskId,
+          reviewerPseudonymousId: request.body.reviewer_pseudonymous_id,
+          overallVerdict: request.body.overall_verdict,
+          criterionResults: request.body.criterion_results.map((criterion) => ({
+            confidence: criterion.confidence,
+            criterionId: criterion.criterion_id,
+            status: criterion.status
+          })),
+          severity: request.body.severity,
+          defectCategory: request.body.defect_category,
+          confidence: request.body.confidence,
+          artifactIssueFlags: [],
+          evidenceNote: request.body.evidence_note,
+          annotationRefs: [],
+          qualityFlags: request.body.quality_flags ?? [],
+          submittedAt: new Date()
+        });
+
+        return reply.code(202).send({ review_task_id: request.params.reviewTaskId });
+      } catch (error) {
+        return reply.code(422).send({
+          message: error instanceof Error ? error.message : "Invalid human review response"
+        });
+      }
+    }
+  );
+
+  app.post<{ Params: { jobId: string }; Body: ConsensusBody }>(
+    "/verification-jobs/:jobId/consensus",
+    async (request, reply) => {
+      try {
+        const consensusId = `consensus_${crypto.randomUUID()}`;
+        await app.services.consensusService.record({
+          consensusId,
+          jobId: request.params.jobId,
+          reviewTaskId: request.body.review_task_id,
+          validResponseCount: request.body.valid_response_count,
+          quorumState: request.body.quorum_state,
+          criterionProbabilities: {},
+          severitySummary: request.body.severity_summary,
+          artifactSufficiency: request.body.artifact_sufficiency,
+          disagreementLevel: request.body.disagreement_level,
+          recommendedOutcome: request.body.recommended_outcome,
+          adjudicationTrigger: request.body.adjudication_trigger,
+          createdAt: new Date()
+        });
+
+        return reply.code(202).send({ consensus_id: consensusId });
+      } catch (error) {
+        return reply.code(400).send({
+          message: error instanceof Error ? error.message : "Invalid consensus result"
+        });
+      }
+    }
+  );
+
+  app.post<{ Params: { jobId: string }; Body: AdjudicationBody }>(
+    "/verification-jobs/:jobId/adjudications",
+    async (request, reply) => {
+      try {
+        const adjudicationId = `adjudication_${crypto.randomUUID()}`;
+        await app.services.adjudicationService.record({
+          adjudicationId,
+          jobId: request.params.jobId,
+          triggerReason: request.body.trigger_reason,
+          assignedPool: request.body.assigned_pool,
+          normalizedEvidenceRefs: request.body.normalized_evidence_refs ?? [],
+          decision: request.body.decision,
+          decisionNotes: request.body.decision_notes,
+          createdAt: new Date(),
+          decidedAt: new Date()
+        });
+
+        return reply.code(202).send({ adjudication_id: adjudicationId });
+      } catch (error) {
+        return reply.code(400).send({
+          message: error instanceof Error ? error.message : "Invalid adjudication case"
+        });
+      }
+    }
+  );
+}
