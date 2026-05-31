@@ -37,17 +37,17 @@
 - [X] T009 [P] Add OpenAPI contract validation test for specs/001-verification-control-plane/contracts/openapi.yaml in tests/contract/openapi-contract.test.ts
 - [X] T010 [P] Add event contract uniqueness and payload safety test for specs/001-verification-control-plane/contracts/events.md in tests/contract/event-contract.test.ts
 - [X] T011 [P] Define shared domain scalar types and enums in src/domain/shared/types.ts
-- [ ] T012 [P] Define VerificationJob and AcceptanceCriterion models in src/domain/jobs/models.ts
-- [ ] T013 [P] Define ArtifactManifest and artifact reference models in src/domain/artifacts/models.ts
-- [ ] T014 [P] Define PrivacyClassification and reviewer route models in src/domain/privacy/models.ts
-- [ ] T015 [P] Define SelfVerificationResult models in src/domain/self-verification/models.ts
-- [ ] T016 [P] Define HumanReviewTask, HumanResponse, ReviewerPool, and ProviderCapabilityProfile models in src/domain/human-review/models.ts
-- [ ] T017 [P] Define ConsensusResult and AdjudicationCase models in src/domain/consensus/models.ts
-- [ ] T018 [P] Define FinalVerdict, AgentFeedbackSignal, and VerdictLedgerEvent models in src/domain/feedback/models.ts
-- [ ] T019 Create PostgreSQL persistence interface definitions in src/adapters/storage/repositories.ts
-- [ ] T020 Create S3-compatible artifact storage interface in src/adapters/storage/artifact-store.ts
-- [ ] T021 Create pg-boss queue adapter interface and job names in src/adapters/queue/queue.ts
-- [ ] T022 Create Pino and OpenTelemetry observability adapter interfaces in src/adapters/observability/observability.ts
+- [X] T012 [P] Define VerificationJob and AcceptanceCriterion models in src/domain/jobs/models.ts
+- [X] T013 [P] Define ArtifactManifest and artifact reference models in src/domain/artifacts/models.ts
+- [X] T014 [P] Define PrivacyClassification and reviewer route models in src/domain/privacy/models.ts
+- [X] T015 [P] Define SelfVerificationResult models in src/domain/self-verification/models.ts
+- [X] T016 [P] Define HumanReviewTask, HumanResponse, ReviewerPool, and ProviderCapabilityProfile models in src/domain/human-review/models.ts
+- [X] T017 [P] Define ConsensusResult and AdjudicationCase models in src/domain/consensus/models.ts
+- [X] T018 [P] Define FinalVerdict, AgentFeedbackSignal, and VerdictLedgerEvent models in src/domain/feedback/models.ts
+- [X] T019 Create PostgreSQL persistence interface definitions in src/adapters/storage/repositories.ts
+- [X] T020 Create S3-compatible artifact storage interface in src/adapters/storage/artifact-store.ts
+- [X] T021 Create pg-boss queue adapter interface and job names in src/adapters/queue/queue.ts
+- [X] T022 Create Pino and OpenTelemetry observability adapter interfaces in src/adapters/observability/observability.ts
 - [ ] T023 Implement append-only verdict ledger service in src/domain/ledger/ledger-service.ts
 - [ ] T024 Add ledger state-transition unit tests in tests/unit/ledger-service.test.ts
 - [ ] T025 Implement budget policy model and cap evaluator in src/domain/jobs/budget-policy.ts
