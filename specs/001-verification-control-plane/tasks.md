@@ -17,14 +17,14 @@
 
 **Purpose**: Initialize the TypeScript service, test tooling, and source tree from the implementation plan.
 
-- [ ] T001 Create project directories in src/api, src/domain, src/adapters, src/workers, src/config, tests/contract, tests/integration, and tests/unit
-- [ ] T002 Initialize Node.js TypeScript project metadata and scripts in package.json
-- [ ] T003 [P] Configure TypeScript compiler options in tsconfig.json
-- [ ] T004 [P] Configure linting and formatting in eslint.config.js and prettier.config.js
-- [ ] T005 [P] Configure test runner and coverage defaults in vitest.config.ts
-- [ ] T006 Add runtime configuration schema and environment loading in src/config/runtime.ts
-- [ ] T007 Add local service bootstrap entrypoint in src/api/server.ts
-- [ ] T008 Add worker bootstrap entrypoint in src/workers/index.ts
+- [X] T001 Create project directories in src/api, src/domain, src/adapters, src/workers, src/config, tests/contract, tests/integration, and tests/unit
+- [X] T002 Initialize Node.js TypeScript project metadata and scripts in package.json
+- [X] T003 [P] Configure TypeScript compiler options in tsconfig.json
+- [X] T004 [P] Configure linting and formatting in eslint.config.js and prettier.config.js
+- [X] T005 [P] Configure test runner and coverage defaults in vitest.config.ts
+- [X] T006 Add runtime configuration schema and environment loading in src/config/runtime.ts
+- [X] T007 Add local service bootstrap entrypoint in src/api/server.ts
+- [X] T008 Add worker bootstrap entrypoint in src/workers/index.ts
 
 ---
 
@@ -34,9 +34,9 @@
 
 **Critical**: No user story work can begin until this phase is complete.
 
-- [ ] T009 [P] Add OpenAPI contract validation test for specs/001-verification-control-plane/contracts/openapi.yaml in tests/contract/openapi-contract.test.ts
-- [ ] T010 [P] Add event contract uniqueness and payload safety test for specs/001-verification-control-plane/contracts/events.md in tests/contract/event-contract.test.ts
-- [ ] T011 [P] Define shared domain scalar types and enums in src/domain/shared/types.ts
+- [X] T009 [P] Add OpenAPI contract validation test for specs/001-verification-control-plane/contracts/openapi.yaml in tests/contract/openapi-contract.test.ts
+- [X] T010 [P] Add event contract uniqueness and payload safety test for specs/001-verification-control-plane/contracts/events.md in tests/contract/event-contract.test.ts
+- [X] T011 [P] Define shared domain scalar types and enums in src/domain/shared/types.ts
 - [ ] T012 [P] Define VerificationJob and AcceptanceCriterion models in src/domain/jobs/models.ts
 - [ ] T013 [P] Define ArtifactManifest and artifact reference models in src/domain/artifacts/models.ts
 - [ ] T014 [P] Define PrivacyClassification and reviewer route models in src/domain/privacy/models.ts
