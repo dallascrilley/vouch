@@ -100,28 +100,28 @@
 
 ### Tests for User Story 2
 
-- [ ] T046 [P] [US2] Add human review task contract tests for POST /verification-jobs/{jobId}/human-review-tasks in tests/contract/human-review-task-contract.test.ts
-- [ ] T047 [P] [US2] Add human response ingestion contract tests for POST /human-review-tasks/{reviewTaskId}/responses in tests/contract/human-response-contract.test.ts
-- [ ] T048 [P] [US2] Add consensus contract tests for POST /verification-jobs/{jobId}/consensus in tests/contract/consensus-contract.test.ts
-- [ ] T049 [P] [US2] Add adjudication contract tests for POST /verification-jobs/{jobId}/adjudications in tests/contract/adjudication-contract.test.ts
-- [ ] T050 [P] [US2] Add safe external review integration test in tests/integration/us2-human-review-consensus.test.ts
-- [ ] T051 [P] [US2] Add severe minority adjudication integration test in tests/integration/us2-severe-minority-adjudication.test.ts
-- [ ] T052 [P] [US2] Add artifact-insufficient human response integration test in tests/integration/us2-artifact-insufficient.test.ts
+- [X] T046 [P] [US2] Add human review task contract tests for POST /verification-jobs/{jobId}/human-review-tasks in tests/contract/human-review-task-contract.test.ts
+- [X] T047 [P] [US2] Add human response ingestion contract tests for POST /human-review-tasks/{reviewTaskId}/responses in tests/contract/human-response-contract.test.ts
+- [X] T048 [P] [US2] Add consensus contract tests for POST /verification-jobs/{jobId}/consensus in tests/contract/consensus-contract.test.ts
+- [X] T049 [P] [US2] Add adjudication contract tests for POST /verification-jobs/{jobId}/adjudications in tests/contract/adjudication-contract.test.ts
+- [X] T050 [P] [US2] Add safe external review integration test in tests/integration/us2-human-review-consensus.test.ts
+- [X] T051 [P] [US2] Add severe minority adjudication integration test in tests/integration/us2-severe-minority-adjudication.test.ts
+- [X] T052 [P] [US2] Add artifact-insufficient human response integration test in tests/integration/us2-artifact-insufficient.test.ts
 
 ### Implementation for User Story 2
 
-- [ ] T053 [US2] Implement sanitized human review task builder in src/domain/human-review/human-review-task-service.ts
-- [ ] T054 [US2] Implement reviewer response validation and quality filtering in src/domain/human-review/response-validation-service.ts
-- [ ] T055 [US2] Implement provider capability registry in src/domain/human-review/provider-capability-registry.ts
-- [ ] T056 [US2] Implement internal reviewer provider adapter in src/adapters/providers/internal-reviewer-adapter.ts
-- [ ] T057 [US2] Implement low-risk public provider adapter contract shell in src/adapters/providers/public-provider-adapter.ts
-- [ ] T058 [US2] Implement reliability-weighted consensus service in src/domain/consensus/consensus-service.ts
-- [ ] T059 [US2] Implement adjudication trigger and decision service in src/domain/adjudication/adjudication-service.ts
-- [ ] T060 [US2] Implement human review task, response, consensus, and adjudication routes in src/api/routes/human-review.ts
-- [ ] T061 [US2] Implement escalation worker in src/workers/escalation-worker.ts
-- [ ] T062 [US2] Implement provider response ingestion worker in src/workers/provider-ingestion-worker.ts
-- [ ] T063 [US2] Implement adjudication worker in src/workers/adjudication-worker.ts
-- [ ] T064 [US2] Wire US2 services into final verdict and feedback flow in src/domain/feedback/verdict-service.ts
+- [X] T053 [US2] Implement sanitized human review task builder in src/domain/human-review/human-review-task-service.ts
+- [X] T054 [US2] Implement reviewer response validation and quality filtering in src/domain/human-review/response-validation-service.ts
+- [X] T055 [US2] Implement provider capability registry in src/domain/human-review/provider-capability-registry.ts
+- [X] T056 [US2] Implement internal reviewer provider adapter in src/adapters/providers/internal-reviewer-adapter.ts
+- [X] T057 [US2] Implement low-risk public provider adapter contract shell in src/adapters/providers/public-provider-adapter.ts
+- [X] T058 [US2] Implement reliability-weighted consensus service in src/domain/consensus/consensus-service.ts
+- [X] T059 [US2] Implement adjudication trigger and decision service in src/domain/adjudication/adjudication-service.ts
+- [X] T060 [US2] Implement human review task, response, consensus, and adjudication routes in src/api/routes/human-review.ts
+- [X] T061 [US2] Implement escalation worker in src/workers/escalation-worker.ts
+- [X] T062 [US2] Implement provider response ingestion worker in src/workers/provider-ingestion-worker.ts
+- [X] T063 [US2] Implement adjudication worker in src/workers/adjudication-worker.ts
+- [X] T064 [US2] Wire US2 services into final verdict and feedback flow in src/domain/feedback/verdict-service.ts
 
 **Checkpoint**: User Story 2 is independently testable for safe human escalation and adjudicated outcomes.
 
