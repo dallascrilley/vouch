@@ -42,45 +42,45 @@ describe("POST /verification-jobs/{jobId}/adjudications", () => {
           route: "/demo"
         }
       }
-  });
-  const jobId = jobResponse.json().job_id as string;
+    });
+    const jobId = jobResponse.json().job_id as string;
 
-  await app.inject({
-    method: "POST",
-    url: `/verification-jobs/${jobId}/artifacts`,
-    payload: {
-      manifest_id: "manifest-adjudication",
-      job_id: jobId,
-      raw_artifacts: [
-        {
-          artifact_id: "artifact-adjudication",
-          artifact_type: "screenshot",
-          content_hash: "hash-adjudication",
-          provenance: "playwright"
+    await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${jobId}/artifacts`,
+      payload: {
+        manifest_id: "manifest-adjudication",
+        job_id: jobId,
+        raw_artifacts: [
+          {
+            artifact_id: "artifact-adjudication",
+            artifact_type: "screenshot",
+            content_hash: "hash-adjudication",
+            provenance: "playwright"
+          }
+        ],
+        artifact_quality: "sufficient",
+        environment: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "staging",
+          route: "/demo"
         }
-      ],
-      artifact_quality: "sufficient",
-      environment: {
-        repository: "repo",
-        commit: "abc123",
-        environment: "staging",
-        route: "/demo"
       }
-    }
-  });
+    });
 
     await app.inject({
       method: "POST",
       url: `/verification-jobs/${jobId}/privacy-classification`,
-    payload: {
-      classification_id: "classification-adjudication",
-      job_id: jobId,
-      artifact_manifest_id: "manifest-adjudication",
-      data_class: "sensitive_internal",
-      redaction_status: "completed",
-      policy_version: "v1",
-      externalization_decision: "allowed",
-      audit_record_id: "audit-adjudication"
+      payload: {
+        classification_id: "classification-adjudication",
+        job_id: jobId,
+        artifact_manifest_id: "manifest-adjudication",
+        data_class: "sensitive_internal",
+        redaction_status: "completed",
+        policy_version: "v1",
+        externalization_decision: "allowed",
+        audit_record_id: "audit-adjudication"
       }
     });
 

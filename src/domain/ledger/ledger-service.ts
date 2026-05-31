@@ -92,6 +92,32 @@ export class LedgerService {
     return event;
   }
 
+  async recordBudgetBlocked(
+    input: StateTransitionInput & {
+      attemptedCost: number;
+      capType: string;
+      configuredCap: number;
+      currentSpend: number;
+      resultingAction: string;
+    }
+  ): Promise<VerdictLedgerEvent> {
+    const event: VerdictLedgerEvent = {
+      eventId: `${input.jobId}:budget:${input.correlationId}`,
+      jobId: input.jobId,
+      eventType: "verification.budget.blocked",
+      actorType: "system",
+      occurredAt: new Date(),
+      payloadHash: input.payloadHash,
+      artifactHashes: input.artifactHashes ?? [],
+      policyVersion: input.policyVersion,
+      costDelta: input.attemptedCost - input.currentSpend,
+      correlationId: input.correlationId
+    };
+
+    await this.append(event);
+    return event;
+  }
+
   private assertTransitionAllowed(from: JobState, to: JobState) {
     const allowed = allowedTransitions[from];
 

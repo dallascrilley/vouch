@@ -135,25 +135,25 @@
 
 ### Tests for User Story 3
 
-- [ ] T065 [P] [US3] Add externalization policy matrix tests in tests/unit/externalization-policy.test.ts
-- [ ] T066 [P] [US3] Add provider routing and fallback tests in tests/unit/provider-routing-policy.test.ts
-- [ ] T067 [P] [US3] Add retention policy tests in tests/unit/retention-policy.test.ts
-- [ ] T068 [P] [US3] Add observability metrics integration test in tests/integration/us3-observability.test.ts
-- [ ] T069 [P] [US3] Add budget blocked event integration test in tests/integration/us3-budget-blocked.test.ts
-- [ ] T070 [P] [US3] Add calibration outcome integration test in tests/integration/us3-calibration-loop.test.ts
+- [X] T065 [P] [US3] Add externalization policy matrix tests in tests/unit/externalization-policy.test.ts
+- [X] T066 [P] [US3] Add provider routing and fallback tests in tests/unit/provider-routing-policy.test.ts
+- [X] T067 [P] [US3] Add retention policy tests in tests/unit/retention-policy.test.ts
+- [X] T068 [P] [US3] Add observability metrics integration test in tests/integration/us3-observability.test.ts
+- [X] T069 [P] [US3] Add budget blocked event integration test in tests/integration/us3-budget-blocked.test.ts
+- [X] T070 [P] [US3] Add calibration outcome integration test in tests/integration/us3-calibration-loop.test.ts
 
 ### Implementation for User Story 3
 
-- [ ] T071 [US3] Implement externalization policy matrix in src/domain/privacy/externalization-policy.ts
-- [ ] T072 [US3] Implement provider routing and fallback policy in src/domain/human-review/provider-routing-policy.ts
-- [ ] T073 [US3] Implement reviewer eligibility and quality policy service in src/domain/human-review/reviewer-quality-service.ts
-- [ ] T074 [US3] Implement retention policy service in src/domain/ledger/retention-policy.ts
-- [ ] T075 [US3] Implement budget blocked and fail-closed ledger events in src/domain/ledger/ledger-service.ts
-- [ ] T076 [US3] Implement metrics emitters for jobs, privacy, providers, consensus, costs, and drift in src/adapters/observability/metrics.ts
-- [ ] T077 [US3] Implement calibration service for self-versus-human outcomes in src/domain/feedback/calibration-service.ts
-- [ ] T078 [US3] Implement provider health and cost reporting service in src/domain/human-review/provider-operations-service.ts
-- [ ] T079 [US3] Wire admin policy configuration loading in src/config/policies.ts
-- [ ] T080 [US3] Document operational policy examples in docs/ops/verification-control-plane-policies.md
+- [X] T071 [US3] Implement externalization policy matrix in src/domain/privacy/externalization-policy.ts
+- [X] T072 [US3] Implement provider routing and fallback policy in src/domain/human-review/provider-routing-policy.ts
+- [X] T073 [US3] Implement reviewer eligibility and quality policy service in src/domain/human-review/reviewer-quality-service.ts
+- [X] T074 [US3] Implement retention policy service in src/domain/ledger/retention-policy.ts
+- [X] T075 [US3] Implement budget blocked and fail-closed ledger events in src/domain/ledger/ledger-service.ts
+- [X] T076 [US3] Implement metrics emitters for jobs, privacy, providers, consensus, costs, and drift in src/adapters/observability/metrics.ts
+- [X] T077 [US3] Implement calibration service for self-versus-human outcomes in src/domain/feedback/calibration-service.ts
+- [X] T078 [US3] Implement provider health and cost reporting service in src/domain/human-review/provider-operations-service.ts
+- [X] T079 [US3] Wire admin policy configuration loading in src/config/policies.ts
+- [X] T080 [US3] Document operational policy examples in docs/ops/verification-control-plane-policies.md
 
 **Checkpoint**: User Story 3 is independently testable for governed routing, spending, audit, retention, and calibration.
 
