@@ -1,24 +1,14 @@
-import Fastify from "fastify";
-
+import { buildApp } from "./app.js";
 import { loadRuntimeConfig } from "../config/runtime.js";
 
 export function buildServer() {
-  const config = loadRuntimeConfig();
-
-  return Fastify({
-    logger: {
-      level: config.logLevel
-    }
-  });
+  loadRuntimeConfig();
+  return buildApp();
 }
 
 function main() {
   const config = loadRuntimeConfig();
   const server = buildServer();
-
-  server.get("/health", () => ({
-    status: "ok"
-  }));
 
   return server.listen({ host: "0.0.0.0", port: config.port });
 }

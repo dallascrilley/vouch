@@ -65,28 +65,28 @@
 
 ### Tests for User Story 1
 
-- [ ] T027 [P] [US1] Add job intake contract tests for POST /verification-jobs in tests/contract/job-intake-contract.test.ts
-- [ ] T028 [P] [US1] Add artifact manifest contract tests for POST /verification-jobs/{jobId}/artifacts in tests/contract/artifact-contract.test.ts
-- [ ] T029 [P] [US1] Add self-verification contract tests for POST /verification-jobs/{jobId}/self-verification-results in tests/contract/self-verification-contract.test.ts
-- [ ] T030 [P] [US1] Add final verdict and feedback contract tests in tests/contract/verdict-feedback-contract.test.ts
-- [ ] T031 [P] [US1] Add job lifecycle integration test for high-confidence pass in tests/integration/us1-job-pass.test.ts
-- [ ] T032 [P] [US1] Add retry and artifact recapture integration test in tests/integration/us1-retry-recapture.test.ts
-- [ ] T033 [P] [US1] Add fail-closed privacy integration test in tests/integration/us1-fail-closed.test.ts
+- [X] T027 [P] [US1] Add job intake contract tests for POST /verification-jobs in tests/contract/job-intake-contract.test.ts
+- [X] T028 [P] [US1] Add artifact manifest contract tests for POST /verification-jobs/{jobId}/artifacts in tests/contract/artifact-contract.test.ts
+- [X] T029 [P] [US1] Add self-verification contract tests for POST /verification-jobs/{jobId}/self-verification-results in tests/contract/self-verification-contract.test.ts
+- [X] T030 [P] [US1] Add final verdict and feedback contract tests in tests/contract/verdict-feedback-contract.test.ts
+- [X] T031 [P] [US1] Add job lifecycle integration test for high-confidence pass in tests/integration/us1-job-pass.test.ts
+- [X] T032 [P] [US1] Add retry and artifact recapture integration test in tests/integration/us1-retry-recapture.test.ts
+- [X] T033 [P] [US1] Add fail-closed privacy integration test in tests/integration/us1-fail-closed.test.ts
 
 ### Implementation for User Story 1
 
-- [ ] T034 [US1] Implement idempotent verification job service in src/domain/jobs/job-service.ts
-- [ ] T035 [US1] Implement acceptance criteria validation in src/domain/jobs/acceptance-criteria-service.ts
-- [ ] T036 [US1] Implement artifact manifest attachment and quality validation in src/domain/artifacts/artifact-service.ts
-- [ ] T037 [US1] Implement privacy classification and fail-closed policy gate in src/domain/privacy/privacy-gate.ts
-- [ ] T038 [US1] Implement self-verification result ingestion and decision policy in src/domain/self-verification/self-verification-service.ts
-- [ ] T039 [US1] Implement verdict finalization service in src/domain/feedback/verdict-service.ts
-- [ ] T040 [US1] Implement agent feedback signal builder in src/domain/feedback/feedback-service.ts
-- [ ] T041 [US1] Implement job intake and status routes in src/api/routes/verification-jobs.ts
-- [ ] T042 [US1] Implement artifact and self-verification routes in src/api/routes/evidence.ts
-- [ ] T043 [US1] Implement verdict and feedback routes in src/api/routes/verdict-feedback.ts
-- [ ] T044 [US1] Implement self-verification worker orchestration in src/workers/self-verification-worker.ts
-- [ ] T045 [US1] Wire US1 services, repositories, queues, and observability in src/api/app.ts
+- [X] T034 [US1] Implement idempotent verification job service in src/domain/jobs/job-service.ts
+- [X] T035 [US1] Implement acceptance criteria validation in src/domain/jobs/acceptance-criteria-service.ts
+- [X] T036 [US1] Implement artifact manifest attachment and quality validation in src/domain/artifacts/artifact-service.ts
+- [X] T037 [US1] Implement privacy classification and fail-closed policy gate in src/domain/privacy/privacy-gate.ts
+- [X] T038 [US1] Implement self-verification result ingestion and decision policy in src/domain/self-verification/self-verification-service.ts
+- [X] T039 [US1] Implement verdict finalization service in src/domain/feedback/verdict-service.ts
+- [X] T040 [US1] Implement agent feedback signal builder in src/domain/feedback/feedback-service.ts
+- [X] T041 [US1] Implement job intake and status routes in src/api/routes/verification-jobs.ts
+- [X] T042 [US1] Implement artifact and self-verification routes in src/api/routes/evidence.ts
+- [X] T043 [US1] Implement verdict and feedback routes in src/api/routes/verdict-feedback.ts
+- [X] T044 [US1] Implement self-verification worker orchestration in src/workers/self-verification-worker.ts
+- [X] T045 [US1] Wire US1 services, repositories, queues, and observability in src/api/app.ts
 
 **Checkpoint**: User Story 1 is independently functional as the MVP release-gating verification loop.
 
