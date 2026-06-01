@@ -11,6 +11,7 @@ ledgering, and machine-readable feedback.
 - `npm test`
 - `npm run dev`
 - `npm run validate:local-runtime`
+- `npm run validate:provider`
 
 ## Current Scope
 
@@ -28,3 +29,12 @@ ledgering, and machine-readable feedback.
 
 The SQLite local-runtime proof is documented in
 `docs/ops/sqlite-local-runtime-validation.md`.
+
+Provider integration validation is documented in
+`docs/ops/provider-integration-validation.md`, with local setup guidance in
+`docs/ops/provider-integration-local-setup.md`.
+
+## Local Provider Hygiene
+
+- Keep `.env*`, provider callback secrets, and local validation logs out of the repository.
+- Treat `provider-integration-proof.md` as evidence-only; never paste raw tokens or live callback payload secrets into docs.

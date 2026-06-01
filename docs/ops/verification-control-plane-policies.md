@@ -19,6 +19,8 @@
 - Preferred providers are used when healthy.
 - Healthy fallback providers are selected before degraded ones.
 - Down providers are skipped.
+- Local provider credentials come from `PROVIDER_API_KEY` and `PROVIDER_SHARED_SECRET`.
+- Local callback validation uses `PROVIDER_CALLBACK_BASE_URL=http://localhost:3000` during proof runs.
 
 ## Retention
 

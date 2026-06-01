@@ -1,7 +1,15 @@
 import type { ArtifactManifest } from "../../domain/artifacts/models.js";
 import type { AdjudicationCase, ConsensusResult } from "../../domain/consensus/models.js";
 import type { AgentFeedbackSignal, FinalVerdict, VerdictLedgerEvent } from "../../domain/feedback/models.js";
-import type { HumanResponse, HumanReviewTask, ProviderCapabilityProfile, ReviewerPool } from "../../domain/human-review/models.js";
+import type {
+  HumanResponse,
+  HumanReviewTask,
+  ProviderAdapterConfig,
+  ProviderCapabilityProfile,
+  ProviderResponseReceipt,
+  ProviderTaskMapping,
+  ReviewerPool
+} from "../../domain/human-review/models.js";
 import type { AcceptanceCriterion, VerificationJob } from "../../domain/jobs/models.js";
 import type { PrivacyClassification } from "../../domain/privacy/models.js";
 import type { SelfVerificationResult } from "../../domain/self-verification/models.js";
@@ -41,6 +49,22 @@ export interface HumanReviewTaskRepository {
 export interface HumanResponseRepository {
   findByReviewTaskId(reviewTaskId: string): Promise<HumanResponse[]>;
   save(response: HumanResponse): Promise<void>;
+}
+
+export interface ProviderConfigRepository {
+  get(providerId: string): Promise<ProviderAdapterConfig | null>;
+  save(config: ProviderAdapterConfig): Promise<void>;
+}
+
+export interface ProviderTaskMappingRepository {
+  findByProviderTaskId(providerTaskId: string): Promise<ProviderTaskMapping | null>;
+  findByReviewTaskId(reviewTaskId: string): Promise<ProviderTaskMapping | null>;
+  save(mapping: ProviderTaskMapping): Promise<void>;
+}
+
+export interface ProviderResponseReceiptRepository {
+  findByDedupeKey(dedupeKey: string): Promise<ProviderResponseReceipt | null>;
+  save(receipt: ProviderResponseReceipt): Promise<void>;
 }
 
 export interface ConsensusResultRepository {

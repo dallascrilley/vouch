@@ -23,6 +23,71 @@ export type HumanReviewTask = {
   state: HumanReviewTaskState;
 };
 
+export type ProviderDispatchMode = "api" | "mock";
+export type ProviderIngestionMode = "callback" | "polling";
+
+export type ProviderAdapterConfig = {
+  providerId: string;
+  credentialSource: string;
+  accountScope: string;
+  dispatchMode: ProviderDispatchMode;
+  ingestionMode: ProviderIngestionMode;
+  callbackBaseUrl?: string;
+  dispatchUrl?: string;
+  enabled: boolean;
+  apiKey?: string;
+  sharedSecret?: string;
+  fallbackProviderId: string;
+};
+
+export type ProviderTaskMappingStatus =
+  | "queued"
+  | "dispatched"
+  | "delivered"
+  | "normalized"
+  | "fallback"
+  | "blocked";
+
+export type ProviderTaskMapping = {
+  reviewTaskId: Identifier;
+  providerId: string;
+  providerTaskId: string;
+  providerAssignmentScope: string;
+  dispatchStatus: ProviderTaskMappingStatus;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ProviderResponseReceipt = {
+  receiptId: Identifier;
+  providerId: string;
+  providerTaskId: string;
+  providerResponseId: string;
+  deliveryMode: ProviderIngestionMode;
+  receivedAt: Date;
+  normalizedResponseId?: Identifier;
+  dedupeKey: string;
+};
+
+export type ProviderHealthStatus = "healthy" | "degraded" | "down";
+
+export type ProviderHealthState = {
+  providerId: string;
+  status: ProviderHealthStatus;
+  lastSuccessAt?: Date;
+  lastFailureAt?: Date;
+  failureReason?: string;
+  fallbackRoute: ReviewerPoolType;
+};
+
+export type LocalProviderValidationProfile = {
+  providerId: string;
+  validationCommandSet: string[];
+  requiredLocalEnv: string[];
+  expectedDispatchEvidence: string[];
+  expectedIngestionEvidence: string[];
+};
+
 export type HumanReviewVerdict = "pass" | "fail" | "unclear" | "artifact_insufficient";
 
 export type Severity = "S0" | "S1" | "S2" | "S3" | "S4";
@@ -30,6 +95,8 @@ export type Severity = "S0" | "S1" | "S2" | "S3" | "S4";
 export type HumanResponse = {
   responseId: Identifier;
   reviewTaskId: Identifier;
+  providerId?: string;
+  providerResponseId?: string;
   providerAssignmentRef?: string;
   reviewerPseudonymousId: string;
   overallVerdict: HumanReviewVerdict;
