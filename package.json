@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "scripts": {
     "build": "tsc --noEmit",
@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "validate:local-runtime": "tsx scripts/validate-local-runtime.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.872.0",

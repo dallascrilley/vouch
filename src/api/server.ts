@@ -2,8 +2,8 @@ import { buildApp } from "./app.js";
 import { loadRuntimeConfig } from "../config/runtime.js";
 
 export function buildServer() {
-  loadRuntimeConfig();
-  return buildApp();
+  const config = loadRuntimeConfig();
+  return buildApp(config);
 }
 
 function main() {

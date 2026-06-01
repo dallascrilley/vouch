@@ -13,6 +13,7 @@ export interface VerificationJobRepository {
 }
 
 export interface AcceptanceCriterionRepository {
+  findByJobId(jobId: string): Promise<AcceptanceCriterion[]>;
   saveAll(criteria: AcceptanceCriterion[]): Promise<void>;
 }
 
@@ -22,15 +23,18 @@ export interface ArtifactManifestRepository {
 }
 
 export interface PrivacyClassificationRepository {
+  findByJobId(jobId: string): Promise<PrivacyClassification | null>;
   save(classification: PrivacyClassification): Promise<void>;
 }
 
 export interface SelfVerificationResultRepository {
+  findByJobId(jobId: string): Promise<SelfVerificationResult | null>;
   save(result: SelfVerificationResult): Promise<void>;
 }
 
 export interface HumanReviewTaskRepository {
   findById(reviewTaskId: string): Promise<HumanReviewTask | null>;
+  findByJobId(jobId: string): Promise<HumanReviewTask[]>;
   save(task: HumanReviewTask): Promise<void>;
 }
 
@@ -40,24 +44,29 @@ export interface HumanResponseRepository {
 }
 
 export interface ConsensusResultRepository {
+  findByJobId(jobId: string): Promise<ConsensusResult | null>;
   markAdjudicated(jobId: string): Promise<void>;
   save(result: ConsensusResult): Promise<void>;
 }
 
 export interface AdjudicationCaseRepository {
+  findByJobId(jobId: string): Promise<AdjudicationCase | null>;
   save(caseFile: AdjudicationCase): Promise<void>;
 }
 
 export interface FinalVerdictRepository {
+  findByJobId(jobId: string): Promise<FinalVerdict | null>;
   save(verdict: FinalVerdict): Promise<void>;
 }
 
 export interface AgentFeedbackRepository {
+  findByJobId(jobId: string): Promise<AgentFeedbackSignal | null>;
   save(signal: AgentFeedbackSignal): Promise<void>;
 }
 
 export interface VerdictLedgerRepository {
   append(event: VerdictLedgerEvent): Promise<void>;
+  listByJobId(jobId: string): Promise<VerdictLedgerEvent[]>;
 }
 
 export interface ReviewerPoolRepository {
