@@ -14,3 +14,18 @@ export const publicProviderCapability: ProviderCapabilityProfile = {
   latencyProfile: "queue-based",
   rateOrLoadConstraints: []
 };
+
+export const realProviderCapability: ProviderCapabilityProfile = {
+  providerId: "real-provider",
+  supportedPoolTypes: ["managed", "domain_expert"],
+  supportsExternalTaskUrl: true,
+  supportsStructuredForms: true,
+  supportsWebhooks: true,
+  supportsBulkApproval: false,
+  supportsQualifications: true,
+  supportsWorkerGroups: true,
+  privacyLimitations: ["managed-only"],
+  costModel: "per-dispatch",
+  latencyProfile: "provider-api",
+  rateOrLoadConstraints: ["local-config-required"]
+};

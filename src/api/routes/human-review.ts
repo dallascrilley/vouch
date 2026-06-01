@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { localQueueJobNames } from "../../adapters/queue/local-queue.js";
 import type { AdjudicationDecision, ConsensusOutcome, DisagreementLevel, QuorumState } from "../../domain/consensus/models.js";
 import type { HumanReviewVerdict, Severity } from "../../domain/human-review/models.js";
+import { shouldFallbackProvider } from "../../domain/human-review/provider-routing-policy.js";
 import type { ReviewerPoolType } from "../../domain/shared/types.js";
 
 type HumanReviewTaskBody = {
@@ -65,7 +66,32 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
           taskTemplate: request.body.task_template
         });
 
+        let providerTaskId: string | undefined;
+        let dispatchStatus = reviewTask.state;
+
         if (
+          app.services.providerConfig?.enabled &&
+          reviewTask.providerAdapter === app.services.providerConfig.providerId
+        ) {
+          await app.services.privacyGate.assertProviderDispatchAllowed(
+            request.params.jobId,
+            request.body.reviewer_pool
+          );
+
+          const fallbackDecision = shouldFallbackProvider({
+            health: app.services.providerOperationsService.getHealthSnapshot(),
+            preferredProviderId: app.services.providerConfig.providerId
+          });
+
+          if (!fallbackDecision.fallback && app.services.providerDispatchWorker) {
+            const dispatchResult = await app.services.providerDispatchWorker.dispatch(reviewTask);
+            reviewTask.providerTaskRef = dispatchResult.providerTaskId;
+            reviewTask.state = "dispatched";
+            await app.services.humanReviewTaskService.save(reviewTask);
+            providerTaskId = dispatchResult.providerTaskId;
+            dispatchStatus = "dispatched";
+          }
+        } else if (
           app.services.runtimeConfig.localProviderMode === "simulated" &&
           reviewTask.reviewerPool !== "internal"
         ) {
@@ -81,8 +107,10 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
         }
 
         return reply.code(202).send({
+          dispatch_status: dispatchStatus,
           job_id: reviewTask.jobId,
           provider_adapter: reviewTask.providerAdapter,
+          provider_task_id: providerTaskId,
           review_task_id: reviewTask.reviewTaskId,
           reviewer_pool: reviewTask.reviewerPool
         });

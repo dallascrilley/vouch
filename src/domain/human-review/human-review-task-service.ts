@@ -74,4 +74,9 @@ export class HumanReviewTaskService {
       return reviewTask;
     });
   }
+
+  async save(task: HumanReviewTask) {
+    await this.reviewTaskRepository.save(task);
+    return task;
+  }
 }

@@ -7,6 +7,8 @@ import type { FeedbackService } from "../feedback/feedback-service.js";
 import type { VerdictService } from "../feedback/verdict-service.js";
 
 export class PrivacyGate {
+  private readonly classifications = new Map<string, PrivacyClassification>();
+
   constructor(
     private readonly privacyRepository: PrivacyClassificationRepository,
     private readonly jobService: JobService,
@@ -33,6 +35,7 @@ export class PrivacyGate {
       job.state = "privacy_classified";
       await this.jobService.save(job);
       await this.privacyRepository.save(classification);
+      this.classifications.set(classification.jobId, classification);
       await this.ledgerService.recordExternalizationDecision({
         correlationId: classification.classificationId,
         decision: classification.externalizationDecision,
@@ -51,5 +54,26 @@ export class PrivacyGate {
         });
       }
     });
+  }
+
+  async assertProviderDispatchAllowed(jobId: string, providerRoute: string) {
+    const classification =
+      this.classifications.get(jobId) ?? (await this.privacyRepository.findByJobId(jobId));
+    if (!classification) {
+      throw new Error(`Privacy classification not found for verification job: ${jobId}`);
+    }
+
+    if (classification.externalizationDecision !== "allowed") {
+      throw new Error("Provider dispatch is blocked by privacy policy");
+    }
+
+    if (
+      classification.allowedReviewerRoutes.length > 0 &&
+      !classification.allowedReviewerRoutes.includes(providerRoute as never)
+    ) {
+      throw new Error(`Provider dispatch is not allowed for route: ${providerRoute}`);
+    }
+
+    return classification;
   }
 }

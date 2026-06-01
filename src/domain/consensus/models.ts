@@ -18,6 +18,9 @@ export type ConsensusResult = {
   disagreementLevel: DisagreementLevel;
   recommendedOutcome: ConsensusOutcome;
   adjudicationTrigger?: string;
+  providerIds?: string[];
+  providerResponseIds?: Identifier[];
+  providerSummary?: string;
   createdAt: Date;
 };
 
@@ -29,6 +32,9 @@ export type AdjudicationCase = {
   normalizedEvidenceRefs: Identifier[];
   decision?: AdjudicationDecision;
   decisionNotes?: string;
+  providerIds?: string[];
+  providerResponseIds?: Identifier[];
+  providerSummary?: string;
   createdAt: Date;
   decidedAt?: Date;
 };

@@ -6,7 +6,9 @@ import type { CriterionResult } from "../self-verification/models.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
 
 type FinalizeOptions = {
+  adjudicationSummary?: string;
   criterionOutcomes?: CriterionResult[];
+  humanConsensusSummary?: string;
   machineCheckFailures?: string[];
   policyConstraints?: string[];
   retryRecommendation?: string;
@@ -49,6 +51,8 @@ export class VerdictService {
         confidence: "high",
         maxSeverity: "none",
         evidenceRefs: job.artifactManifestId ? [job.artifactManifestId] : [],
+        humanConsensusSummary: options.humanConsensusSummary,
+        adjudicationSummary: options.adjudicationSummary,
         retryRecommendation: options.retryRecommendation,
         releaseGateEffect: finalVerdict === "pass" ? "allow" : "block",
         createdAt: new Date()

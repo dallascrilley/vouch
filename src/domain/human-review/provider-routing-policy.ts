@@ -1,7 +1,7 @@
-import type { ProviderCapabilityProfile } from "./models.js";
+import type { ProviderCapabilityProfile, ProviderHealthState } from "./models.js";
 import type { ReviewerPoolType } from "../shared/types.js";
 
-export type ProviderHealth = Record<string, "healthy" | "degraded" | "down">;
+export type ProviderHealth = Record<string, ProviderHealthState["status"]>;
 
 export function selectProviderForPool(input: {
   health: ProviderHealth;
@@ -26,4 +26,35 @@ export function selectProviderForPool(input: {
     providersForPool.find((provider) => input.health[provider.providerId] !== "down") ??
     null
   );
+}
+
+export function shouldFallbackProvider(input: {
+  allowedProviderIds?: string[];
+  health: ProviderHealth;
+  preferredProviderId: string;
+}) {
+  if (
+    input.allowedProviderIds &&
+    !input.allowedProviderIds.includes(input.preferredProviderId)
+  ) {
+    return {
+      fallback: true,
+      reason: "Preferred provider is not allowed for this privacy route"
+    };
+  }
+
+  if (input.health[input.preferredProviderId] === "down") {
+    return {
+      fallback: true,
+      reason: "Preferred provider is down"
+    };
+  }
+
+  return {
+    fallback: input.health[input.preferredProviderId] === "degraded",
+    reason:
+      input.health[input.preferredProviderId] === "degraded"
+        ? "Preferred provider is degraded"
+        : undefined
+  };
 }
