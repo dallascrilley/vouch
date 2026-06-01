@@ -1,16 +1,21 @@
 import { describe, expect, it } from "vitest";
 
 import { LedgerService } from "../../src/domain/ledger/ledger-service.js";
+import type { VerdictLedgerRepository } from "../../src/adapters/storage/repositories.js";
 
 describe("US3 budget blocked event", () => {
   it("records a budget-blocked ledger event with the cap context", async () => {
     const recorded: unknown[] = [];
-    const ledger = new LedgerService({
+    const repository: VerdictLedgerRepository = {
       append(event) {
         recorded.push(event);
         return Promise.resolve();
+      },
+      listByJobId() {
+        return Promise.resolve([]);
       }
-    });
+    };
+    const ledger = new LedgerService(repository);
 
     const event = await ledger.recordBudgetBlocked({
       attemptedCost: 50,

@@ -4,9 +4,16 @@ import { LedgerService } from "../../src/domain/ledger/ledger-service.js";
 import type { VerdictLedgerRepository } from "../../src/adapters/storage/repositories.js";
 
 describe("LedgerService", () => {
+  const createRepository = (append: VerdictLedgerRepository["append"]): VerdictLedgerRepository => ({
+    append,
+    listByJobId() {
+      return Promise.resolve([]);
+    }
+  });
+
   it("appends a valid state transition event", async () => {
     const append = vi.fn<VerdictLedgerRepository["append"]>();
-    const service = new LedgerService({ append });
+    const service = new LedgerService(createRepository(append));
 
     const event = await service.recordStateTransition("created", "artifacts_collected", {
       correlationId: "corr-1",
@@ -21,7 +28,7 @@ describe("LedgerService", () => {
 
   it("rejects an invalid state transition", async () => {
     const append = vi.fn<VerdictLedgerRepository["append"]>();
-    const service = new LedgerService({ append });
+    const service = new LedgerService(createRepository(append));
 
     await expect(
       service.recordStateTransition("created", "final_pass", {
@@ -37,7 +44,7 @@ describe("LedgerService", () => {
 
   it("records an externalization decision as an append-only event", async () => {
     const append = vi.fn<VerdictLedgerRepository["append"]>();
-    const service = new LedgerService({ append });
+    const service = new LedgerService(createRepository(append));
 
     const event = await service.recordExternalizationDecision({
       artifactHashes: ["hash-1"],
