@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateBudgetPolicy,
   resolveBudgetPolicy,
+  summarizeBudgetState,
   type BudgetPolicy
 } from "../../src/domain/jobs/budget-policy.js";
 
@@ -73,5 +74,14 @@ describe("budget policy", () => {
     expect(resolved.maxJobCost).toBe(40);
     expect(resolved.maxRetries).toBe(1);
     expect(resolved.maxAssignments).toBe(3);
+  });
+
+  it("summarizes blocked budget state deterministically", () => {
+    expect(
+      summarizeBudgetState({
+        allowed: false,
+        blockingCaps: ["maxJobCost", "maxRetries"]
+      })
+    ).toBe("blocked:maxJobCost,maxRetries");
   });
 });

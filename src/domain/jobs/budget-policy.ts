@@ -24,6 +24,14 @@ export type BudgetEvaluation = {
   blockingCaps: string[];
 };
 
+export function summarizeBudgetState(evaluation: BudgetEvaluation): string | undefined {
+  if (evaluation.allowed || evaluation.blockingCaps.length === 0) {
+    return undefined;
+  }
+
+  return `blocked:${evaluation.blockingCaps.join(",")}`;
+}
+
 function mergePolicy(base: BudgetPolicy, override?: Partial<BudgetPolicy>): BudgetPolicy {
   if (!override) {
     return base;

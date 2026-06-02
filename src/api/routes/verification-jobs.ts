@@ -64,8 +64,11 @@ function serializeJob(job: Awaited<ReturnType<FastifyInstance["services"]["jobSe
       build_id: job.source.buildId,
       environment: job.source.environment,
       route: job.source.route,
+      tenant: job.source.tenant,
+      feature_flags: job.source.featureFlags,
       viewport: job.source.viewport,
-      locale: job.source.locale
+      locale: job.source.locale,
+      timezone: job.source.timezone
     },
     risk_tier: job.riskTier,
     acceptance_criteria: job.acceptanceCriteria.map((criterion) => ({
@@ -77,9 +80,12 @@ function serializeJob(job: Awaited<ReturnType<FastifyInstance["services"]["jobSe
     })),
     deadline_at: job.deadlineAt.toISOString(),
     budget_policy: {
-      max_job_cost: 0,
-      max_assignments: 0,
-      max_retries: 0
+      max_job_cost: job.budgetPolicy.maxJobCost,
+      max_assignments: job.budgetPolicy.maxAssignments,
+      max_retries: job.budgetPolicy.maxRetries,
+      max_run_cost: job.budgetPolicy.maxRunCost,
+      max_project_daily_cost: job.budgetPolicy.maxProjectDailyCost,
+      max_provider_daily_cost: job.budgetPolicy.maxProviderDailyCost
     },
     state: job.state,
     artifact_manifest_id: job.artifactManifestId,

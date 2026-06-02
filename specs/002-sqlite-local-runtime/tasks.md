@@ -19,7 +19,7 @@
 
 - [X] T001 Add SQLite runtime dependency and local validation scripts in package.json
 - [X] T002 [P] Add SQLite runtime configuration defaults in src/config/runtime.ts
-- [ ] T003 [P] Add local runtime policy defaults and resettable paths in src/config/policies.ts
+- [X] T003 [P] Add local runtime policy defaults and resettable paths in src/config/policies.ts
 - [X] T004 [P] Add SQLite migration bootstrap entrypoint in src/adapters/storage/sqlite-migrations.ts
 - [X] T005 Add local runtime wiring placeholders in src/api/app.ts
 - [X] T006 Add local runtime validation script entrypoint in scripts/validate-local-runtime.ts
@@ -57,9 +57,9 @@
 ### Tests for User Story 1
 
 - [X] T018 [P] [US1] Add SQLite durability regression tests for job, artifact, and verdict persistence in tests/integration/us1-sqlite-durability.test.ts
-- [ ] T019 [P] [US1] Add append-only ledger persistence tests in tests/integration/us1-ledger-restart.test.ts
+- [X] T019 [P] [US1] Add append-only ledger persistence tests in tests/integration/us1-ledger-restart.test.ts
 - [X] T020 [P] [US1] Add atomic write failure tests for partial transition rollback in tests/integration/us1-atomic-persistence.test.ts
-- [ ] T021 [P] [US1] Add route contract regression tests against SQLite-backed storage in tests/contract/us1-runtime-contract.test.ts
+- [X] T021 [P] [US1] Add route contract regression tests against SQLite-backed storage in tests/contract/us1-runtime-contract.test.ts
 
 ### Implementation for User Story 1
 
@@ -84,10 +84,10 @@
 
 ### Tests for User Story 2
 
-- [ ] T030 [P] [US2] Add local queue claim recovery tests in tests/integration/us2-queue-recovery.test.ts
+- [X] T030 [P] [US2] Add local queue claim recovery tests in tests/integration/us2-queue-recovery.test.ts
 - [X] T031 [P] [US2] Add local provider simulation flow tests in tests/integration/us2-provider-simulation.test.ts
 - [X] T032 [P] [US2] Add local-only validation command tests in tests/integration/us2-local-validation.test.ts
-- [ ] T033 [P] [US2] Add startup failure integration tests for locked or unwritable runtime paths in tests/integration/us2-startup-failure.test.ts
+- [X] T033 [P] [US2] Add startup failure integration tests for locked or unwritable runtime paths in tests/integration/us2-startup-failure.test.ts
 
 ### Implementation for User Story 2
 
@@ -111,19 +111,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T041 [P] [US3] Add regression tests for privacy-gated blocked review behavior in tests/integration/us3-privacy-regression.test.ts
-- [ ] T042 [P] [US3] Add regression tests for budget-blocked and retry semantics in tests/integration/us3-budget-regression.test.ts
-- [ ] T043 [P] [US3] Add regression tests for consensus and adjudication outcomes on durable state in tests/integration/us3-consensus-regression.test.ts
-- [ ] T044 [P] [US3] Add feedback and verdict shape regression tests in tests/contract/us3-feedback-regression.test.ts
+- [X] T041 [P] [US3] Add regression tests for privacy-gated blocked review behavior in tests/integration/us3-privacy-regression.test.ts
+- [X] T042 [P] [US3] Add regression tests for budget-blocked and retry semantics in tests/integration/us3-budget-regression.test.ts
+- [X] T043 [P] [US3] Add regression tests for consensus and adjudication outcomes on durable state in tests/integration/us3-consensus-regression.test.ts
+- [X] T044 [P] [US3] Add feedback and verdict shape regression tests in tests/contract/us3-feedback-regression.test.ts
 
 ### Implementation for User Story 3
 
-- [ ] T045 [US3] Preserve budget and blocked-state semantics in src/domain/jobs/budget-policy.ts
+- [X] T045 [US3] Preserve budget and blocked-state semantics in src/domain/jobs/budget-policy.ts
 - [X] T046 [US3] Preserve consensus durability and replay behavior in src/domain/consensus/consensus-service.ts
 - [X] T047 [US3] Preserve adjudication durability and restart-safe decision loading in src/domain/adjudication/adjudication-service.ts
-- [ ] T048 [US3] Preserve feedback signal semantics after durable persistence in src/domain/feedback/feedback-service.ts
-- [ ] T049 [US3] Preserve route contract behavior while switching repository implementations in src/api/routes/verification-jobs.ts
-- [ ] T050 [US3] Preserve verdict, feedback, and human-review route semantics in src/api/routes/verdict-feedback.ts and src/api/routes/human-review.ts
+- [X] T048 [US3] Preserve feedback signal semantics after durable persistence in src/domain/feedback/feedback-service.ts
+- [X] T049 [US3] Preserve route contract behavior while switching repository implementations in src/api/routes/verification-jobs.ts
+- [X] T050 [US3] Preserve verdict, feedback, and human-review route semantics in src/api/routes/verdict-feedback.ts and src/api/routes/human-review.ts
 
 **Checkpoint**: User Story 3 proves the runtime migration preserved external semantics and governance behavior.
 
@@ -136,7 +136,7 @@
 - [X] T051 [P] Document SQLite runtime architecture in docs/architecture/sqlite-local-runtime.md
 - [X] T052 [P] Document local startup, validation, inspection, and reset procedures in docs/ops/sqlite-local-runtime.md
 - [X] T053 [P] Document local runtime storage and privacy handling in docs/security/local-runtime-data-handling.md
-- [ ] T054 Add quickstart end-to-end local runtime validation in tests/integration/sqlite-runtime-quickstart.test.ts
+- [X] T054 Add quickstart end-to-end local runtime validation in tests/integration/sqlite-runtime-quickstart.test.ts
 - [X] T055 Run local validation and record proof in docs/ops/sqlite-local-runtime-validation.md
 - [X] T056 Mark completed work in specs/002-sqlite-local-runtime/tasks.md
 

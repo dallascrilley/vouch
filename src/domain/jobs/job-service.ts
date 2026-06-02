@@ -56,6 +56,7 @@ export class JobService {
       riskTier: input.riskTier,
       state: "created",
       deadlineAt: input.deadlineAt,
+      budgetPolicy: input.budgetPolicy,
       budgetPolicyId: `budget_${jobId}`,
       acceptanceCriteria: criteria,
       createdAt: new Date(),

@@ -14,7 +14,11 @@ export function registerVerdictFeedbackRoutes(app: FastifyInstance) {
       confidence: verdict.confidence,
       max_severity: verdict.maxSeverity,
       evidence_refs: verdict.evidenceRefs,
-      retry_recommendation: verdict.retryRecommendation,
+      human_consensus_summary: verdict.humanConsensusSummary ?? null,
+      adjudication_summary: verdict.adjudicationSummary ?? null,
+      cost: verdict.cost ?? null,
+      latency_seconds: verdict.latencySeconds ?? null,
+      retry_recommendation: verdict.retryRecommendation ?? null,
       release_gate_effect: verdict.releaseGateEffect
     };
   });
@@ -30,11 +34,15 @@ export function registerVerdictFeedbackRoutes(app: FastifyInstance) {
       job_id: signal.jobId,
       final_verdict: signal.finalVerdict,
       failed_criteria: signal.failedCriteria,
+      severity: signal.severity ?? null,
+      defect_category: signal.defectCategory ?? null,
       evidence_pointers: signal.evidencePointers,
+      human_annotations: signal.humanAnnotations,
       machine_check_failures: signal.machineCheckFailures,
       retry_allowed: signal.retryAllowed,
-      retry_reason: signal.retryReason,
-      repair_hint: signal.repairHint,
+      retry_reason: signal.retryReason ?? null,
+      repair_hint: signal.repairHint ?? null,
+      budget_state: signal.budgetState ?? null,
       policy_constraints: signal.policyConstraints
     };
   });
