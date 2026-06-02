@@ -3,6 +3,7 @@ import type {
   AdjudicationCaseRepository,
   ConsensusResultRepository
 } from "../../adapters/storage/repositories.js";
+import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
 import type { JobService } from "../jobs/job-service.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
 import type { FeedbackService } from "../feedback/feedback-service.js";
@@ -15,7 +16,8 @@ export class AdjudicationService {
     private readonly jobService: JobService,
     private readonly ledgerService: LedgerService,
     private readonly verdictService: VerdictService,
-    private readonly feedbackService: FeedbackService
+    private readonly feedbackService: FeedbackService,
+    private readonly transactionManager: TransactionManager
   ) {}
 
   async record(caseFile: AdjudicationCase): Promise<void> {
@@ -27,26 +29,29 @@ export class AdjudicationService {
     if (!caseFile.decision) {
       throw new Error("Adjudication decision is required");
     }
+    const decision = caseFile.decision;
 
-    await this.ledgerService.recordStateTransition(job.state, "adjudication_required", {
-      correlationId: caseFile.adjudicationId,
-      jobId: job.jobId,
-      payloadHash: caseFile.adjudicationId,
-      policyVersion: "v1"
-    });
+    await this.transactionManager.inTransaction(async () => {
+      await this.ledgerService.recordStateTransition(job.state, "adjudication_required", {
+        correlationId: caseFile.adjudicationId,
+        jobId: job.jobId,
+        payloadHash: caseFile.adjudicationId,
+        policyVersion: "v1"
+      });
 
-    job.state = "adjudication_required";
-    await this.jobService.save(job);
-    await this.adjudicationRepository.save(caseFile);
-    await this.consensusRepository.markAdjudicated(job.jobId);
+      job.state = "adjudication_required";
+      await this.jobService.save(job);
+      await this.adjudicationRepository.save(caseFile);
+      await this.consensusRepository.markAdjudicated(job.jobId);
 
-    const verdict = await this.verdictService.finalize(job, this.toFinalVerdict(caseFile.decision), {
-      retryRecommendation: caseFile.decision === "retry" ? "retry" : undefined
-    });
-    await this.feedbackService.emit(job, verdict, {
-      policyConstraints: [caseFile.triggerReason],
-      retryAllowed: caseFile.decision === "retry" || caseFile.decision === "recapture",
-      retryReason: caseFile.triggerReason
+      const verdict = await this.verdictService.finalize(job, this.toFinalVerdict(decision), {
+        retryRecommendation: decision === "retry" ? "retry" : undefined
+      });
+      await this.feedbackService.emit(job, verdict, {
+        policyConstraints: [caseFile.triggerReason],
+        retryAllowed: decision === "retry" || decision === "recapture",
+        retryReason: caseFile.triggerReason
+      });
     });
   }
 

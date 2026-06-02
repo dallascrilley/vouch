@@ -1,5 +1,6 @@
 import type { HumanResponse } from "./models.js";
 import type { HumanResponseRepository, HumanReviewTaskRepository } from "../../adapters/storage/repositories.js";
+import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
 import type { JobService } from "../jobs/job-service.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
 
@@ -8,7 +9,8 @@ export class ResponseValidationService {
     private readonly responseRepository: HumanResponseRepository,
     private readonly reviewTaskRepository: HumanReviewTaskRepository,
     private readonly jobService: JobService,
-    private readonly ledgerService: LedgerService
+    private readonly ledgerService: LedgerService,
+    private readonly transactionManager: TransactionManager
   ) {}
 
   async record(response: HumanResponse): Promise<void> {
@@ -30,15 +32,17 @@ export class ResponseValidationService {
       throw new Error(`Verification job not found: ${reviewTask.jobId}`);
     }
 
-    await this.ledgerService.recordStateTransition(job.state, "human_responses_received", {
-      correlationId: response.responseId,
-      jobId: job.jobId,
-      payloadHash: response.responseId,
-      policyVersion: "v1"
-    });
+    await this.transactionManager.inTransaction(async () => {
+      await this.ledgerService.recordStateTransition(job.state, "human_responses_received", {
+        correlationId: response.responseId,
+        jobId: job.jobId,
+        payloadHash: response.responseId,
+        policyVersion: "v1"
+      });
 
-    job.state = "human_responses_received";
-    await this.jobService.save(job);
-    await this.responseRepository.save(response);
+      job.state = "human_responses_received";
+      await this.jobService.save(job);
+      await this.responseRepository.save(response);
+    });
   }
 }

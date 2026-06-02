@@ -1,5 +1,6 @@
 import type { SelfVerificationResult } from "./models.js";
 import type { SelfVerificationResultRepository } from "../../adapters/storage/repositories.js";
+import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
 import type { JobService } from "../jobs/job-service.js";
 import type { FeedbackService } from "../feedback/feedback-service.js";
@@ -11,7 +12,8 @@ export class SelfVerificationService {
     private readonly jobService: JobService,
     private readonly ledgerService: LedgerService,
     private readonly verdictService: VerdictService,
-    private readonly feedbackService: FeedbackService
+    private readonly feedbackService: FeedbackService,
+    private readonly transactionManager: TransactionManager
   ) {}
 
   async record(result: SelfVerificationResult): Promise<void> {
@@ -20,37 +22,39 @@ export class SelfVerificationService {
       throw new Error(`Verification job not found: ${result.jobId}`);
     }
 
-    await this.ledgerService.recordStateTransition(job.state, "self_verifying", {
-      correlationId: result.resultId,
-      jobId: job.jobId,
-      payloadHash: result.resultId,
-      policyVersion: "v1"
-    });
-    job.state = "self_verifying";
-    await this.jobService.save(job);
+    await this.transactionManager.inTransaction(async () => {
+      await this.ledgerService.recordStateTransition(job.state, "self_verifying", {
+        correlationId: result.resultId,
+        jobId: job.jobId,
+        payloadHash: result.resultId,
+        policyVersion: "v1"
+      });
+      job.state = "self_verifying";
+      await this.jobService.save(job);
 
-    await this.resultRepository.save(result);
+      await this.resultRepository.save(result);
 
-    await this.ledgerService.recordStateTransition(job.state, "decision_point", {
-      correlationId: result.resultId,
-      jobId: job.jobId,
-      payloadHash: result.resultId,
-      policyVersion: "v1"
-    });
-    job.state = "decision_point";
-    await this.jobService.save(job);
+      await this.ledgerService.recordStateTransition(job.state, "decision_point", {
+        correlationId: result.resultId,
+        jobId: job.jobId,
+        payloadHash: result.resultId,
+        policyVersion: "v1"
+      });
+      job.state = "decision_point";
+      await this.jobService.save(job);
 
-    const resolution = this.resolveAction(result.recommendedAction);
-    const verdict = await this.verdictService.finalize(job, resolution.finalVerdict, {
-      criterionOutcomes: result.criterionResults,
-      machineCheckFailures: result.failureCategories,
-      retryRecommendation: resolution.retryRecommendation
-    });
+      const resolution = this.resolveAction(result.recommendedAction);
+      const verdict = await this.verdictService.finalize(job, resolution.finalVerdict, {
+        criterionOutcomes: result.criterionResults,
+        machineCheckFailures: result.failureCategories,
+        retryRecommendation: resolution.retryRecommendation
+      });
 
-    await this.feedbackService.emit(job, verdict, {
-      machineCheckFailures: result.failureCategories,
-      retryAllowed: resolution.retryAllowed,
-      retryReason: resolution.retryReason
+      await this.feedbackService.emit(job, verdict, {
+        machineCheckFailures: result.failureCategories,
+        retryAllowed: resolution.retryAllowed,
+        retryReason: resolution.retryReason
+      });
     });
   }
 
