@@ -30,6 +30,11 @@ describe("sqlite repositories", () => {
 
     const job: VerificationJob = {
       acceptanceCriteria: [],
+      budgetPolicy: {
+        maxAssignments: 1,
+        maxJobCost: 5,
+        maxRetries: 1
+      },
       budgetPolicyId: "budget_job-1",
       createdAt: new Date("2026-06-01T00:00:00.000Z"),
       deadlineAt: new Date("2026-06-02T00:00:00.000Z"),

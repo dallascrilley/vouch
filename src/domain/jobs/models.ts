@@ -1,4 +1,5 @@
 import type { Identifier, JobState, RiskTier } from "../shared/types.js";
+import type { BudgetPolicy } from "./budget-policy.js";
 
 export type JobSource = {
   repository: string;
@@ -37,6 +38,7 @@ export type VerificationJob = {
   riskTier: RiskTier;
   state: JobState;
   deadlineAt: Date;
+  budgetPolicy: BudgetPolicy;
   budgetPolicyId: Identifier;
   acceptanceCriteria: AcceptanceCriterion[];
   artifactManifestId?: Identifier;
