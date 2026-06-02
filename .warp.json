@@ -1,0 +1,26 @@
+{
+  "sync": false,
+  "ports": [
+    3000
+  ],
+  "bootstrap": "npm install",
+  "ignore": [
+    ".DS_Store",
+    "**/.DS_Store",
+    "node_modules",
+    ".venv",
+    ".git",
+    "__pycache__",
+    "**/__pycache__",
+    "*.pyc",
+    "**/*.pyc"
+  ],
+  "git_snapshot": {
+    "enabled": true,
+    "mode": "worktree-snapshot",
+    "on": ["up", "handoff"],
+    "include_ahead": true,
+    "include_dirty": true,
+    "include_behind": false
+  }
+}
