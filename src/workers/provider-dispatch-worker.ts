@@ -1,9 +1,9 @@
 import { simulateProviderResponse } from "../adapters/providers/local-provider-simulator.js";
-import { RealProviderAdapter } from "../adapters/providers/real-provider-adapter.js";
 import type { HumanReviewTask } from "../domain/human-review/models.js";
 import type { ProviderOperationsService } from "../domain/human-review/provider-operations-service.js";
 import type { ProviderTaskMappingService } from "../domain/human-review/provider-task-mapping-service.js";
 import type { ResponseValidationService } from "../domain/human-review/response-validation-service.js";
+import type { RealProviderAdapter } from "../adapters/providers/real-provider-adapter.js";
 
 export class ProviderDispatchWorker {
   constructor(
