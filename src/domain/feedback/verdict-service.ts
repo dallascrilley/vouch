@@ -1,5 +1,6 @@
 import type { FinalVerdict, FinalVerdictState } from "./models.js";
 import type { FinalVerdictRepository } from "../../adapters/storage/repositories.js";
+import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
 import type { JobService } from "../jobs/job-service.js";
 import type { CriterionResult } from "../self-verification/models.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
@@ -15,7 +16,8 @@ export class VerdictService {
   constructor(
     private readonly verdictRepository: FinalVerdictRepository,
     private readonly jobService: JobService,
-    private readonly ledgerService: LedgerService
+    private readonly ledgerService: LedgerService,
+    private readonly transactionManager: TransactionManager
   ) {}
 
   async finalize(
@@ -25,34 +27,36 @@ export class VerdictService {
   ): Promise<FinalVerdict> {
     const nextState = this.toJobState(finalVerdict);
 
-    await this.ledgerService.recordStateTransition(job.state, nextState, {
-      correlationId: `${job.jobId}:${finalVerdict}`,
-      jobId: job.jobId,
-      payloadHash: `${job.jobId}:${finalVerdict}`,
-      policyVersion: "v1"
+    return this.transactionManager.inTransaction(async () => {
+      await this.ledgerService.recordStateTransition(job.state, nextState, {
+        correlationId: `${job.jobId}:${finalVerdict}`,
+        jobId: job.jobId,
+        payloadHash: `${job.jobId}:${finalVerdict}`,
+        policyVersion: "v1"
+      });
+
+      job.state = nextState;
+      if (nextState === "final_pass" || nextState === "final_fail" || nextState === "fail_closed") {
+        job.closedAt = new Date();
+      }
+      await this.jobService.save(job);
+
+      const verdict: FinalVerdict = {
+        verdictId: `verdict_${job.jobId}`,
+        jobId: job.jobId,
+        finalVerdict,
+        criterionOutcomes: options.criterionOutcomes ?? [],
+        confidence: "high",
+        maxSeverity: "none",
+        evidenceRefs: job.artifactManifestId ? [job.artifactManifestId] : [],
+        retryRecommendation: options.retryRecommendation,
+        releaseGateEffect: finalVerdict === "pass" ? "allow" : "block",
+        createdAt: new Date()
+      };
+
+      await this.verdictRepository.save(verdict);
+      return verdict;
     });
-
-    job.state = nextState;
-    if (nextState === "final_pass" || nextState === "final_fail" || nextState === "fail_closed") {
-      job.closedAt = new Date();
-    }
-    await this.jobService.save(job);
-
-    const verdict: FinalVerdict = {
-      verdictId: `verdict_${job.jobId}`,
-      jobId: job.jobId,
-      finalVerdict,
-      criterionOutcomes: options.criterionOutcomes ?? [],
-      confidence: "high",
-      maxSeverity: "none",
-      evidenceRefs: job.artifactManifestId ? [job.artifactManifestId] : [],
-      retryRecommendation: options.retryRecommendation,
-      releaseGateEffect: finalVerdict === "pass" ? "allow" : "block",
-      createdAt: new Date()
-    };
-
-    await this.verdictRepository.save(verdict);
-    return verdict;
   }
 
   private toJobState(finalVerdict: FinalVerdictState) {

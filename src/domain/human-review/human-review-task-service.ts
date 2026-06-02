@@ -1,5 +1,6 @@
 import type { HumanReviewTask } from "./models.js";
 import type { HumanReviewTaskRepository } from "../../adapters/storage/repositories.js";
+import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
 import type { JobService } from "../jobs/job-service.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
 import type { ProviderCapabilityRegistry } from "./provider-capability-registry.js";
@@ -21,7 +22,8 @@ export class HumanReviewTaskService {
     private readonly reviewTaskRepository: HumanReviewTaskRepository,
     private readonly jobService: JobService,
     private readonly ledgerService: LedgerService,
-    private readonly capabilityRegistry: ProviderCapabilityRegistry
+    private readonly capabilityRegistry: ProviderCapabilityRegistry,
+    private readonly transactionManager: TransactionManager
   ) {}
 
   async create(input: CreateHumanReviewTaskInput): Promise<HumanReviewTask> {
@@ -39,32 +41,37 @@ export class HumanReviewTaskService {
       throw new Error("Human review tasks require a sanitized package");
     }
 
-    await this.ledgerService.recordStateTransition(job.state, "external_review_queued", {
-      correlationId: `review-task:${input.jobId}`,
-      jobId: job.jobId,
-      payloadHash: input.sanitizedPackageId,
-      policyVersion: "v1"
+    const queueState =
+      input.reviewerPool === "internal" ? "internal_review_queued" : "external_review_queued";
+
+    return this.transactionManager.inTransaction(async () => {
+      await this.ledgerService.recordStateTransition(job.state, queueState, {
+        correlationId: `review-task:${input.jobId}`,
+        jobId: job.jobId,
+        payloadHash: input.sanitizedPackageId,
+        policyVersion: "v1"
+      });
+
+      job.state = queueState;
+      await this.jobService.save(job);
+
+      const reviewTask: HumanReviewTask = {
+        reviewTaskId: `review_${crypto.randomUUID()}`,
+        jobId: job.jobId,
+        criterionIds: input.criterionIds,
+        reviewerPool: input.reviewerPool,
+        sanitizedPackageId: input.sanitizedPackageId,
+        taskTemplate: input.taskTemplate,
+        qualityPolicy: input.qualityPolicy,
+        paymentPolicy: "standard",
+        deadlineAt: input.deadlineAt,
+        providerAdapter: input.providerAdapter ?? providerCapability.providerId,
+        providerTaskRef: undefined,
+        state: "queued"
+      };
+
+      await this.reviewTaskRepository.save(reviewTask);
+      return reviewTask;
     });
-
-    job.state = "external_review_queued";
-    await this.jobService.save(job);
-
-    const reviewTask: HumanReviewTask = {
-      reviewTaskId: `review_${crypto.randomUUID()}`,
-      jobId: job.jobId,
-      criterionIds: input.criterionIds,
-      reviewerPool: input.reviewerPool,
-      sanitizedPackageId: input.sanitizedPackageId,
-      taskTemplate: input.taskTemplate,
-      qualityPolicy: input.qualityPolicy,
-      paymentPolicy: "standard",
-      deadlineAt: input.deadlineAt,
-      providerAdapter: input.providerAdapter ?? providerCapability.providerId,
-      providerTaskRef: undefined,
-      state: "queued"
-    };
-
-    await this.reviewTaskRepository.save(reviewTask);
-    return reviewTask;
   }
 }

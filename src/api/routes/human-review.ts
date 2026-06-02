@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 
+import { localQueueJobNames } from "../../adapters/queue/local-queue.js";
 import type { AdjudicationDecision, ConsensusOutcome, DisagreementLevel, QuorumState } from "../../domain/consensus/models.js";
 import type { HumanReviewVerdict, Severity } from "../../domain/human-review/models.js";
 import type { ReviewerPoolType } from "../../domain/shared/types.js";
@@ -63,6 +64,21 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
           sanitizedPackageId: request.body.sanitized_package_id,
           taskTemplate: request.body.task_template
         });
+
+        if (
+          app.services.runtimeConfig.localProviderMode === "simulated" &&
+          reviewTask.reviewerPool !== "internal"
+        ) {
+          await app.services.queueStore.enqueue({
+            attemptCount: 0,
+            availableAt: new Date(),
+            claimId: `provider-dispatch:${reviewTask.reviewTaskId}`,
+            jobId: reviewTask.jobId,
+            jobName: localQueueJobNames.providerDispatch,
+            payloadJson: JSON.stringify(reviewTask),
+            state: "queued"
+          });
+        }
 
         return reply.code(202).send({
           job_id: reviewTask.jobId,

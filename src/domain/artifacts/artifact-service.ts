@@ -1,5 +1,6 @@
 import type { ArtifactManifest } from "./models.js";
 import type { ArtifactManifestRepository } from "../../adapters/storage/repositories.js";
+import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
 import type { JobService } from "../jobs/job-service.js";
 
@@ -7,7 +8,8 @@ export class ArtifactService {
   constructor(
     private readonly artifactRepository: ArtifactManifestRepository,
     private readonly jobService: JobService,
-    private readonly ledgerService: LedgerService
+    private readonly ledgerService: LedgerService,
+    private readonly transactionManager: TransactionManager
   ) {}
 
   async attach(manifest: ArtifactManifest): Promise<void> {
@@ -22,17 +24,19 @@ export class ArtifactService {
       throw new Error(`Verification job not found: ${manifest.jobId}`);
     }
 
-    await this.ledgerService.recordStateTransition(job.state, "artifacts_collected", {
-      artifactHashes: manifest.rawArtifacts.map((artifact) => artifact.contentHash),
-      correlationId: manifest.manifestId,
-      jobId: job.jobId,
-      payloadHash: manifest.manifestId,
-      policyVersion: "v1"
-    });
+    await this.transactionManager.inTransaction(async () => {
+      await this.ledgerService.recordStateTransition(job.state, "artifacts_collected", {
+        artifactHashes: manifest.rawArtifacts.map((artifact) => artifact.contentHash),
+        correlationId: manifest.manifestId,
+        jobId: job.jobId,
+        payloadHash: manifest.manifestId,
+        policyVersion: "v1"
+      });
 
-    job.state = "artifacts_collected";
-    job.artifactManifestId = manifest.manifestId;
-    await this.jobService.save(job);
-    await this.artifactRepository.save(manifest);
+      job.state = "artifacts_collected";
+      job.artifactManifestId = manifest.manifestId;
+      await this.jobService.save(job);
+      await this.artifactRepository.save(manifest);
+    });
   }
 }

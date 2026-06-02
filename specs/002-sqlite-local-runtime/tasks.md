@@ -58,7 +58,7 @@
 
 - [X] T018 [P] [US1] Add SQLite durability regression tests for job, artifact, and verdict persistence in tests/integration/us1-sqlite-durability.test.ts
 - [ ] T019 [P] [US1] Add append-only ledger persistence tests in tests/integration/us1-ledger-restart.test.ts
-- [ ] T020 [P] [US1] Add atomic write failure tests for partial transition rollback in tests/integration/us1-atomic-persistence.test.ts
+- [X] T020 [P] [US1] Add atomic write failure tests for partial transition rollback in tests/integration/us1-atomic-persistence.test.ts
 - [ ] T021 [P] [US1] Add route contract regression tests against SQLite-backed storage in tests/contract/us1-runtime-contract.test.ts
 
 ### Implementation for User Story 1
@@ -85,17 +85,17 @@
 ### Tests for User Story 2
 
 - [ ] T030 [P] [US2] Add local queue claim recovery tests in tests/integration/us2-queue-recovery.test.ts
-- [ ] T031 [P] [US2] Add local provider simulation flow tests in tests/integration/us2-provider-simulation.test.ts
+- [X] T031 [P] [US2] Add local provider simulation flow tests in tests/integration/us2-provider-simulation.test.ts
 - [X] T032 [P] [US2] Add local-only validation command tests in tests/integration/us2-local-validation.test.ts
 - [ ] T033 [P] [US2] Add startup failure integration tests for locked or unwritable runtime paths in tests/integration/us2-startup-failure.test.ts
 
 ### Implementation for User Story 2
 
-- [ ] T034 [US2] Implement SQLite-backed queue claim and release logic in src/adapters/queue/sqlite-queue.ts
+- [X] T034 [US2] Implement SQLite-backed queue claim and release logic in src/adapters/queue/sqlite-queue.ts
 - [X] T035 [US2] Implement local provider simulation adapter in src/adapters/providers/local-provider-simulator.ts
 - [X] T036 [US2] Implement durable task dispatch orchestration for local workers in src/workers/provider-dispatch-worker.ts
 - [X] T037 [US2] Implement queue resume and recoverable in-flight task handling in src/workers/index.ts
-- [ ] T038 [US2] Update human review task routing to use local provider simulation in src/api/routes/human-review.ts
+- [X] T038 [US2] Update human review task routing to use local provider simulation in src/api/routes/human-review.ts
 - [X] T039 [US2] Add runtime inspection and safe reset routes or commands in src/api/routes/runtime-operations.ts
 - [X] T040 [US2] Wire local validation and inspection commands into src/api/app.ts
 
@@ -119,8 +119,8 @@
 ### Implementation for User Story 3
 
 - [ ] T045 [US3] Preserve budget and blocked-state semantics in src/domain/jobs/budget-policy.ts
-- [ ] T046 [US3] Preserve consensus durability and replay behavior in src/domain/consensus/consensus-service.ts
-- [ ] T047 [US3] Preserve adjudication durability and restart-safe decision loading in src/domain/adjudication/adjudication-service.ts
+- [X] T046 [US3] Preserve consensus durability and replay behavior in src/domain/consensus/consensus-service.ts
+- [X] T047 [US3] Preserve adjudication durability and restart-safe decision loading in src/domain/adjudication/adjudication-service.ts
 - [ ] T048 [US3] Preserve feedback signal semantics after durable persistence in src/domain/feedback/feedback-service.ts
 - [ ] T049 [US3] Preserve route contract behavior while switching repository implementations in src/api/routes/verification-jobs.ts
 - [ ] T050 [US3] Preserve verdict, feedback, and human-review route semantics in src/api/routes/verdict-feedback.ts and src/api/routes/human-review.ts

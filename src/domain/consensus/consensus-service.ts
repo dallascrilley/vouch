@@ -4,6 +4,7 @@ import type {
   HumanResponseRepository,
   HumanReviewTaskRepository
 } from "../../adapters/storage/repositories.js";
+import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
 import type { JobService } from "../jobs/job-service.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
 
@@ -13,7 +14,8 @@ export class ConsensusService {
     private readonly responseRepository: HumanResponseRepository,
     private readonly reviewTaskRepository: HumanReviewTaskRepository,
     private readonly jobService: JobService,
-    private readonly ledgerService: LedgerService
+    private readonly ledgerService: LedgerService,
+    private readonly transactionManager: TransactionManager
   ) {}
 
   async record(result: ConsensusResult): Promise<void> {
@@ -32,15 +34,17 @@ export class ConsensusService {
       throw new Error("Consensus requires at least one human response");
     }
 
-    await this.ledgerService.recordStateTransition(job.state, "consensus_running", {
-      correlationId: result.consensusId,
-      jobId: job.jobId,
-      payloadHash: result.consensusId,
-      policyVersion: "v1"
-    });
+    await this.transactionManager.inTransaction(async () => {
+      await this.ledgerService.recordStateTransition(job.state, "consensus_running", {
+        correlationId: result.consensusId,
+        jobId: job.jobId,
+        payloadHash: result.consensusId,
+        policyVersion: "v1"
+      });
 
-    job.state = "consensus_running";
-    await this.jobService.save(job);
-    await this.consensusRepository.save(result);
+      job.state = "consensus_running";
+      await this.jobService.save(job);
+      await this.consensusRepository.save(result);
+    });
   }
 }

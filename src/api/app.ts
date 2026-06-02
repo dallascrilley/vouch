@@ -7,6 +7,7 @@ import {
   SQLiteLocalQueueStore,
   type SQLiteRuntimeRepositories
 } from "../adapters/storage/sqlite-repositories.js";
+import type { TransactionManager } from "../adapters/storage/transaction-manager.js";
 import { ArtifactService } from "../domain/artifacts/artifact-service.js";
 import { AdjudicationService } from "../domain/adjudication/adjudication-service.js";
 import { ConsensusService } from "../domain/consensus/consensus-service.js";
@@ -43,6 +44,7 @@ export type AppServices = {
   runtimeRepositories: SQLiteRuntimeRepositories;
   selfVerificationService: SelfVerificationService;
   verdictRepository: FinalVerdictRepository;
+  transactionManager: TransactionManager;
 };
 
 declare module "fastify" {
@@ -63,6 +65,7 @@ export function buildApp(configOverride?: RuntimeConfig): FastifyInstance {
 
   const repositories = createSQLiteRuntimeRepositories(config.databasePath);
   const queueStore = new SQLiteLocalQueueStore(repositories.store);
+  const transactionManager = repositories.store;
 
   const acceptanceCriteriaService = new AcceptanceCriteriaService();
   const jobService = new JobService(
@@ -71,9 +74,19 @@ export function buildApp(configOverride?: RuntimeConfig): FastifyInstance {
     acceptanceCriteriaService
   );
   const ledgerService = new LedgerService(repositories.ledgerRepository);
-  const verdictService = new VerdictService(repositories.finalVerdictRepository, jobService, ledgerService);
+  const verdictService = new VerdictService(
+    repositories.finalVerdictRepository,
+    jobService,
+    ledgerService,
+    transactionManager
+  );
   const feedbackService = new FeedbackService(repositories.feedbackRepository);
-  const artifactService = new ArtifactService(repositories.artifactManifestRepository, jobService, ledgerService);
+  const artifactService = new ArtifactService(
+    repositories.artifactManifestRepository,
+    jobService,
+    ledgerService,
+    transactionManager
+  );
   const providerCapabilityRegistry = new ProviderCapabilityRegistry([
     internalReviewerCapability,
     publicProviderCapability
@@ -82,20 +95,23 @@ export function buildApp(configOverride?: RuntimeConfig): FastifyInstance {
     repositories.humanReviewTaskRepository,
     jobService,
     ledgerService,
-    providerCapabilityRegistry
+    providerCapabilityRegistry,
+    transactionManager
   );
   const responseValidationService = new ResponseValidationService(
     repositories.humanResponseRepository,
     repositories.humanReviewTaskRepository,
     jobService,
-    ledgerService
+    ledgerService,
+    transactionManager
   );
   const consensusService = new ConsensusService(
     repositories.consensusResultRepository,
     repositories.humanResponseRepository,
     repositories.humanReviewTaskRepository,
     jobService,
-    ledgerService
+    ledgerService,
+    transactionManager
   );
   const adjudicationService = new AdjudicationService(
     repositories.adjudicationCaseRepository,
@@ -103,21 +119,24 @@ export function buildApp(configOverride?: RuntimeConfig): FastifyInstance {
     jobService,
     ledgerService,
     verdictService,
-    feedbackService
+    feedbackService,
+    transactionManager
   );
   const privacyGate = new PrivacyGate(
     repositories.privacyClassificationRepository,
     jobService,
     ledgerService,
     verdictService,
-    feedbackService
+    feedbackService,
+    transactionManager
   );
   const selfVerificationService = new SelfVerificationService(
     repositories.selfVerificationResultRepository,
     jobService,
     ledgerService,
     verdictService,
-    feedbackService
+    feedbackService,
+    transactionManager
   );
 
   app.decorate("services", {
@@ -133,6 +152,7 @@ export function buildApp(configOverride?: RuntimeConfig): FastifyInstance {
     runtimeConfig: config,
     runtimeRepositories: repositories,
     selfVerificationService,
+    transactionManager,
     verdictRepository: repositories.finalVerdictRepository
   });
 
