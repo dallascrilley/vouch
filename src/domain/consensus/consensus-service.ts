@@ -34,6 +34,21 @@ export class ConsensusService {
       throw new Error("Consensus requires at least one human response");
     }
 
+    const providerIds = [
+      ...new Set(
+        responses
+          .map((response) => response.providerId)
+          .filter((value): value is string => Boolean(value))
+      )
+    ];
+    const providerResponseIds = responses
+      .map((response) => response.providerResponseId)
+      .filter((value): value is string => Boolean(value));
+    const providerSummary =
+      providerIds.length > 0
+        ? `Provider responses from ${providerIds.join(", ")} (${providerResponseIds.length} receipts)`
+        : undefined;
+
     await this.transactionManager.inTransaction(async () => {
       await this.ledgerService.recordStateTransition(job.state, "consensus_running", {
         correlationId: result.consensusId,
@@ -44,7 +59,12 @@ export class ConsensusService {
 
       job.state = "consensus_running";
       await this.jobService.save(job);
-      await this.consensusRepository.save(result);
+      await this.consensusRepository.save({
+        ...result,
+        providerIds,
+        providerResponseIds,
+        providerSummary
+      });
     });
   }
 }

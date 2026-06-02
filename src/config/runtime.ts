@@ -4,6 +4,8 @@ export type RuntimeConfig = {
   localProviderMode: "disabled" | "simulated";
   nodeEnv: string;
   port: number;
+  providerStateDbPath?: string;
+  providerValidationScript: string;
   queueClaimTtlSeconds: number;
   runtimeValidationScript: string;
   logLevel: string;
@@ -36,6 +38,10 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Runtime
     localProviderMode,
     nodeEnv: env.NODE_ENV ?? "development",
     port,
+    providerStateDbPath:
+      env.PROVIDER_SQLITE_PATH ??
+      (env.VITEST ? undefined : ".runtime/provider-state.sqlite"),
+    providerValidationScript: env.PROVIDER_VALIDATION_SCRIPT ?? "npm run validate:provider",
     queueClaimTtlSeconds,
     runtimeValidationScript: "npm run validate:local-runtime",
     logLevel: env.LOG_LEVEL ?? "info"
