@@ -156,7 +156,7 @@ function resolveConfig(input?: RuntimeConfig | BuildAppOptions): {
     };
   }
 
-  const options = input as BuildAppOptions | undefined;
+  const options = input;
   const env = options?.env ?? process.env;
   return {
     config: options?.config ?? loadRuntimeConfig(env),

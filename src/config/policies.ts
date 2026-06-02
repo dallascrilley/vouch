@@ -24,7 +24,7 @@ export const defaultBudgetPolicy: BudgetPolicy = {
 export const defaultProviderHealth: ProviderHealth = {
   "internal-reviewer": "healthy",
   "public-crowd": "healthy",
-  "real-provider": "degraded"
+  "real-provider": "healthy"
 };
 
 export type LocalRuntimePolicyDefaults = {
@@ -79,9 +79,9 @@ export function buildDefaultProviderHealthStates(): ProviderHealthState[] {
     },
     {
       providerId: "real-provider",
-      status: "degraded",
+      status: "healthy",
       fallbackRoute: "internal",
-      failureReason: "Provider has not been validated locally"
+      failureReason: undefined
     }
   ];
 }
