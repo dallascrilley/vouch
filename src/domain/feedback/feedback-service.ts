@@ -8,6 +8,8 @@ type FeedbackOptions = {
   humanAnnotations?: string[];
   machineCheckFailures?: string[];
   policyConstraints?: string[];
+  providerIds?: string[];
+  providerResponseIds?: string[];
   retryAllowed: boolean;
   retryReason?: string;
 };
@@ -36,7 +38,9 @@ export class FeedbackService {
       retryReason: options.retryReason,
       repairHint: verdict.retryRecommendation,
       budgetState: options.budgetState,
-      policyConstraints: options.policyConstraints ?? []
+      policyConstraints: options.policyConstraints ?? [],
+      providerIds: options.providerIds,
+      providerResponseIds: options.providerResponseIds
     };
 
     await this.feedbackRepository.save(signal);

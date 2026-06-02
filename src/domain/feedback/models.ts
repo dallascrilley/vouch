@@ -37,6 +37,8 @@ export type AgentFeedbackSignal = {
   repairHint?: string;
   budgetState?: string;
   policyConstraints: string[];
+  providerIds?: string[];
+  providerResponseIds?: Identifier[];
 };
 
 export type VerdictLedgerEvent = {

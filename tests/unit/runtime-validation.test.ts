@@ -18,6 +18,7 @@ describe("runtime validation", () => {
         logLevel: "info",
         nodeEnv: "test",
         port: 3000,
+        providerValidationScript: "npm run validate:provider",
         queueClaimTtlSeconds: 60,
         runtimeValidationScript: "npm run validate:local-runtime"
       })
@@ -39,6 +40,7 @@ describe("runtime validation", () => {
         logLevel: "info",
         nodeEnv: "test",
         port: 3000,
+        providerValidationScript: "npm run validate:provider",
         queueClaimTtlSeconds: 60,
         runtimeValidationScript: "npm run validate:local-runtime"
       })

@@ -39,6 +39,8 @@ export function registerVerdictFeedbackRoutes(app: FastifyInstance) {
       evidence_pointers: signal.evidencePointers,
       human_annotations: signal.humanAnnotations,
       machine_check_failures: signal.machineCheckFailures,
+      provider_ids: signal.providerIds ?? [],
+      provider_response_ids: signal.providerResponseIds ?? [],
       retry_allowed: signal.retryAllowed,
       retry_reason: signal.retryReason ?? null,
       repair_hint: signal.repairHint ?? null,
