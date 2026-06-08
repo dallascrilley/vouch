@@ -11,6 +11,8 @@
     "dev": "tsx watch src/api/server.ts",
     "lint": "eslint .",
     "format": "prettier --check .",
+    "mturk:bridge": "tsx scripts/mturk-bridge.ts",
+    "seed:mturk-staging": "tsx scripts/seed-mturk-staging.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "validate:local-runtime": "tsx scripts/validate-local-runtime.ts",
