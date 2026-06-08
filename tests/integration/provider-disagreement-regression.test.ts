@@ -66,29 +66,6 @@ describe("provider disagreement regression", () => {
       }
     });
 
-    const consensusResponse = await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/consensus`,
-      payload: {
-        artifact_sufficiency: "sufficient",
-        disagreement_level: "high",
-        quorum_state: "met",
-        recommended_outcome: "unclear",
-        review_task_id: taskPayload.review_task_id,
-        severity_summary: "S2",
-        valid_response_count: 1,
-        adjudication_trigger: "provider_disagreement"
-      }
-    });
-
-    const adjudicationResponse = await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/adjudications`,
-      payload: {
-        decision: "retry",
-        trigger_reason: "provider_disagreement"
-      }
-    });
     const feedbackResponse = await app.inject({
       method: "GET",
       url: `/verification-jobs/${jobId}/feedback`
@@ -98,13 +75,14 @@ describe("provider disagreement regression", () => {
       url: `/verification-jobs/${jobId}/verdict`
     });
 
-    expect(consensusResponse.statusCode).toBe(202);
-    expect(adjudicationResponse.statusCode).toBe(202);
     expect(feedbackResponse.json()).toMatchObject({
+      final_verdict: "retry",
       provider_ids: ["real-provider"],
-      provider_response_ids: ["provider-response-disagree"]
+      provider_response_ids: ["provider-response-disagree"],
+      retry_reason: "provider_callback_auto_resolution"
     });
     expect(verdictResponse.json()).toMatchObject({
+      final_verdict: "retry",
       human_consensus_summary: expect.stringContaining("real-provider"),
       adjudication_summary: expect.stringContaining("real-provider")
     });
