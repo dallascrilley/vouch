@@ -18,6 +18,7 @@ import {
   validateBridgeSafety,
   type BridgeDispatchBody
 } from "./lib/mturk-bridge.js";
+import { deliverProviderCallback } from "./lib/provider-bridge.js";
 
 const execFileAsync = promisify(execFile);
 const sandboxEndpoint = "https://mturk-requester-sandbox.us-east-1.amazonaws.com";
@@ -350,17 +351,12 @@ async function deliverAssignment(input: {
   task: ReturnType<typeof loadBridgeState>["tasks"][string];
 }) {
   const { assignment, hitId, state, task } = input;
-  const attempts = (task.callbackAttempts?.[assignment.AssignmentId] ?? 0) + 1;
-  task.callbackAttempts = {
-    ...task.callbackAttempts,
-    [assignment.AssignmentId]: attempts
-  };
-  saveBridgeState(config.statePath, state);
+  const nextAttempt = (task.callbackAttempts?.[assignment.AssignmentId] ?? 0) + 1;
 
   app.log.info(
     {
       assignmentId: assignment.AssignmentId,
-      attempt: attempts,
+      attempt: nextAttempt,
       hitId,
       reviewTaskId: task.reviewTaskId,
       workerId: assignment.WorkerId
@@ -377,63 +373,32 @@ async function deliverAssignment(input: {
     workerId: assignment.WorkerId
   });
 
-  const response = await fetch(config.brokerCallbackUrl, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      ...callbackPayload,
-      shared_secret: config.sharedSecret
-    })
+  const delivery = await deliverProviderCallback({
+    brokerCallbackUrl: config.brokerCallbackUrl,
+    maxCallbackAttempts: config.maxCallbackAttempts,
+    payload: callbackPayload,
+    responseId: assignment.AssignmentId,
+    save: () => saveBridgeState(config.statePath, state),
+    sharedSecret: config.sharedSecret,
+    task,
+    workerId: assignment.WorkerId
   });
 
-  if (!response.ok) {
-    const message = await response.text();
-    const reason = `Broker callback failed: ${response.status} ${message}`;
-    task.lastError = {
+  if (!delivery.delivered) {
+    const logContext = {
       assignmentId: assignment.AssignmentId,
-      message: reason,
-      recordedAt: new Date().toISOString()
+      attempts: delivery.attempts,
+      hitId,
+      reviewTaskId: task.reviewTaskId,
+      workerId: assignment.WorkerId
     };
-
-    if (attempts >= config.maxCallbackAttempts) {
-      task.deadLetterAssignments ??= [];
-      task.deadLetterAssignments.push({
-        assignmentId: assignment.AssignmentId,
-        attempts,
-        reason,
-        recordedAt: new Date().toISOString(),
-        workerId: assignment.WorkerId
-      });
-      app.log.error(
-        {
-          assignmentId: assignment.AssignmentId,
-          attempts,
-          hitId,
-          reviewTaskId: task.reviewTaskId,
-          workerId: assignment.WorkerId
-        },
-        "mturk bridge dead-lettered assignment callback"
-      );
+    if (delivery.deadLettered) {
+      app.log.error(logContext, "mturk bridge dead-lettered assignment callback");
     } else {
-      app.log.warn(
-        {
-          assignmentId: assignment.AssignmentId,
-          attempts,
-          hitId,
-          reviewTaskId: task.reviewTaskId,
-          workerId: assignment.WorkerId
-        },
-        "mturk bridge callback delivery failed"
-      );
+      app.log.warn(logContext, "mturk bridge callback delivery failed");
     }
-    saveBridgeState(config.statePath, state);
     return;
   }
-
-  task.deliveredAssignmentIds.push(assignment.AssignmentId);
-  task.lastDeliveryAt = new Date().toISOString();
-  delete task.lastError;
-  saveBridgeState(config.statePath, state);
 
   if (config.assignmentApprovalPolicy === "approve_on_callback_success") {
     await approveAssignmentAfterCallback({ assignment, hitId, state, task });
@@ -443,7 +408,7 @@ async function deliverAssignment(input: {
     {
       assignmentId: assignment.AssignmentId,
       approvalPolicy: config.assignmentApprovalPolicy,
-      attempts,
+      attempts: delivery.attempts,
       hitId,
       reviewTaskId: task.reviewTaskId,
       workerId: assignment.WorkerId

@@ -1,97 +1,17 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
-
-export type BridgeDispatchBody = {
-  callback_url?: string;
-  criterion_ids: string[];
-  review_task_id: string;
-  reviewer_pool: string;
-  sanitized_package_id: string;
-  task_template: string;
-};
-
-export type BridgeTaskRecord = {
-  approvedAssignmentIds?: string[];
-  callbackAttempts?: Record<string, number>;
-  createdAt: string;
-  deadLetterAssignments?: BridgeDeadLetterAssignment[];
-  criterionIds: string[];
-  deliveredAssignmentIds: string[];
-  expiredAt?: string;
-  hitId: string;
-  hitExpirationAt?: string;
-  hitReviewStatus?: string;
-  hitStatus?: string;
-  lastApprovalAt?: string;
-  lastApprovalError?: BridgeTaskError;
-  lastDeliveryAt?: string;
-  lastError?: BridgeTaskError;
-  lastHitStatusAt?: string;
-  lastHitStatusError?: BridgeTaskError;
-  lastPollAt?: string;
-  qualificationRequirements?: MturkQualificationRequirement[];
-  reviewTaskId: string;
-  reviewerPool: string;
-  sanitizedPackageId: string;
-  taskTemplate: string;
-};
-
-export type BridgeDeadLetterAssignment = {
-  assignmentId: string;
-  attempts: number;
-  reason: string;
-  recordedAt: string;
-  workerId?: string;
-};
-
-export type BridgeTaskError = {
-  assignmentId?: string;
-  message: string;
-  recordedAt: string;
-};
-
-export type BridgeState = {
-  tasks: Record<string, BridgeTaskRecord>;
-};
-
-export type BridgeStateSummary = {
-  deadLetters: Array<
-    BridgeDeadLetterAssignment & {
-      hitId: string;
-      reviewTaskId: string;
-    }
-  >;
-  tasks: Array<{
-    approvedAssignmentCount: number;
-    callbackAttemptedAssignmentCount: number;
-    callbackAttemptTotal: number;
-    deadLetterCount: number;
-    deliveredAssignmentCount: number;
-    expiredAt?: string;
-    hitId: string;
-    hitExpirationAt?: string;
-    hitReviewStatus?: string;
-    hitStatus?: string;
-    lastApprovalAt?: string;
-    lastApprovalError?: BridgeTaskError;
-    lastDeliveryAt?: string;
-    lastError?: BridgeTaskError;
-    lastHitStatusAt?: string;
-    lastHitStatusError?: BridgeTaskError;
-    lastPollAt?: string;
-    qualificationRequirementCount: number;
-    reviewTaskId: string;
-    reviewerPool: string;
-  }>;
-  totals: {
-    approvedAssignments: number;
-    deadLetters: number;
-    deliveredAssignments: number;
-    expiredTasks: number;
-    qualificationRestrictedTasks: number;
-    tasks: number;
-  };
-};
+export {
+  emptyBridgeState,
+  loadBridgeState,
+  saveBridgeState,
+  summarizeBridgeState
+} from "./provider-bridge.js";
+export type {
+  BridgeDeadLetterAssignment,
+  BridgeDispatchBody,
+  BridgeState,
+  BridgeStateSummary,
+  BridgeTaskError,
+  BridgeTaskRecord
+} from "./provider-bridge.js";
 
 export type BridgeAssignmentApprovalPolicy = "manual" | "approve_on_callback_success";
 
@@ -120,69 +40,6 @@ export type BridgeSafetyConfig = {
   expirationSeconds: number;
   taskDurationSeconds: number;
 };
-
-export const emptyBridgeState = (): BridgeState => ({ tasks: {} });
-
-export function loadBridgeState(path: string): BridgeState {
-  try {
-    const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<BridgeState>;
-    return {
-      tasks: parsed.tasks ?? {}
-    };
-  } catch {
-    return emptyBridgeState();
-  }
-}
-
-export function saveBridgeState(path: string, state: BridgeState) {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, JSON.stringify(state, null, 2));
-}
-
-export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
-  const tasks = Object.values(state.tasks).map((task) => ({
-    approvedAssignmentCount: task.approvedAssignmentIds?.length ?? 0,
-    callbackAttemptedAssignmentCount: Object.keys(task.callbackAttempts ?? {}).length,
-    callbackAttemptTotal: Object.values(task.callbackAttempts ?? {}).reduce((total, attempts) => total + attempts, 0),
-    deadLetterCount: task.deadLetterAssignments?.length ?? 0,
-    deliveredAssignmentCount: task.deliveredAssignmentIds.length,
-    expiredAt: task.expiredAt,
-    hitId: task.hitId,
-    hitExpirationAt: task.hitExpirationAt,
-    hitReviewStatus: task.hitReviewStatus,
-    hitStatus: task.hitStatus,
-    lastApprovalAt: task.lastApprovalAt,
-    lastApprovalError: task.lastApprovalError,
-    lastDeliveryAt: task.lastDeliveryAt,
-    lastError: task.lastError,
-    lastHitStatusAt: task.lastHitStatusAt,
-    lastHitStatusError: task.lastHitStatusError,
-    lastPollAt: task.lastPollAt,
-    qualificationRequirementCount: task.qualificationRequirements?.length ?? 0,
-    reviewTaskId: task.reviewTaskId,
-    reviewerPool: task.reviewerPool
-  }));
-  const deadLetters = Object.values(state.tasks).flatMap((task) =>
-    (task.deadLetterAssignments ?? []).map((deadLetter) => ({
-      ...deadLetter,
-      hitId: task.hitId,
-      reviewTaskId: task.reviewTaskId
-    }))
-  );
-
-  return {
-    deadLetters,
-    tasks,
-    totals: {
-      approvedAssignments: tasks.reduce((total, task) => total + task.approvedAssignmentCount, 0),
-      deadLetters: deadLetters.length,
-      deliveredAssignments: tasks.reduce((total, task) => total + task.deliveredAssignmentCount, 0),
-      expiredTasks: tasks.filter((task) => task.expiredAt).length,
-      qualificationRestrictedTasks: tasks.filter((task) => task.qualificationRequirementCount > 0).length,
-      tasks: tasks.length
-    }
-  };
-}
 
 export function parseAssignmentApprovalPolicy(value: string | undefined): BridgeAssignmentApprovalPolicy {
   if (!value || value === "manual") {
