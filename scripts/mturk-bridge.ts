@@ -12,6 +12,7 @@ import {
   normalizeAssignment,
   normalizeMturkTimestamp,
   parseAssignmentApprovalPolicy,
+  parseQualificationRequirements,
   saveBridgeState,
   summarizeBridgeState,
   validateBridgeSafety,
@@ -48,6 +49,7 @@ const config = {
   pollIntervalMs: Number(process.env.MTURK_POLL_INTERVAL_MS ?? 15000),
   port: Number(process.env.MTURK_BRIDGE_PORT ?? 3100),
   providerId: process.env.MTURK_PROVIDER_ID ?? "real-provider",
+  qualificationRequirements: parseQualificationRequirements(process.env.MTURK_QUALIFICATION_REQUIREMENTS_JSON),
   reward: process.env.MTURK_REWARD ?? "0.05",
   sharedSecret: requireEnv("PROVIDER_SHARED_SECRET"),
   statePath: process.env.MTURK_BRIDGE_STATE_PATH ?? ".runtime/mturk-bridge-state.json",
@@ -132,6 +134,9 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
       "--output",
       "json"
     ];
+    if (config.qualificationRequirements.length > 0) {
+      args.push("--qualification-requirements", JSON.stringify(config.qualificationRequirements));
+    }
     const { stdout } = await execFileAsync("aws", args, {
       env: process.env
     });
@@ -151,12 +156,22 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
       deliveredAssignmentIds: [],
       hitId,
       lastHitStatusAt: new Date().toISOString(),
+      qualificationRequirements: config.qualificationRequirements,
       reviewTaskId: request.body.review_task_id,
       reviewerPool: request.body.reviewer_pool,
       sanitizedPackageId: request.body.sanitized_package_id,
       taskTemplate: request.body.task_template
     };
     saveBridgeState(config.statePath, state);
+    app.log.info(
+      {
+        hitId,
+        qualificationRequirementCount: config.qualificationRequirements.length,
+        reviewTaskId: request.body.review_task_id,
+        reviewerPool: request.body.reviewer_pool
+      },
+      "mturk bridge created hit"
+    );
 
     return reply.code(202).send({
       provider_assignment_scope: request.body.reviewer_pool,

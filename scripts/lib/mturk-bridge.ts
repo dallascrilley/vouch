@@ -29,6 +29,7 @@ export type BridgeTaskRecord = {
   lastHitStatusAt?: string;
   lastHitStatusError?: BridgeTaskError;
   lastPollAt?: string;
+  qualificationRequirements?: MturkQualificationRequirement[];
   reviewTaskId: string;
   reviewerPool: string;
   sanitizedPackageId: string;
@@ -78,6 +79,7 @@ export type BridgeStateSummary = {
     lastHitStatusAt?: string;
     lastHitStatusError?: BridgeTaskError;
     lastPollAt?: string;
+    qualificationRequirementCount: number;
     reviewTaskId: string;
     reviewerPool: string;
   }>;
@@ -86,11 +88,24 @@ export type BridgeStateSummary = {
     deadLetters: number;
     deliveredAssignments: number;
     expiredTasks: number;
+    qualificationRestrictedTasks: number;
     tasks: number;
   };
 };
 
 export type BridgeAssignmentApprovalPolicy = "manual" | "approve_on_callback_success";
+
+export type MturkQualificationRequirement = {
+  QualificationTypeId: string;
+  Comparator: string;
+  ActionsGuarded?: string;
+  IntegerValues?: number[];
+  LocaleValues?: Array<{
+    Country?: string;
+    Subdivision?: string;
+  }>;
+  RequiredToPreview?: boolean;
+};
 
 export type BridgeSafetyConfig = {
   maxAssignments: number;
@@ -143,6 +158,7 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
     lastHitStatusAt: task.lastHitStatusAt,
     lastHitStatusError: task.lastHitStatusError,
     lastPollAt: task.lastPollAt,
+    qualificationRequirementCount: task.qualificationRequirements?.length ?? 0,
     reviewTaskId: task.reviewTaskId,
     reviewerPool: task.reviewerPool
   }));
@@ -162,6 +178,7 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
       deadLetters: deadLetters.length,
       deliveredAssignments: tasks.reduce((total, task) => total + task.deliveredAssignmentCount, 0),
       expiredTasks: tasks.filter((task) => task.expiredAt).length,
+      qualificationRestrictedTasks: tasks.filter((task) => task.qualificationRequirementCount > 0).length,
       tasks: tasks.length
     }
   };
@@ -189,6 +206,73 @@ export function normalizeMturkTimestamp(value: number | string | undefined) {
     return Number.isFinite(date.getTime()) ? date : undefined;
   }
   return undefined;
+}
+
+export function parseQualificationRequirements(value: string | undefined): MturkQualificationRequirement[] {
+  if (!value?.trim()) {
+    return [];
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch (error) {
+    throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON must be valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error("MTURK_QUALIFICATION_REQUIREMENTS_JSON must be a JSON array");
+  }
+
+  return parsed.map((requirement, index) => parseQualificationRequirement(requirement, index));
+}
+
+function parseQualificationRequirement(value: unknown, index: number): MturkQualificationRequirement {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}] must be an object`);
+  }
+
+  const requirement = value as Record<string, unknown>;
+  if (typeof requirement.QualificationTypeId !== "string" || !requirement.QualificationTypeId.trim()) {
+    throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}].QualificationTypeId must be a non-empty string`);
+  }
+  if (typeof requirement.Comparator !== "string" || !requirement.Comparator.trim()) {
+    throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}].Comparator must be a non-empty string`);
+  }
+
+  const integerValues = Array.isArray(requirement.IntegerValues) ? requirement.IntegerValues.map((item) => Number(item)) : undefined;
+  if (integerValues?.some((item) => !Number.isInteger(item))) {
+    throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}].IntegerValues must contain only integers`);
+  }
+  const localeValues = Array.isArray(requirement.LocaleValues) ? parseLocaleValues(requirement.LocaleValues, index) : undefined;
+
+  return {
+    QualificationTypeId: requirement.QualificationTypeId,
+    Comparator: requirement.Comparator,
+    ...(typeof requirement.ActionsGuarded === "string" && requirement.ActionsGuarded.trim() ? { ActionsGuarded: requirement.ActionsGuarded } : {}),
+    ...(integerValues ? { IntegerValues: integerValues } : {}),
+    ...(localeValues ? { LocaleValues: localeValues } : {}),
+    ...(typeof requirement.RequiredToPreview === "boolean" ? { RequiredToPreview: requirement.RequiredToPreview } : {})
+  };
+}
+
+function parseLocaleValues(values: unknown[], requirementIndex: number) {
+  return values.map((item, localeIndex) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON[${requirementIndex}].LocaleValues[${localeIndex}] must be an object`);
+    }
+    const locale = item as Record<string, unknown>;
+    const parsed = {
+      ...(typeof locale.Country === "string" && locale.Country.trim() ? { Country: locale.Country } : {}),
+      ...(typeof locale.Subdivision === "string" && locale.Subdivision.trim() ? { Subdivision: locale.Subdivision } : {})
+    };
+    if (!parsed.Country && !parsed.Subdivision) {
+      throw new Error(
+        `MTURK_QUALIFICATION_REQUIREMENTS_JSON[${requirementIndex}].LocaleValues[${localeIndex}] must include Country or Subdivision`
+      );
+    }
+    return parsed;
+  });
 }
 
 export function validateBridgeSafety(config: BridgeSafetyConfig): string[] {
