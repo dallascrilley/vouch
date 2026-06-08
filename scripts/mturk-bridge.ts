@@ -10,6 +10,7 @@ import {
   buildHtmlQuestion,
   loadBridgeState,
   normalizeAssignment,
+  parseAssignmentApprovalPolicy,
   saveBridgeState,
   summarizeBridgeState,
   validateBridgeSafety,
@@ -30,6 +31,7 @@ function requireEnv(name: string) {
 const config = {
   awsEndpointUrl: process.env.MTURK_AWS_ENDPOINT_URL ?? sandboxEndpoint,
   awsRegion: process.env.MTURK_AWS_REGION ?? "us-east-1",
+  assignmentApprovalPolicy: parseAssignmentApprovalPolicy(process.env.MTURK_ASSIGNMENT_APPROVAL_POLICY),
   autoApprovalDelaySeconds: Number(process.env.MTURK_AUTO_APPROVAL_DELAY_SECONDS ?? 259200),
   brokerCallbackUrl: process.env.MTURK_BROKER_CALLBACK_URL ?? "http://127.0.0.1:3000/provider-callback",
   bridgeApiKey: requireEnv("MTURK_BRIDGE_API_KEY"),
@@ -140,6 +142,7 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
 
     const state = loadBridgeState(config.statePath);
     state.tasks[hitId] = {
+      approvedAssignmentIds: [],
       createdAt: new Date().toISOString(),
       criterionIds: request.body.criterion_ids,
       callbackAttempts: {},
@@ -168,6 +171,7 @@ async function pollAssignments() {
 
   for (const hitId of hitIds) {
     const task = state.tasks[hitId];
+    task.approvedAssignmentIds ??= [];
     task.callbackAttempts ??= {};
     task.deadLetterAssignments ??= [];
     task.lastPollAt = new Date().toISOString();
@@ -207,9 +211,17 @@ async function pollAssignments() {
 
       for (const assignment of assignments) {
         if (task.deliveredAssignmentIds.includes(assignment.AssignmentId)) {
+          if (
+            config.assignmentApprovalPolicy === "approve_on_callback_success" &&
+            !task.approvedAssignmentIds.includes(assignment.AssignmentId)
+          ) {
+            await approveAssignmentAfterCallback({ assignment, hitId, state, task });
+          }
+
           app.log.info(
             {
               assignmentId: assignment.AssignmentId,
+              approvalPolicy: config.assignmentApprovalPolicy,
               hitId,
               reviewTaskId: task.reviewTaskId,
               workerId: assignment.WorkerId
@@ -331,9 +343,15 @@ async function deliverAssignment(input: {
   task.lastDeliveryAt = new Date().toISOString();
   delete task.lastError;
   saveBridgeState(config.statePath, state);
+
+  if (config.assignmentApprovalPolicy === "approve_on_callback_success") {
+    await approveAssignmentAfterCallback({ assignment, hitId, state, task });
+  }
+
   app.log.info(
     {
       assignmentId: assignment.AssignmentId,
+      approvalPolicy: config.assignmentApprovalPolicy,
       attempts,
       hitId,
       reviewTaskId: task.reviewTaskId,
@@ -341,6 +359,79 @@ async function deliverAssignment(input: {
     },
     "mturk bridge delivered assignment callback"
   );
+}
+
+async function approveAssignmentAfterCallback(input: {
+  assignment: { AssignmentId: string; WorkerId: string };
+  hitId: string;
+  state: ReturnType<typeof loadBridgeState>;
+  task: ReturnType<typeof loadBridgeState>["tasks"][string];
+}) {
+  const { assignment, hitId, state, task } = input;
+  task.approvedAssignmentIds ??= [];
+
+  if (task.approvedAssignmentIds.includes(assignment.AssignmentId)) {
+    app.log.info(
+      {
+        assignmentId: assignment.AssignmentId,
+        hitId,
+        reviewTaskId: task.reviewTaskId,
+        workerId: assignment.WorkerId
+      },
+      "mturk bridge skipped duplicate assignment approval"
+    );
+    return;
+  }
+
+  try {
+    await execFileAsync(
+      "aws",
+      [
+        "mturk",
+        "approve-assignment",
+        "--endpoint-url",
+        config.awsEndpointUrl,
+        "--region",
+        config.awsRegion,
+        "--assignment-id",
+        assignment.AssignmentId,
+        "--requester-feedback",
+        `Broker callback accepted for ${task.reviewTaskId}`
+      ],
+      { env: process.env }
+    );
+
+    task.approvedAssignmentIds.push(assignment.AssignmentId);
+    task.lastApprovalAt = new Date().toISOString();
+    delete task.lastApprovalError;
+    saveBridgeState(config.statePath, state);
+    app.log.info(
+      {
+        assignmentId: assignment.AssignmentId,
+        hitId,
+        reviewTaskId: task.reviewTaskId,
+        workerId: assignment.WorkerId
+      },
+      "mturk bridge approved assignment"
+    );
+  } catch (error) {
+    task.lastApprovalError = {
+      assignmentId: assignment.AssignmentId,
+      message: error instanceof Error ? error.message : String(error),
+      recordedAt: new Date().toISOString()
+    };
+    saveBridgeState(config.statePath, state);
+    app.log.error(
+      {
+        err: error,
+        assignmentId: assignment.AssignmentId,
+        hitId,
+        reviewTaskId: task.reviewTaskId,
+        workerId: assignment.WorkerId
+      },
+      "mturk bridge assignment approval failed"
+    );
+  }
 }
 
 async function main() {

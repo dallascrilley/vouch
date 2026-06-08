@@ -11,12 +11,15 @@ export type BridgeDispatchBody = {
 };
 
 export type BridgeTaskRecord = {
+  approvedAssignmentIds?: string[];
   callbackAttempts?: Record<string, number>;
   createdAt: string;
   deadLetterAssignments?: BridgeDeadLetterAssignment[];
   criterionIds: string[];
   deliveredAssignmentIds: string[];
   hitId: string;
+  lastApprovalAt?: string;
+  lastApprovalError?: BridgeTaskError;
   lastDeliveryAt?: string;
   lastError?: BridgeTaskError;
   lastPollAt?: string;
@@ -52,11 +55,14 @@ export type BridgeStateSummary = {
     }
   >;
   tasks: Array<{
+    approvedAssignmentCount: number;
     callbackAttemptedAssignmentCount: number;
     callbackAttemptTotal: number;
     deadLetterCount: number;
     deliveredAssignmentCount: number;
     hitId: string;
+    lastApprovalAt?: string;
+    lastApprovalError?: BridgeTaskError;
     lastDeliveryAt?: string;
     lastError?: BridgeTaskError;
     lastPollAt?: string;
@@ -64,11 +70,14 @@ export type BridgeStateSummary = {
     reviewerPool: string;
   }>;
   totals: {
+    approvedAssignments: number;
     deadLetters: number;
     deliveredAssignments: number;
     tasks: number;
   };
 };
+
+export type BridgeAssignmentApprovalPolicy = "manual" | "approve_on_callback_success";
 
 export type BridgeSafetyConfig = {
   maxAssignments: number;
@@ -104,11 +113,14 @@ export function saveBridgeState(path: string, state: BridgeState) {
 
 export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
   const tasks = Object.values(state.tasks).map((task) => ({
+    approvedAssignmentCount: task.approvedAssignmentIds?.length ?? 0,
     callbackAttemptedAssignmentCount: Object.keys(task.callbackAttempts ?? {}).length,
     callbackAttemptTotal: Object.values(task.callbackAttempts ?? {}).reduce((total, attempts) => total + attempts, 0),
     deadLetterCount: task.deadLetterAssignments?.length ?? 0,
     deliveredAssignmentCount: task.deliveredAssignmentIds.length,
     hitId: task.hitId,
+    lastApprovalAt: task.lastApprovalAt,
+    lastApprovalError: task.lastApprovalError,
     lastDeliveryAt: task.lastDeliveryAt,
     lastError: task.lastError,
     lastPollAt: task.lastPollAt,
@@ -127,11 +139,24 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
     deadLetters,
     tasks,
     totals: {
+      approvedAssignments: tasks.reduce((total, task) => total + task.approvedAssignmentCount, 0),
       deadLetters: deadLetters.length,
       deliveredAssignments: tasks.reduce((total, task) => total + task.deliveredAssignmentCount, 0),
       tasks: tasks.length
     }
   };
+}
+
+export function parseAssignmentApprovalPolicy(value: string | undefined): BridgeAssignmentApprovalPolicy {
+  if (!value || value === "manual") {
+    return "manual";
+  }
+  if (value === "approve_on_callback_success") {
+    return value;
+  }
+  throw new Error(
+    `MTURK_ASSIGNMENT_APPROVAL_POLICY must be "manual" or "approve_on_callback_success", received "${value}"`
+  );
 }
 
 export function validateBridgeSafety(config: BridgeSafetyConfig): string[] {

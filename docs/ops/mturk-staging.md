@@ -34,6 +34,7 @@ Bridge:
 - `MTURK_BRIDGE_STATE_PATH=.runtime/mturk-bridge-state.json`
 - `MTURK_POLL_INTERVAL_MS=15000`
 - `MTURK_MAX_CALLBACK_ATTEMPTS=3`
+- `MTURK_ASSIGNMENT_APPROVAL_POLICY=manual`
 - `MTURK_MAX_ASSIGNMENTS=1`
 - `MTURK_MAX_ASSIGNMENTS_PER_HIT=3`
 - `MTURK_MAX_REWARD_USD=1`
@@ -83,7 +84,15 @@ All are synthetic or staging-only and safe for managed external review.
 - Callback delivery retries are bounded by `MTURK_MAX_CALLBACK_ATTEMPTS`.
   Repeated failures are persisted in `deadLetterAssignments` inside
   `MTURK_BRIDGE_STATE_PATH` and are not retried indefinitely.
+- Assignment approval is controlled by `MTURK_ASSIGNMENT_APPROVAL_POLICY`.
+  Use `manual` to leave submitted assignments for requester-side approval.
+  Use `approve_on_callback_success` only when the bridge should call
+  `aws mturk approve-assignment` after the broker accepts the callback.
+  Approval errors are recorded in `lastApprovalError`; callback delivery remains
+  delivered once the broker has accepted the response. Delivered-but-unapproved
+  assignments are retried on later polls when automatic approval is enabled.
 - Duplicate assignments are skipped using persisted `deliveredAssignmentIds`.
+- Duplicate approvals are skipped using persisted `approvedAssignmentIds`.
 - Bridge logs include `hitId`, `assignmentId`, `reviewTaskId`, and `workerId`
   where available, so operators can trace HIT -> assignment -> callback -> job.
 
@@ -100,8 +109,9 @@ curl -sf -H "authorization: Bearer $MTURK_BRIDGE_API_KEY" \
   http://127.0.0.1:3100/dead-letters
 ```
 
-Use `/state` to inspect task counts, delivered assignment counts, last poll
-time, last delivery time, and last error. Use `/dead-letters` to inspect
+Use `/state` to inspect task counts, delivered assignment counts, approved
+assignment counts, last poll time, last delivery time, last approval time, last
+callback error, and last approval error. Use `/dead-letters` to inspect
 assignments that exhausted callback delivery attempts.
 
 ## Restart and recovery checks
@@ -117,3 +127,5 @@ assignments that exhausted callback delivery attempts.
    present and should not be posted again.
 5. Submit or wait for one sandbox assignment and confirm the bridge records
    `lastDeliveryAt` and broker inspection advances beyond dispatched state.
+6. If `MTURK_ASSIGNMENT_APPROVAL_POLICY=approve_on_callback_success`, confirm
+   `approvedAssignmentIds` and `lastApprovalAt` are persisted for the assignment.
