@@ -179,6 +179,18 @@ export function parseAssignmentApprovalPolicy(value: string | undefined): Bridge
   );
 }
 
+export function normalizeMturkTimestamp(value: number | string | undefined) {
+  if (typeof value === "number") {
+    const date = new Date(value * 1000);
+    return Number.isFinite(date.getTime()) ? date : undefined;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const date = new Date(value);
+    return Number.isFinite(date.getTime()) ? date : undefined;
+  }
+  return undefined;
+}
+
 export function validateBridgeSafety(config: BridgeSafetyConfig): string[] {
   const errors: string[] = [];
   const reward = Number(config.reward);

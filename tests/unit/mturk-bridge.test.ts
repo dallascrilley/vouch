@@ -7,6 +7,7 @@ import {
   buildHtmlQuestion,
   loadBridgeState,
   normalizeAssignment,
+  normalizeMturkTimestamp,
   parseAssignmentApprovalPolicy,
   parseAnswerXml,
   saveBridgeState,
@@ -234,6 +235,13 @@ describe("mturk bridge helpers", () => {
     expect(() => parseAssignmentApprovalPolicy("always")).toThrow(
       'MTURK_ASSIGNMENT_APPROVAL_POLICY must be "manual" or "approve_on_callback_success"'
     );
+  });
+
+  it("normalizes MTurk timestamps from AWS CLI output", () => {
+    expect(normalizeMturkTimestamp(1780966968)?.toISOString()).toBe("2026-06-09T01:02:48.000Z");
+    expect(normalizeMturkTimestamp("2026-06-09T01:02:48.000Z")?.toISOString()).toBe("2026-06-09T01:02:48.000Z");
+    expect(normalizeMturkTimestamp("")).toBeUndefined();
+    expect(normalizeMturkTimestamp(Number.NaN)).toBeUndefined();
   });
 
   it("accepts bounded MTurk safety settings", () => {
