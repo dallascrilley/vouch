@@ -10,6 +10,7 @@ import {
   buildHtmlQuestion,
   loadBridgeState,
   normalizeAssignment,
+  normalizeMturkTimestamp,
   parseAssignmentApprovalPolicy,
   saveBridgeState,
   summarizeBridgeState,
@@ -281,17 +282,17 @@ async function refreshHitStatus(input: {
 
     const payload = JSON.parse(stdout) as {
       HIT?: {
-        Expiration?: string;
+        Expiration?: number | string;
         HITReviewStatus?: string;
         HITStatus?: string;
       };
     };
     const hit = payload.HIT;
     const now = new Date();
-    const expiration = hit?.Expiration ? new Date(hit.Expiration) : undefined;
+    const expiration = normalizeMturkTimestamp(hit?.Expiration);
 
     task.hitStatus = hit?.HITStatus;
-    task.hitExpirationAt = hit?.Expiration;
+    task.hitExpirationAt = expiration?.toISOString();
     task.hitReviewStatus = hit?.HITReviewStatus;
     task.lastHitStatusAt = now.toISOString();
     delete task.lastHitStatusError;
