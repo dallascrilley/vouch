@@ -7,6 +7,7 @@ import {
   buildHtmlQuestion,
   loadBridgeState,
   normalizeAssignment,
+  parseAssignmentApprovalPolicy,
   parseAnswerXml,
   saveBridgeState,
   summarizeBridgeState,
@@ -77,6 +78,7 @@ describe("mturk bridge helpers", () => {
       saveBridgeState(statePath, {
         tasks: {
           hit_123: {
+            approvedAssignmentIds: ["assignment_456"],
             callbackAttempts: { assignment_123: 3 },
             createdAt: "2026-06-08T00:00:00.000Z",
             criterionIds: ["desktop-layout"],
@@ -91,6 +93,7 @@ describe("mturk bridge helpers", () => {
             ],
             deliveredAssignmentIds: ["assignment_456"],
             hitId: "hit_123",
+            lastApprovalAt: "2026-06-08T00:02:10.000Z",
             lastDeliveryAt: "2026-06-08T00:02:00.000Z",
             lastPollAt: "2026-06-08T00:02:30.000Z",
             reviewTaskId: "review_123",
@@ -102,6 +105,7 @@ describe("mturk bridge helpers", () => {
       });
 
       expect(loadBridgeState(statePath).tasks.hit_123).toMatchObject({
+        approvedAssignmentIds: ["assignment_456"],
         callbackAttempts: { assignment_123: 3 },
         deadLetterAssignments: [
           {
@@ -111,6 +115,7 @@ describe("mturk bridge helpers", () => {
           }
         ],
         deliveredAssignmentIds: ["assignment_456"],
+        lastApprovalAt: "2026-06-08T00:02:10.000Z",
         lastDeliveryAt: "2026-06-08T00:02:00.000Z",
         lastPollAt: "2026-06-08T00:02:30.000Z"
       });
@@ -123,6 +128,7 @@ describe("mturk bridge helpers", () => {
     const summary = summarizeBridgeState({
       tasks: {
         hit_123: {
+          approvedAssignmentIds: ["assignment_456"],
           callbackAttempts: { assignment_123: 3 },
           createdAt: "2026-06-08T00:00:00.000Z",
           criterionIds: ["desktop-layout"],
@@ -137,6 +143,12 @@ describe("mturk bridge helpers", () => {
           ],
           deliveredAssignmentIds: ["assignment_456"],
           hitId: "hit_123",
+          lastApprovalAt: "2026-06-08T00:02:10.000Z",
+          lastApprovalError: {
+            assignmentId: "assignment_789",
+            message: "approval failed",
+            recordedAt: "2026-06-08T00:02:20.000Z"
+          },
           lastError: {
             assignmentId: "assignment_123",
             message: "Broker callback failed: 503 unavailable",
@@ -163,21 +175,37 @@ describe("mturk bridge helpers", () => {
       ],
       tasks: [
         {
+          approvedAssignmentCount: 1,
           callbackAttemptedAssignmentCount: 1,
           callbackAttemptTotal: 3,
           deadLetterCount: 1,
           deliveredAssignmentCount: 1,
           hitId: "hit_123",
+          lastApprovalAt: "2026-06-08T00:02:10.000Z",
+          lastApprovalError: {
+            assignmentId: "assignment_789",
+            message: "approval failed"
+          },
           lastPollAt: "2026-06-08T00:02:30.000Z",
           reviewTaskId: "review_123"
         }
       ],
       totals: {
+        approvedAssignments: 1,
         deadLetters: 1,
         deliveredAssignments: 1,
         tasks: 1
       }
     });
+  });
+
+  it("parses the assignment approval policy", () => {
+    expect(parseAssignmentApprovalPolicy(undefined)).toBe("manual");
+    expect(parseAssignmentApprovalPolicy("manual")).toBe("manual");
+    expect(parseAssignmentApprovalPolicy("approve_on_callback_success")).toBe("approve_on_callback_success");
+    expect(() => parseAssignmentApprovalPolicy("always")).toThrow(
+      'MTURK_ASSIGNMENT_APPROVAL_POLICY must be "manual" or "approve_on_callback_success"'
+    );
   });
 
   it("accepts bounded MTurk safety settings", () => {
