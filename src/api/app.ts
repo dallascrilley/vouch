@@ -284,14 +284,13 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     providerMappingService,
     responseValidationService
   );
-  const providerDispatchWorker =
-    providerConfig.enabled && providerConfig.providerId === "real-provider"
-      ? new ProviderDispatchWorker(
-          new RealProviderAdapter(providerConfig, fetchImpl),
-          providerMappingService,
-          providerOperationsService
-        )
-      : undefined;
+  const providerDispatchWorker = providerConfig.enabled
+    ? new ProviderDispatchWorker(
+        new RealProviderAdapter(providerConfig, fetchImpl),
+        providerMappingService,
+        providerOperationsService
+      )
+    : undefined;
 
   app.decorate("services", {
     adjudicationService,

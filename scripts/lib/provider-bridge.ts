@@ -93,10 +93,23 @@ export type BridgeStateSummary = {
   };
 };
 
-export type ProviderBridgeCallbackPayload = Record<string, unknown> & {
+export type ProviderBridgeCallbackPayload = {
+  criterion_results: Array<{
+    criterion_id: string;
+    confidence: "low" | "medium" | "high";
+    status: "pass" | "fail" | "unclear" | "not_visible";
+  }>;
+  defect_category: string;
+  delivery_mode?: "callback" | "polling";
+  evidence_note: string;
+  overall_verdict: "pass" | "fail" | "unclear" | "artifact_insufficient";
+  provider_assignment_ref?: string;
   provider_id: string;
   provider_response_id: string;
   provider_task_id: string;
+  quality_flags?: string[];
+  reviewer_pseudonymous_id: string;
+  severity: "S0" | "S1" | "S2" | "S3" | "S4";
 };
 
 export type DeliverProviderCallbackResult =

@@ -24,7 +24,7 @@ describe("provider bridge common helpers", () => {
         provider_task_id: "mock_task_123",
         provider_response_id: "mock_response_123",
         reviewer_pseudonymous_id: "mock_worker_123",
-        overall_verdict: "retry",
+        overall_verdict: "unclear",
         criterion_results: [
           {
             criterion_id: "modal-focus-visible",
@@ -73,11 +73,7 @@ describe("provider bridge common helpers", () => {
       fetchImpl,
       maxCallbackAttempts: 2,
       now: () => new Date("2026-06-08T05:01:00.000Z"),
-      payload: {
-        provider_id: "mock-second-provider",
-        provider_task_id: "mock_task_123",
-        provider_response_id: "mock_response_123"
-      },
+      payload: mockCallbackPayload(),
       responseId: "mock_response_123",
       save,
       sharedSecret: "shared-secret",
@@ -89,11 +85,7 @@ describe("provider bridge common helpers", () => {
       fetchImpl,
       maxCallbackAttempts: 2,
       now: () => new Date("2026-06-08T05:02:00.000Z"),
-      payload: {
-        provider_id: "mock-second-provider",
-        provider_task_id: "mock_task_123",
-        provider_response_id: "mock_response_123"
-      },
+      payload: mockCallbackPayload(),
       responseId: "mock_response_123",
       save,
       sharedSecret: "shared-secret",
@@ -134,5 +126,25 @@ function makeTask(): BridgeTaskRecord {
     reviewerPool: "managed",
     sanitizedPackageId: "package_mock_123",
     taskTemplate: "Review the supplied evidence."
+  };
+}
+
+function mockCallbackPayload() {
+  return {
+    provider_id: "mock-second-provider",
+    provider_task_id: "mock_task_123",
+    provider_response_id: "mock_response_123",
+    reviewer_pseudonymous_id: "mock_worker_123",
+    overall_verdict: "unclear" as const,
+    criterion_results: [
+      {
+        criterion_id: "modal-focus-visible",
+        status: "unclear" as const,
+        confidence: "medium" as const
+      }
+    ],
+    defect_category: "focus_visibility",
+    evidence_note: "The supplied artifact is ambiguous.",
+    severity: "S2" as const
   };
 }
