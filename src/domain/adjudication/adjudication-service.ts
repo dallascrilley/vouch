@@ -10,6 +10,15 @@ import type { JobService } from "../jobs/job-service.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
 import type { FeedbackService } from "../feedback/feedback-service.js";
 import type { VerdictService } from "../feedback/verdict-service.js";
+import type { HumanResponse, Severity } from "../human-review/models.js";
+
+const severityRank: Record<Severity, number> = {
+  S0: 4,
+  S1: 3,
+  S2: 2,
+  S3: 1,
+  S4: 0
+};
 
 export class AdjudicationService {
   constructor(
@@ -50,6 +59,9 @@ export class AdjudicationService {
     const providerResponseIds = responses
       .map((response) => response.providerResponseId)
       .filter((value): value is string => Boolean(value));
+    const criterionOutcomes = responses.flatMap((response) => response.criterionResults);
+    const maxSeverity = this.maxSeverity(responses);
+    const defectCategory = responses.find((response) => response.defectCategory !== "none")?.defectCategory;
     const providerSummary =
       providerIds.length > 0
         ? `Adjudication considered provider receipts from ${providerIds.join(", ")}`
@@ -75,10 +87,13 @@ export class AdjudicationService {
 
       const verdict = await this.verdictService.finalize(job, this.toFinalVerdict(decision), {
         adjudicationSummary: providerSummary ?? caseFile.decisionNotes,
+        criterionOutcomes,
         humanConsensusSummary: providerSummary,
+        maxSeverity,
         retryRecommendation: decision === "retry" ? "retry" : undefined
       });
       await this.feedbackService.emit(job, verdict, {
+        defectCategory,
         humanAnnotations: providerResponseIds,
         policyConstraints: [caseFile.triggerReason],
         providerIds,
@@ -102,5 +117,14 @@ export class AdjudicationService {
       case "fail_closed":
         return "fail_closed" as const;
     }
+  }
+
+  private maxSeverity(responses: HumanResponse[]) {
+    const failingSeverities = responses
+      .filter((response) => response.overallVerdict !== "pass")
+      .map((response) => response.severity)
+      .sort((left, right) => severityRank[right] - severityRank[left]);
+
+    return failingSeverities.at(0) ?? "none";
   }
 }

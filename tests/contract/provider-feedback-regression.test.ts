@@ -73,11 +73,77 @@ describe("provider feedback regression", () => {
 
     expect(feedbackResponse.statusCode).toBe(200);
     expect(feedbackResponse.json()).toMatchObject({
+      defect_category: "layout",
+      failed_criteria: ["managed-check"],
       final_verdict: "retry",
       provider_ids: ["real-provider"],
       provider_response_ids: ["provider-feedback"],
       retry_allowed: true,
-      retry_reason: "provider_callback_auto_resolution"
+      retry_reason: "provider_callback_auto_resolution",
+      severity: "S2"
+    });
+  });
+
+  it("keeps provider failure details actionable in verdict and feedback", async () => {
+    const jobId = await createProviderEligibleJob(app);
+    const taskResponse = await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${jobId}/human-review-tasks`,
+      payload: {
+        criterion_ids: ["managed-check"],
+        deadline_at: "2026-06-01T00:00:00.000Z",
+        provider_adapter: "real-provider",
+        quality_policy: "provider-managed",
+        reviewer_pool: "managed",
+        sanitized_package_id: "managed-package",
+        task_template: "provider-template"
+      }
+    });
+    const taskPayload = taskResponse.json();
+
+    await app.inject({
+      method: "POST",
+      url: "/provider-callback",
+      payload: {
+        provider_id: "real-provider",
+        provider_task_id: taskPayload.provider_task_id,
+        provider_response_id: "provider-fail-feedback",
+        reviewer_pseudonymous_id: "provider-reviewer",
+        overall_verdict: "fail",
+        criterion_results: [
+          {
+            criterion_id: "managed-check",
+            status: "fail",
+            confidence: "high"
+          }
+        ],
+        defect_category: "data_mismatch",
+        evidence_note: "Provider reviewer found visible data mismatch.",
+        severity: "S2",
+        shared_secret: "top-secret"
+      }
+    });
+
+    const verdictResponse = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/verdict`
+    });
+    const feedbackResponse = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/feedback`
+    });
+
+    expect(verdictResponse.json()).toMatchObject({
+      final_verdict: "fail",
+      max_severity: "S2",
+      release_gate_effect: "block"
+    });
+    expect(feedbackResponse.json()).toMatchObject({
+      defect_category: "data_mismatch",
+      failed_criteria: ["managed-check"],
+      final_verdict: "fail",
+      provider_response_ids: ["provider-fail-feedback"],
+      severity: "S2"
     });
   });
 });
