@@ -112,18 +112,24 @@ const cases: TestCase[] = [
 
 async function main() {
   const baseUrl = process.env.BROKER_BASE_URL ?? "http://127.0.0.1:3000";
+  const agentRunId = process.env.AGENT_RUN_ID ?? "mturk-staging-agent-run";
+  const idempotencySuffix = process.env.MTURK_STAGING_IDEMPOTENCY_SUFFIX;
   const created: Array<{ job_id: string; review_task_id: string; provider_task_id?: string; summary: string }> = [];
 
   for (const testCase of cases) {
+    const idempotencyKey = idempotencySuffix
+      ? `${testCase.idempotency_key}-${idempotencySuffix}`
+      : testCase.idempotency_key;
     const createResponse = await postJson(`${baseUrl}/verification-jobs`, {
       acceptance_criteria: [testCase.criterion],
+      agent_run_id: agentRunId,
       budget_policy: {
         maxAssignments: 1,
         maxJobCost: 5,
         maxRetries: 1
       },
       deadline_at: "2026-06-30T00:00:00.000Z",
-      idempotency_key: testCase.idempotency_key,
+      idempotency_key: idempotencyKey,
       risk_tier: testCase.risk_tier,
       source: {
         commit: "mturk-staging",
