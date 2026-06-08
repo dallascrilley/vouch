@@ -10,6 +10,7 @@ import {
   normalizeMturkTimestamp,
   parseAssignmentApprovalPolicy,
   parseAnswerXml,
+  parseQualificationRequirements,
   saveBridgeState,
   summarizeBridgeState,
   validateBridgeSafety
@@ -101,6 +102,13 @@ describe("mturk bridge helpers", () => {
             lastApprovalAt: "2026-06-08T00:02:10.000Z",
             lastDeliveryAt: "2026-06-08T00:02:00.000Z",
             lastHitStatusAt: "2026-06-08T00:03:00.000Z",
+            qualificationRequirements: [
+              {
+                Comparator: "GreaterThanOrEqualTo",
+                IntegerValues: [95],
+                QualificationTypeId: "000000000000000000L0"
+              }
+            ],
             lastPollAt: "2026-06-08T00:02:30.000Z",
             reviewTaskId: "review_123",
             reviewerPool: "managed",
@@ -128,6 +136,13 @@ describe("mturk bridge helpers", () => {
         lastApprovalAt: "2026-06-08T00:02:10.000Z",
         lastDeliveryAt: "2026-06-08T00:02:00.000Z",
         lastHitStatusAt: "2026-06-08T00:03:00.000Z",
+        qualificationRequirements: [
+          {
+            Comparator: "GreaterThanOrEqualTo",
+            IntegerValues: [95],
+            QualificationTypeId: "000000000000000000L0"
+          }
+        ],
         lastPollAt: "2026-06-08T00:02:30.000Z"
       });
     } finally {
@@ -174,6 +189,13 @@ describe("mturk bridge helpers", () => {
             message: "get-hit throttled",
             recordedAt: "2026-06-08T00:03:30.000Z"
           },
+          qualificationRequirements: [
+            {
+              Comparator: "GreaterThanOrEqualTo",
+              IntegerValues: [95],
+              QualificationTypeId: "000000000000000000L0"
+            }
+          ],
           lastPollAt: "2026-06-08T00:02:30.000Z",
           reviewTaskId: "review_123",
           reviewerPool: "managed",
@@ -214,6 +236,7 @@ describe("mturk bridge helpers", () => {
           lastHitStatusError: {
             message: "get-hit throttled"
           },
+          qualificationRequirementCount: 1,
           lastPollAt: "2026-06-08T00:02:30.000Z",
           reviewTaskId: "review_123"
         }
@@ -223,6 +246,7 @@ describe("mturk bridge helpers", () => {
         deadLetters: 1,
         deliveredAssignments: 1,
         expiredTasks: 1,
+        qualificationRestrictedTasks: 1,
         tasks: 1
       }
     });
@@ -242,6 +266,52 @@ describe("mturk bridge helpers", () => {
     expect(normalizeMturkTimestamp("2026-06-09T01:02:48.000Z")?.toISOString()).toBe("2026-06-09T01:02:48.000Z");
     expect(normalizeMturkTimestamp("")).toBeUndefined();
     expect(normalizeMturkTimestamp(Number.NaN)).toBeUndefined();
+  });
+
+  it("parses MTurk qualification requirements from JSON", () => {
+    const requirements = parseQualificationRequirements(
+      JSON.stringify([
+        {
+          QualificationTypeId: "000000000000000000L0",
+          Comparator: "GreaterThanOrEqualTo",
+          ActionsGuarded: "DiscoverPreviewAndAccept",
+          IntegerValues: [95],
+          RequiredToPreview: true
+        },
+        {
+          QualificationTypeId: "00000000000000000071",
+          Comparator: "In",
+          LocaleValues: [{ Country: "US" }]
+        }
+      ])
+    );
+
+    expect(requirements).toEqual([
+      {
+        ActionsGuarded: "DiscoverPreviewAndAccept",
+        Comparator: "GreaterThanOrEqualTo",
+        IntegerValues: [95],
+        QualificationTypeId: "000000000000000000L0",
+        RequiredToPreview: true
+      },
+      {
+        Comparator: "In",
+        LocaleValues: [{ Country: "US" }],
+        QualificationTypeId: "00000000000000000071"
+      }
+    ]);
+    expect(parseQualificationRequirements(undefined)).toEqual([]);
+  });
+
+  it("rejects invalid MTurk qualification requirements", () => {
+    expect(() => parseQualificationRequirements("{}")).toThrow("must be a JSON array");
+    expect(() => parseQualificationRequirements('[{"Comparator":"Exists"}]')).toThrow("QualificationTypeId must be a non-empty string");
+    expect(() =>
+      parseQualificationRequirements('[{"QualificationTypeId":"abc","Comparator":"GreaterThan","IntegerValues":["not-a-number"]}]')
+    ).toThrow("IntegerValues must contain only integers");
+    expect(() =>
+      parseQualificationRequirements('[{"QualificationTypeId":"abc","Comparator":"In","LocaleValues":[{}]}]')
+    ).toThrow("LocaleValues[0] must include Country or Subdivision");
   });
 
   it("accepts bounded MTurk safety settings", () => {

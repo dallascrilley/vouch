@@ -34,6 +34,7 @@ Bridge:
 - `MTURK_BRIDGE_STATE_PATH=.runtime/mturk-bridge-state.json`
 - `MTURK_POLL_INTERVAL_MS=15000`
 - `MTURK_MAX_CALLBACK_ATTEMPTS=3`
+- `MTURK_QUALIFICATION_REQUIREMENTS_JSON=[]`
 - `MTURK_ASSIGNMENT_APPROVAL_POLICY=manual`
 - `MTURK_MAX_ASSIGNMENTS=1`
 - `MTURK_MAX_ASSIGNMENTS_PER_HIT=3`
@@ -88,6 +89,13 @@ All are synthetic or staging-only and safe for managed external review.
   so late submitted/reviewable assignments can be ingested. HIT status refresh
   failures are recorded in `lastHitStatusError` and do not block assignment
   polling.
+- Worker eligibility is controlled by `MTURK_QUALIFICATION_REQUIREMENTS_JSON`.
+  Leave it empty (`[]`) for requester-sandbox smoke tests with a known worker
+  account. For broader sandbox or production-like tests, pass a JSON array in
+  the AWS `QualificationRequirement` shape and verify `/state` reports
+  `qualificationRequirementCount > 0` for new HITs. Typical production rules
+  should include approval-rate, completed-HIT count, locale, and any custom UI
+  QA qualification before public-crowd use.
 - Callback delivery retries are bounded by `MTURK_MAX_CALLBACK_ATTEMPTS`.
   Repeated failures are persisted in `deadLetterAssignments` inside
   `MTURK_BRIDGE_STATE_PATH` and are not retried indefinitely.
@@ -119,9 +127,9 @@ curl -sf -H "authorization: Bearer $MTURK_BRIDGE_API_KEY" \
 Use `/state` to inspect task counts, delivered assignment counts, approved
 assignment counts, expired task counts, HIT status/review status, HIT
 expiration, last HIT status refresh, last poll time, last delivery time, last
-approval time, last HIT status error, last callback error, and last approval error. Use
-`/dead-letters` to inspect assignments that exhausted callback delivery
-attempts.
+approval time, qualification restriction counts, last HIT status error, last
+callback error, and last approval error. Use `/dead-letters` to inspect
+assignments that exhausted callback delivery attempts.
 
 ## Restart and recovery checks
 
