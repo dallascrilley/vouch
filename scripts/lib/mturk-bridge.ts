@@ -70,6 +70,20 @@ export type BridgeStateSummary = {
   };
 };
 
+export type BridgeSafetyConfig = {
+  maxAssignments: number;
+  maxAssignmentsPerHit: number;
+  maxRewardUsd: number;
+  maxSpendPerHitUsd: number;
+  minAutoApprovalDelaySeconds: number;
+  minExpirationSeconds: number;
+  minTaskDurationSeconds: number;
+  reward: string;
+  autoApprovalDelaySeconds: number;
+  expirationSeconds: number;
+  taskDurationSeconds: number;
+};
+
 export const emptyBridgeState = (): BridgeState => ({ tasks: {} });
 
 export function loadBridgeState(path: string): BridgeState {
@@ -118,6 +132,68 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
       tasks: tasks.length
     }
   };
+}
+
+export function validateBridgeSafety(config: BridgeSafetyConfig): string[] {
+  const errors: string[] = [];
+  const reward = Number(config.reward);
+  const spendPerHit = reward * config.maxAssignments;
+  const hasValidMaxAssignmentsPerHit = isPositiveNumber(config.maxAssignmentsPerHit);
+  const hasValidMaxRewardUsd = isPositiveNumber(config.maxRewardUsd);
+  const hasValidMaxSpendPerHitUsd = isPositiveNumber(config.maxSpendPerHitUsd);
+  const hasValidMinTaskDurationSeconds = isPositiveNumber(config.minTaskDurationSeconds);
+  const hasValidMinExpirationSeconds = isPositiveNumber(config.minExpirationSeconds);
+  const hasValidMinAutoApprovalDelaySeconds = isPositiveNumber(config.minAutoApprovalDelaySeconds);
+
+  addPositiveNumberError(errors, "MTURK_MAX_ASSIGNMENTS_PER_HIT", config.maxAssignmentsPerHit);
+  addPositiveNumberError(errors, "MTURK_MAX_REWARD_USD", config.maxRewardUsd);
+  addPositiveNumberError(errors, "MTURK_MAX_SPEND_PER_HIT_USD", config.maxSpendPerHitUsd);
+  addPositiveNumberError(errors, "MTURK_MIN_TASK_DURATION_SECONDS", config.minTaskDurationSeconds);
+  addPositiveNumberError(errors, "MTURK_MIN_EXPIRATION_SECONDS", config.minExpirationSeconds);
+  addPositiveNumberError(errors, "MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS", config.minAutoApprovalDelaySeconds);
+
+  if (!Number.isFinite(reward) || reward <= 0) {
+    errors.push("MTURK_REWARD must be a positive USD amount");
+  }
+  if (!Number.isInteger(config.maxAssignments) || config.maxAssignments < 1) {
+    errors.push("MTURK_MAX_ASSIGNMENTS must be a positive integer");
+  }
+  if (hasValidMaxAssignmentsPerHit && config.maxAssignments > config.maxAssignmentsPerHit) {
+    errors.push(
+      `MTURK_MAX_ASSIGNMENTS ${config.maxAssignments} exceeds MTURK_MAX_ASSIGNMENTS_PER_HIT ${config.maxAssignmentsPerHit}`
+    );
+  }
+  if (hasValidMaxRewardUsd && reward > config.maxRewardUsd) {
+    errors.push(`MTURK_REWARD ${config.reward} exceeds MTURK_MAX_REWARD_USD ${config.maxRewardUsd}`);
+  }
+  if (hasValidMaxSpendPerHitUsd && Number.isFinite(spendPerHit) && spendPerHit > config.maxSpendPerHitUsd) {
+    errors.push(`Per-HIT spend ${spendPerHit.toFixed(2)} exceeds MTURK_MAX_SPEND_PER_HIT_USD ${config.maxSpendPerHitUsd}`);
+  }
+  if (hasValidMinTaskDurationSeconds && config.taskDurationSeconds < config.minTaskDurationSeconds) {
+    errors.push(
+      `MTURK_TASK_DURATION_SECONDS ${config.taskDurationSeconds} is below MTURK_MIN_TASK_DURATION_SECONDS ${config.minTaskDurationSeconds}`
+    );
+  }
+  if (hasValidMinExpirationSeconds && config.expirationSeconds < config.minExpirationSeconds) {
+    errors.push(`MTURK_EXPIRATION_SECONDS ${config.expirationSeconds} is below MTURK_MIN_EXPIRATION_SECONDS ${config.minExpirationSeconds}`);
+  }
+  if (hasValidMinAutoApprovalDelaySeconds && config.autoApprovalDelaySeconds < config.minAutoApprovalDelaySeconds) {
+    errors.push(
+      `MTURK_AUTO_APPROVAL_DELAY_SECONDS ${config.autoApprovalDelaySeconds} is below MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS ${config.minAutoApprovalDelaySeconds}`
+    );
+  }
+
+  return errors;
+}
+
+function isPositiveNumber(value: number) {
+  return Number.isFinite(value) && value > 0;
+}
+
+function addPositiveNumberError(errors: string[], name: string, value: number) {
+  if (!isPositiveNumber(value)) {
+    errors.push(`${name} must be a positive number`);
+  }
 }
 
 export function buildHtmlQuestion(input: {

@@ -9,7 +9,8 @@ import {
   normalizeAssignment,
   parseAnswerXml,
   saveBridgeState,
-  summarizeBridgeState
+  summarizeBridgeState,
+  validateBridgeSafety
 } from "../../scripts/lib/mturk-bridge.js";
 
 describe("mturk bridge helpers", () => {
@@ -177,5 +178,73 @@ describe("mturk bridge helpers", () => {
         tasks: 1
       }
     });
+  });
+
+  it("accepts bounded MTurk safety settings", () => {
+    expect(
+      validateBridgeSafety({
+        autoApprovalDelaySeconds: 259200,
+        expirationSeconds: 86400,
+        maxAssignments: 1,
+        maxAssignmentsPerHit: 3,
+        maxRewardUsd: 1,
+        maxSpendPerHitUsd: 3,
+        minAutoApprovalDelaySeconds: 86400,
+        minExpirationSeconds: 300,
+        minTaskDurationSeconds: 60,
+        reward: "0.05",
+        taskDurationSeconds: 900
+      })
+    ).toEqual([]);
+  });
+
+  it("rejects unsafe MTurk spend and timing settings", () => {
+    expect(
+      validateBridgeSafety({
+        autoApprovalDelaySeconds: 60,
+        expirationSeconds: 120,
+        maxAssignments: 5,
+        maxAssignmentsPerHit: 3,
+        maxRewardUsd: 1,
+        maxSpendPerHitUsd: 3,
+        minAutoApprovalDelaySeconds: 86400,
+        minExpirationSeconds: 300,
+        minTaskDurationSeconds: 60,
+        reward: "2.00",
+        taskDurationSeconds: 30
+      })
+    ).toEqual([
+      "MTURK_MAX_ASSIGNMENTS 5 exceeds MTURK_MAX_ASSIGNMENTS_PER_HIT 3",
+      "MTURK_REWARD 2.00 exceeds MTURK_MAX_REWARD_USD 1",
+      "Per-HIT spend 10.00 exceeds MTURK_MAX_SPEND_PER_HIT_USD 3",
+      "MTURK_TASK_DURATION_SECONDS 30 is below MTURK_MIN_TASK_DURATION_SECONDS 60",
+      "MTURK_EXPIRATION_SECONDS 120 is below MTURK_MIN_EXPIRATION_SECONDS 300",
+      "MTURK_AUTO_APPROVAL_DELAY_SECONDS 60 is below MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS 86400"
+    ]);
+  });
+
+  it("rejects malformed MTurk safety limits", () => {
+    expect(
+      validateBridgeSafety({
+        autoApprovalDelaySeconds: 259200,
+        expirationSeconds: 86400,
+        maxAssignments: 1,
+        maxAssignmentsPerHit: Number.NaN,
+        maxRewardUsd: 0,
+        maxSpendPerHitUsd: Number.NaN,
+        minAutoApprovalDelaySeconds: Number.NaN,
+        minExpirationSeconds: 0,
+        minTaskDurationSeconds: Number.NaN,
+        reward: "0.05",
+        taskDurationSeconds: 900
+      })
+    ).toEqual([
+      "MTURK_MAX_ASSIGNMENTS_PER_HIT must be a positive number",
+      "MTURK_MAX_REWARD_USD must be a positive number",
+      "MTURK_MAX_SPEND_PER_HIT_USD must be a positive number",
+      "MTURK_MIN_TASK_DURATION_SECONDS must be a positive number",
+      "MTURK_MIN_EXPIRATION_SECONDS must be a positive number",
+      "MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS must be a positive number"
+    ]);
   });
 });
