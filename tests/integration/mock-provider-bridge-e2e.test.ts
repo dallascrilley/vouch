@@ -76,7 +76,7 @@ describe("mock second-provider bridge e2e", () => {
     rmSync(tempDir, { force: true, recursive: true });
   });
 
-  it("dispatches to a runnable mock bridge and ingests its provider callback without broker provider branching", async () => {
+  it("lets an agent commission ambiguous evidence review and consume an unambiguous retry decision", async () => {
     const jobId = await createProviderEligibleJob(app);
     const taskResponse = await app.inject({
       method: "POST",
@@ -149,10 +149,14 @@ describe("mock second-provider bridge e2e", () => {
       human_consensus_summary: expect.stringContaining("mock-second-provider")
     });
     expect(feedbackResponse.json()).toMatchObject({
+      agent_next_action: "retry",
       defect_category: "ambiguous_evidence",
+      evidence_pointers: ["manifest-managed"],
       failed_criteria: ["managed-check"],
       final_verdict: "retry",
       provider_response_ids: ["mock-provider-response-1"],
+      retry_allowed: true,
+      repair_hint: "retry",
       severity: "S2"
     });
     expect(bridgeStateResponse.json()).toMatchObject({
@@ -183,6 +187,7 @@ async function createProviderEligibleJob(app: ReturnType<typeof buildApp>) {
         maxRetries: 1
       },
       deadline_at: "2026-06-01T00:00:00.000Z",
+      agent_run_id: "agent-run-phase-6",
       idempotency_key: crypto.randomUUID(),
       risk_tier: "medium",
       source: {

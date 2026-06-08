@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { deriveAgentNextAction } from "../../domain/feedback/agent-action.js";
 
 export function registerVerdictFeedbackRoutes(app: FastifyInstance) {
   app.get<{ Params: { jobId: string } }>("/verification-jobs/:jobId/verdict", async (request, reply) => {
@@ -33,6 +34,7 @@ export function registerVerdictFeedbackRoutes(app: FastifyInstance) {
       feedback_id: signal.feedbackId,
       job_id: signal.jobId,
       final_verdict: signal.finalVerdict,
+      agent_next_action: signal.agentNextAction ?? deriveAgentNextAction(signal),
       failed_criteria: signal.failedCriteria,
       severity: signal.severity ?? null,
       defect_category: signal.defectCategory ?? null,
