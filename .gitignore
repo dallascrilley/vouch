@@ -3,6 +3,9 @@ dist/
 build/
 coverage/
 .runtime/visual-qa/
+.runtime/*.sqlite
+.runtime/*.sqlite-*
+.runtime/mturk-bridge-state.json
 *.log
 .env*
 .DS_Store
