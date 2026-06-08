@@ -288,7 +288,8 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     ? new ProviderDispatchWorker(
         new RealProviderAdapter(providerConfig, fetchImpl),
         providerMappingService,
-        providerOperationsService
+        providerOperationsService,
+        providerConfig.providerId
       )
     : undefined;
 

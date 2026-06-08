@@ -9,19 +9,21 @@ export class ProviderDispatchWorker {
   constructor(
     private readonly adapter: RealProviderAdapter,
     private readonly mappingService: ProviderTaskMappingService,
-    private readonly operationsService: ProviderOperationsService
+    private readonly operationsService: ProviderOperationsService,
+    private readonly providerId: string
   ) {}
 
   async dispatch(task: HumanReviewTask) {
     const dispatchResult = await this.adapter.dispatch(task);
+    const providerId = task.providerAdapter ?? this.providerId;
     await this.mappingService.createMapping({
       reviewTaskId: task.reviewTaskId,
-      providerId: task.providerAdapter ?? "real-provider",
+      providerId,
       providerTaskId: dispatchResult.providerTaskId,
       providerAssignmentScope: dispatchResult.providerAssignmentScope,
       dispatchStatus: "dispatched"
     });
-    this.operationsService.markHealthy(task.providerAdapter ?? "real-provider");
+    this.operationsService.markHealthy(providerId);
 
     return dispatchResult;
   }
