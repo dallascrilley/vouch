@@ -1,6 +1,7 @@
 export {
   emptyBridgeState,
   loadBridgeState,
+  mergeSaveBridgeState,
   saveBridgeState,
   summarizeBridgeState
 } from "./provider-bridge.js";

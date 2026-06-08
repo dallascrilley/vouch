@@ -6,6 +6,7 @@ import { join } from "node:path";
 import {
   buildHtmlQuestion,
   loadBridgeState,
+  mergeSaveBridgeState,
   normalizeAssignment,
   normalizeMturkTimestamp,
   parseAssignmentApprovalPolicy,
@@ -145,6 +146,29 @@ describe("mturk bridge helpers", () => {
         ],
         lastPollAt: "2026-06-08T00:02:30.000Z"
       });
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
+  });
+
+  it("merges newly created HIT state with concurrently persisted tasks", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "mturk-bridge-state-merge-"));
+    const statePath = join(tempDir, "state.json");
+
+    try {
+      saveBridgeState(statePath, {
+        tasks: {
+          hit_existing: bridgeTaskRecord("hit_existing", "review_existing")
+        }
+      });
+
+      mergeSaveBridgeState(statePath, {
+        tasks: {
+          hit_new: bridgeTaskRecord("hit_new", "review_new")
+        }
+      });
+
+      expect(Object.keys(loadBridgeState(statePath).tasks).sort()).toEqual(["hit_existing", "hit_new"]);
     } finally {
       rmSync(tempDir, { force: true, recursive: true });
     }
@@ -382,3 +406,16 @@ describe("mturk bridge helpers", () => {
     ]);
   });
 });
+
+function bridgeTaskRecord(hitId: string, reviewTaskId: string) {
+  return {
+    createdAt: "2026-06-08T00:00:00.000Z",
+    criterionIds: ["criterion"],
+    deliveredAssignmentIds: [],
+    hitId,
+    reviewTaskId,
+    reviewerPool: "managed",
+    sanitizedPackageId: `${reviewTaskId}-package`,
+    taskTemplate: "Review task"
+  };
+}

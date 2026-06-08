@@ -142,6 +142,16 @@ export function saveBridgeState(path: string, state: BridgeState) {
   writeFileSync(path, JSON.stringify(state, null, 2));
 }
 
+export function mergeSaveBridgeState(path: string, state: BridgeState) {
+  const current = loadBridgeState(path);
+  saveBridgeState(path, {
+    tasks: {
+      ...current.tasks,
+      ...state.tasks
+    }
+  });
+}
+
 export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
   const tasks = Object.values(state.tasks).map((task) => ({
     approvedAssignmentCount: task.approvedAssignmentIds?.length ?? 0,
