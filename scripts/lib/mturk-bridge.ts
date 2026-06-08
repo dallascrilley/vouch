@@ -17,11 +17,17 @@ export type BridgeTaskRecord = {
   deadLetterAssignments?: BridgeDeadLetterAssignment[];
   criterionIds: string[];
   deliveredAssignmentIds: string[];
+  expiredAt?: string;
   hitId: string;
+  hitExpirationAt?: string;
+  hitReviewStatus?: string;
+  hitStatus?: string;
   lastApprovalAt?: string;
   lastApprovalError?: BridgeTaskError;
   lastDeliveryAt?: string;
   lastError?: BridgeTaskError;
+  lastHitStatusAt?: string;
+  lastHitStatusError?: BridgeTaskError;
   lastPollAt?: string;
   reviewTaskId: string;
   reviewerPool: string;
@@ -60,11 +66,17 @@ export type BridgeStateSummary = {
     callbackAttemptTotal: number;
     deadLetterCount: number;
     deliveredAssignmentCount: number;
+    expiredAt?: string;
     hitId: string;
+    hitExpirationAt?: string;
+    hitReviewStatus?: string;
+    hitStatus?: string;
     lastApprovalAt?: string;
     lastApprovalError?: BridgeTaskError;
     lastDeliveryAt?: string;
     lastError?: BridgeTaskError;
+    lastHitStatusAt?: string;
+    lastHitStatusError?: BridgeTaskError;
     lastPollAt?: string;
     reviewTaskId: string;
     reviewerPool: string;
@@ -73,6 +85,7 @@ export type BridgeStateSummary = {
     approvedAssignments: number;
     deadLetters: number;
     deliveredAssignments: number;
+    expiredTasks: number;
     tasks: number;
   };
 };
@@ -118,11 +131,17 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
     callbackAttemptTotal: Object.values(task.callbackAttempts ?? {}).reduce((total, attempts) => total + attempts, 0),
     deadLetterCount: task.deadLetterAssignments?.length ?? 0,
     deliveredAssignmentCount: task.deliveredAssignmentIds.length,
+    expiredAt: task.expiredAt,
     hitId: task.hitId,
+    hitExpirationAt: task.hitExpirationAt,
+    hitReviewStatus: task.hitReviewStatus,
+    hitStatus: task.hitStatus,
     lastApprovalAt: task.lastApprovalAt,
     lastApprovalError: task.lastApprovalError,
     lastDeliveryAt: task.lastDeliveryAt,
     lastError: task.lastError,
+    lastHitStatusAt: task.lastHitStatusAt,
+    lastHitStatusError: task.lastHitStatusError,
     lastPollAt: task.lastPollAt,
     reviewTaskId: task.reviewTaskId,
     reviewerPool: task.reviewerPool
@@ -142,6 +161,7 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
       approvedAssignments: tasks.reduce((total, task) => total + task.approvedAssignmentCount, 0),
       deadLetters: deadLetters.length,
       deliveredAssignments: tasks.reduce((total, task) => total + task.deliveredAssignmentCount, 0),
+      expiredTasks: tasks.filter((task) => task.expiredAt).length,
       tasks: tasks.length
     }
   };

@@ -81,6 +81,13 @@ All are synthetic or staging-only and safe for managed external review.
   auto-approval delay with `MTURK_MIN_EXPIRATION_SECONDS`,
   `MTURK_MIN_TASK_DURATION_SECONDS`, and
   `MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS`.
+- Every poll refreshes MTurk HIT status with `aws mturk get-hit` and persists
+  `hitStatus`, `hitReviewStatus`, `hitExpirationAt`, and `lastHitStatusAt`.
+  When the HIT expiration timestamp has passed, the bridge records `expiredAt`
+  and exposes the task in `/state` as expired while still polling assignments
+  so late submitted/reviewable assignments can be ingested. HIT status refresh
+  failures are recorded in `lastHitStatusError` and do not block assignment
+  polling.
 - Callback delivery retries are bounded by `MTURK_MAX_CALLBACK_ATTEMPTS`.
   Repeated failures are persisted in `deadLetterAssignments` inside
   `MTURK_BRIDGE_STATE_PATH` and are not retried indefinitely.
@@ -110,9 +117,11 @@ curl -sf -H "authorization: Bearer $MTURK_BRIDGE_API_KEY" \
 ```
 
 Use `/state` to inspect task counts, delivered assignment counts, approved
-assignment counts, last poll time, last delivery time, last approval time, last
-callback error, and last approval error. Use `/dead-letters` to inspect
-assignments that exhausted callback delivery attempts.
+assignment counts, expired task counts, HIT status/review status, HIT
+expiration, last HIT status refresh, last poll time, last delivery time, last
+approval time, last HIT status error, last callback error, and last approval error. Use
+`/dead-letters` to inspect assignments that exhausted callback delivery
+attempts.
 
 ## Restart and recovery checks
 
@@ -120,8 +129,8 @@ assignments that exhausted callback delivery attempts.
    `curl -sf http://127.0.0.1:3000/health` and
    `curl -sf http://127.0.0.1:3100/health`.
 2. Inspect `MTURK_BRIDGE_STATE_PATH` and verify each active HIT has its
-   `reviewTaskId`, `deliveredAssignmentIds`, `lastPollAt`, and any
-   `deadLetterAssignments`.
+   `reviewTaskId`, `hitStatus`, `hitExpirationAt`, `lastHitStatusAt`,
+   `deliveredAssignmentIds`, `lastPollAt`, and any `deadLetterAssignments`.
 3. Restart broker and bridge.
 4. Re-check `MTURK_BRIDGE_STATE_PATH`; delivered assignment IDs should remain
    present and should not be posted again.
