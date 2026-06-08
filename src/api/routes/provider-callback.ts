@@ -41,10 +41,8 @@ function toSeveritySummary(payload: ProviderCallbackPayload): Severity | "none" 
 export function registerProviderCallbackRoutes(app: FastifyInstance) {
   app.post<{ Body: ProviderCallbackBody }>("/provider-callback", async (request, reply) => {
     try {
-      if (
-        request.body.shared_secret &&
-        request.body.shared_secret !== app.services.providerConfig?.sharedSecret
-      ) {
+      const expectedSecret = app.services.providerConfig?.sharedSecret;
+      if (expectedSecret && request.body.shared_secret !== expectedSecret) {
         return reply.code(401).send({
           message: "Invalid provider callback secret"
         });
