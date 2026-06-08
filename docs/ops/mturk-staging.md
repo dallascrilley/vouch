@@ -73,6 +73,23 @@ All are synthetic or staging-only and safe for managed external review.
 - Bridge logs include `hitId`, `assignmentId`, `reviewTaskId`, and `workerId`
   where available, so operators can trace HIT -> assignment -> callback -> job.
 
+## Operator inspection
+
+The bridge exposes local-only inspection endpoints protected by the same bearer
+token as dispatch:
+
+```bash
+curl -sf -H "authorization: Bearer $MTURK_BRIDGE_API_KEY" \
+  http://127.0.0.1:3100/state
+
+curl -sf -H "authorization: Bearer $MTURK_BRIDGE_API_KEY" \
+  http://127.0.0.1:3100/dead-letters
+```
+
+Use `/state` to inspect task counts, delivered assignment counts, last poll
+time, last delivery time, and last error. Use `/dead-letters` to inspect
+assignments that exhausted callback delivery attempts.
+
 ## Restart and recovery checks
 
 1. Confirm both processes are healthy:
