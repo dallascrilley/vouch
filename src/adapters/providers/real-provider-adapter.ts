@@ -1,4 +1,7 @@
-import type { HumanReviewTask, ProviderAdapterConfig } from "../../domain/human-review/models.js";
+import type {
+  HumanReviewTask,
+  ProviderAdapterConfig
+} from "../../domain/human-review/models.js";
 import { redactProviderSecrets } from "../observability/provider-log-redaction.js";
 
 type ProviderDispatchResult = {
@@ -13,6 +16,13 @@ type ProviderDispatchBody = {
   reviewer_pool: HumanReviewTask["reviewerPool"];
   sanitized_package_id: string;
   task_template: string;
+  visual_evidence?: {
+    artifact_id: string;
+    caption: string;
+    content_hash: string;
+    data_url: string;
+    viewport: string;
+  };
 };
 
 export class RealProviderAdapter {
@@ -39,6 +49,15 @@ export class RealProviderAdapter {
       reviewer_pool: task.reviewerPool,
       sanitized_package_id: task.sanitizedPackageId,
       task_template: task.taskTemplate,
+      visual_evidence: task.visualEvidence
+        ? {
+            artifact_id: task.visualEvidence.artifactId,
+            caption: task.visualEvidence.caption,
+            content_hash: task.visualEvidence.contentHash,
+            data_url: task.visualEvidence.dataUrl,
+            viewport: task.visualEvidence.viewport
+          }
+        : undefined,
       callback_url: this.config.callbackBaseUrl
         ? `${this.config.callbackBaseUrl.replace(/\/$/, "")}/provider-callback`
         : undefined
@@ -55,7 +74,9 @@ export class RealProviderAdapter {
 
     if (!response.ok) {
       const errorText = redactProviderSecrets(await response.text());
-      throw new Error(`Provider dispatch failed: ${response.status} ${errorText}`);
+      throw new Error(
+        `Provider dispatch failed: ${response.status} ${errorText}`
+      );
     }
 
     const payload = (await response.json()) as {
@@ -64,7 +85,8 @@ export class RealProviderAdapter {
     };
 
     return {
-      providerAssignmentScope: payload.provider_assignment_scope ?? this.config.accountScope,
+      providerAssignmentScope:
+        payload.provider_assignment_scope ?? this.config.accountScope,
       providerTaskId: payload.provider_task_id
     };
   }

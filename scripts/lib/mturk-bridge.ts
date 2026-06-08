@@ -5,6 +5,7 @@ export {
   saveBridgeState,
   summarizeBridgeState
 } from "./provider-bridge.js";
+import type { BridgeVisualEvidence } from "./provider-bridge.js";
 export type {
   BridgeDeadLetterAssignment,
   BridgeDispatchBody,
@@ -14,7 +15,9 @@ export type {
   BridgeTaskRecord
 } from "./provider-bridge.js";
 
-export type BridgeAssignmentApprovalPolicy = "manual" | "approve_on_callback_success";
+export type BridgeAssignmentApprovalPolicy =
+  | "manual"
+  | "approve_on_callback_success";
 
 export type MturkQualificationRequirement = {
   QualificationTypeId: string;
@@ -42,7 +45,9 @@ export type BridgeSafetyConfig = {
   taskDurationSeconds: number;
 };
 
-export function parseAssignmentApprovalPolicy(value: string | undefined): BridgeAssignmentApprovalPolicy {
+export function parseAssignmentApprovalPolicy(
+  value: string | undefined
+): BridgeAssignmentApprovalPolicy {
   if (!value || value === "manual") {
     return "manual";
   }
@@ -66,7 +71,9 @@ export function normalizeMturkTimestamp(value: number | string | undefined) {
   return undefined;
 }
 
-export function parseQualificationRequirements(value: string | undefined): MturkQualificationRequirement[] {
+export function parseQualificationRequirements(
+  value: string | undefined
+): MturkQualificationRequirement[] {
   if (!value?.trim()) {
     return [];
   }
@@ -75,54 +82,92 @@ export function parseQualificationRequirements(value: string | undefined): Mturk
   try {
     parsed = JSON.parse(value);
   } catch (error) {
-    throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON must be valid JSON: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `MTURK_QUALIFICATION_REQUIREMENTS_JSON must be valid JSON: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   if (!Array.isArray(parsed)) {
-    throw new Error("MTURK_QUALIFICATION_REQUIREMENTS_JSON must be a JSON array");
+    throw new Error(
+      "MTURK_QUALIFICATION_REQUIREMENTS_JSON must be a JSON array"
+    );
   }
 
-  return parsed.map((requirement, index) => parseQualificationRequirement(requirement, index));
+  return parsed.map((requirement, index) =>
+    parseQualificationRequirement(requirement, index)
+  );
 }
 
-function parseQualificationRequirement(value: unknown, index: number): MturkQualificationRequirement {
+function parseQualificationRequirement(
+  value: unknown,
+  index: number
+): MturkQualificationRequirement {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}] must be an object`);
+    throw new Error(
+      `MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}] must be an object`
+    );
   }
 
   const requirement = value as Record<string, unknown>;
-  if (typeof requirement.QualificationTypeId !== "string" || !requirement.QualificationTypeId.trim()) {
-    throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}].QualificationTypeId must be a non-empty string`);
+  if (
+    typeof requirement.QualificationTypeId !== "string" ||
+    !requirement.QualificationTypeId.trim()
+  ) {
+    throw new Error(
+      `MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}].QualificationTypeId must be a non-empty string`
+    );
   }
-  if (typeof requirement.Comparator !== "string" || !requirement.Comparator.trim()) {
-    throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}].Comparator must be a non-empty string`);
+  if (
+    typeof requirement.Comparator !== "string" ||
+    !requirement.Comparator.trim()
+  ) {
+    throw new Error(
+      `MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}].Comparator must be a non-empty string`
+    );
   }
 
-  const integerValues = Array.isArray(requirement.IntegerValues) ? requirement.IntegerValues.map((item) => Number(item)) : undefined;
+  const integerValues = Array.isArray(requirement.IntegerValues)
+    ? requirement.IntegerValues.map((item) => Number(item))
+    : undefined;
   if (integerValues?.some((item) => !Number.isInteger(item))) {
-    throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}].IntegerValues must contain only integers`);
+    throw new Error(
+      `MTURK_QUALIFICATION_REQUIREMENTS_JSON[${index}].IntegerValues must contain only integers`
+    );
   }
-  const localeValues = Array.isArray(requirement.LocaleValues) ? parseLocaleValues(requirement.LocaleValues, index) : undefined;
+  const localeValues = Array.isArray(requirement.LocaleValues)
+    ? parseLocaleValues(requirement.LocaleValues, index)
+    : undefined;
 
   return {
     QualificationTypeId: requirement.QualificationTypeId,
     Comparator: requirement.Comparator,
-    ...(typeof requirement.ActionsGuarded === "string" && requirement.ActionsGuarded.trim() ? { ActionsGuarded: requirement.ActionsGuarded } : {}),
+    ...(typeof requirement.ActionsGuarded === "string" &&
+    requirement.ActionsGuarded.trim()
+      ? { ActionsGuarded: requirement.ActionsGuarded }
+      : {}),
     ...(integerValues ? { IntegerValues: integerValues } : {}),
     ...(localeValues ? { LocaleValues: localeValues } : {}),
-    ...(typeof requirement.RequiredToPreview === "boolean" ? { RequiredToPreview: requirement.RequiredToPreview } : {})
+    ...(typeof requirement.RequiredToPreview === "boolean"
+      ? { RequiredToPreview: requirement.RequiredToPreview }
+      : {})
   };
 }
 
 function parseLocaleValues(values: unknown[], requirementIndex: number) {
   return values.map((item, localeIndex) => {
     if (!item || typeof item !== "object" || Array.isArray(item)) {
-      throw new Error(`MTURK_QUALIFICATION_REQUIREMENTS_JSON[${requirementIndex}].LocaleValues[${localeIndex}] must be an object`);
+      throw new Error(
+        `MTURK_QUALIFICATION_REQUIREMENTS_JSON[${requirementIndex}].LocaleValues[${localeIndex}] must be an object`
+      );
     }
     const locale = item as Record<string, unknown>;
     const parsed = {
-      ...(typeof locale.Country === "string" && locale.Country.trim() ? { Country: locale.Country } : {}),
-      ...(typeof locale.Subdivision === "string" && locale.Subdivision.trim() ? { Subdivision: locale.Subdivision } : {})
+      ...(typeof locale.Country === "string" && locale.Country.trim()
+        ? { Country: locale.Country }
+        : {}),
+      ...(typeof locale.Subdivision === "string" && locale.Subdivision.trim()
+        ? { Subdivision: locale.Subdivision }
+        : {})
     };
     if (!parsed.Country && !parsed.Subdivision) {
       throw new Error(
@@ -137,19 +182,47 @@ export function validateBridgeSafety(config: BridgeSafetyConfig): string[] {
   const errors: string[] = [];
   const reward = Number(config.reward);
   const spendPerHit = reward * config.maxAssignments;
-  const hasValidMaxAssignmentsPerHit = isPositiveNumber(config.maxAssignmentsPerHit);
+  const hasValidMaxAssignmentsPerHit = isPositiveNumber(
+    config.maxAssignmentsPerHit
+  );
   const hasValidMaxRewardUsd = isPositiveNumber(config.maxRewardUsd);
   const hasValidMaxSpendPerHitUsd = isPositiveNumber(config.maxSpendPerHitUsd);
-  const hasValidMinTaskDurationSeconds = isPositiveNumber(config.minTaskDurationSeconds);
-  const hasValidMinExpirationSeconds = isPositiveNumber(config.minExpirationSeconds);
-  const hasValidMinAutoApprovalDelaySeconds = isPositiveNumber(config.minAutoApprovalDelaySeconds);
+  const hasValidMinTaskDurationSeconds = isPositiveNumber(
+    config.minTaskDurationSeconds
+  );
+  const hasValidMinExpirationSeconds = isPositiveNumber(
+    config.minExpirationSeconds
+  );
+  const hasValidMinAutoApprovalDelaySeconds = isPositiveNumber(
+    config.minAutoApprovalDelaySeconds
+  );
 
-  addPositiveNumberError(errors, "MTURK_MAX_ASSIGNMENTS_PER_HIT", config.maxAssignmentsPerHit);
+  addPositiveNumberError(
+    errors,
+    "MTURK_MAX_ASSIGNMENTS_PER_HIT",
+    config.maxAssignmentsPerHit
+  );
   addPositiveNumberError(errors, "MTURK_MAX_REWARD_USD", config.maxRewardUsd);
-  addPositiveNumberError(errors, "MTURK_MAX_SPEND_PER_HIT_USD", config.maxSpendPerHitUsd);
-  addPositiveNumberError(errors, "MTURK_MIN_TASK_DURATION_SECONDS", config.minTaskDurationSeconds);
-  addPositiveNumberError(errors, "MTURK_MIN_EXPIRATION_SECONDS", config.minExpirationSeconds);
-  addPositiveNumberError(errors, "MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS", config.minAutoApprovalDelaySeconds);
+  addPositiveNumberError(
+    errors,
+    "MTURK_MAX_SPEND_PER_HIT_USD",
+    config.maxSpendPerHitUsd
+  );
+  addPositiveNumberError(
+    errors,
+    "MTURK_MIN_TASK_DURATION_SECONDS",
+    config.minTaskDurationSeconds
+  );
+  addPositiveNumberError(
+    errors,
+    "MTURK_MIN_EXPIRATION_SECONDS",
+    config.minExpirationSeconds
+  );
+  addPositiveNumberError(
+    errors,
+    "MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS",
+    config.minAutoApprovalDelaySeconds
+  );
 
   if (!Number.isFinite(reward) || reward <= 0) {
     errors.push("MTURK_REWARD must be a positive USD amount");
@@ -157,26 +230,48 @@ export function validateBridgeSafety(config: BridgeSafetyConfig): string[] {
   if (!Number.isInteger(config.maxAssignments) || config.maxAssignments < 1) {
     errors.push("MTURK_MAX_ASSIGNMENTS must be a positive integer");
   }
-  if (hasValidMaxAssignmentsPerHit && config.maxAssignments > config.maxAssignmentsPerHit) {
+  if (
+    hasValidMaxAssignmentsPerHit &&
+    config.maxAssignments > config.maxAssignmentsPerHit
+  ) {
     errors.push(
       `MTURK_MAX_ASSIGNMENTS ${config.maxAssignments} exceeds MTURK_MAX_ASSIGNMENTS_PER_HIT ${config.maxAssignmentsPerHit}`
     );
   }
   if (hasValidMaxRewardUsd && reward > config.maxRewardUsd) {
-    errors.push(`MTURK_REWARD ${config.reward} exceeds MTURK_MAX_REWARD_USD ${config.maxRewardUsd}`);
+    errors.push(
+      `MTURK_REWARD ${config.reward} exceeds MTURK_MAX_REWARD_USD ${config.maxRewardUsd}`
+    );
   }
-  if (hasValidMaxSpendPerHitUsd && Number.isFinite(spendPerHit) && spendPerHit > config.maxSpendPerHitUsd) {
-    errors.push(`Per-HIT spend ${spendPerHit.toFixed(2)} exceeds MTURK_MAX_SPEND_PER_HIT_USD ${config.maxSpendPerHitUsd}`);
+  if (
+    hasValidMaxSpendPerHitUsd &&
+    Number.isFinite(spendPerHit) &&
+    spendPerHit > config.maxSpendPerHitUsd
+  ) {
+    errors.push(
+      `Per-HIT spend ${spendPerHit.toFixed(2)} exceeds MTURK_MAX_SPEND_PER_HIT_USD ${config.maxSpendPerHitUsd}`
+    );
   }
-  if (hasValidMinTaskDurationSeconds && config.taskDurationSeconds < config.minTaskDurationSeconds) {
+  if (
+    hasValidMinTaskDurationSeconds &&
+    config.taskDurationSeconds < config.minTaskDurationSeconds
+  ) {
     errors.push(
       `MTURK_TASK_DURATION_SECONDS ${config.taskDurationSeconds} is below MTURK_MIN_TASK_DURATION_SECONDS ${config.minTaskDurationSeconds}`
     );
   }
-  if (hasValidMinExpirationSeconds && config.expirationSeconds < config.minExpirationSeconds) {
-    errors.push(`MTURK_EXPIRATION_SECONDS ${config.expirationSeconds} is below MTURK_MIN_EXPIRATION_SECONDS ${config.minExpirationSeconds}`);
+  if (
+    hasValidMinExpirationSeconds &&
+    config.expirationSeconds < config.minExpirationSeconds
+  ) {
+    errors.push(
+      `MTURK_EXPIRATION_SECONDS ${config.expirationSeconds} is below MTURK_MIN_EXPIRATION_SECONDS ${config.minExpirationSeconds}`
+    );
   }
-  if (hasValidMinAutoApprovalDelaySeconds && config.autoApprovalDelaySeconds < config.minAutoApprovalDelaySeconds) {
+  if (
+    hasValidMinAutoApprovalDelaySeconds &&
+    config.autoApprovalDelaySeconds < config.minAutoApprovalDelaySeconds
+  ) {
     errors.push(
       `MTURK_AUTO_APPROVAL_DELAY_SECONDS ${config.autoApprovalDelaySeconds} is below MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS ${config.minAutoApprovalDelaySeconds}`
     );
@@ -200,8 +295,11 @@ export function buildHtmlQuestion(input: {
   reviewTaskId: string;
   sandbox: boolean;
   taskTemplate: string;
+  visualEvidence?: BridgeVisualEvidence;
 }) {
-  const submitBase = input.sandbox ? "https://workersandbox.mturk.com" : "https://www.mturk.com";
+  const submitBase = input.sandbox
+    ? "https://workersandbox.mturk.com"
+    : "https://www.mturk.com";
   const criteriaMarkup = input.criterionIds
     .map(
       (criterionId, index) => `
@@ -229,8 +327,12 @@ export function buildHtmlQuestion(input: {
     <style>
       body { font-family: Arial, sans-serif; margin: 24px; line-height: 1.4; }
       fieldset { margin-bottom: 16px; }
+      figure { border: 1px solid #ccc; margin: 16px 0; padding: 12px; }
+      figcaption { color: #444; font-size: 14px; margin-top: 8px; }
+      img.visual-evidence { display: block; height: auto; max-width: 100%; }
       textarea { width: 100%; min-height: 120px; }
       .hint { color: #555; margin-bottom: 16px; }
+      .metadata { color: #555; font-size: 13px; }
       .criterion label, .stack label { display: block; margin: 8px 0; }
     </style>
     <script type="text/javascript" src="https://s3.amazonaws.com/mturk-public/externalHIT_v1.js"></script>
@@ -239,6 +341,7 @@ export function buildHtmlQuestion(input: {
     <h1>Observable UI Verification Review</h1>
     <p class="hint">Review task ${escapeHtml(input.reviewTaskId)}. Evaluate only observable UI evidence.</p>
     <p>${escapeHtml(input.taskTemplate)}</p>
+    ${renderVisualEvidence(input.visualEvidence)}
     <form name="mturk_form" method="post" id="mturk_form" action="${submitBase}/mturk/externalSubmit">
       <input type="hidden" id="assignmentId" name="assignmentId" value="" />
 
@@ -292,13 +395,37 @@ export function buildHtmlQuestion(input: {
 </HTMLQuestion>`.trim();
 }
 
+function renderVisualEvidence(evidence: BridgeVisualEvidence | undefined) {
+  if (!evidence) {
+    return "";
+  }
+
+  return `
+    <section aria-label="Visual evidence">
+      <h2>Visual evidence</h2>
+      <figure>
+        <img class="visual-evidence" src="${escapeAttribute(evidence.data_url)}" alt="${escapeAttribute(evidence.caption)}" />
+        <figcaption>${escapeHtml(evidence.caption)}</figcaption>
+      </figure>
+      <p class="metadata">
+        Artifact: ${escapeHtml(evidence.artifact_id)} |
+        Viewport: ${escapeHtml(evidence.viewport)} |
+        Hash: ${escapeHtml(evidence.content_hash)}
+      </p>
+    </section>
+  `;
+}
+
 export function parseAnswerXml(answerXml: string) {
   const answers = [...answerXml.matchAll(/<Answer>([\s\S]*?)<\/Answer>/g)];
   const fields = new Map<string, string>();
 
   for (const [, answerBlock] of answers) {
-    const identifier = answerBlock.match(/<QuestionIdentifier>([\s\S]*?)<\/QuestionIdentifier>/)?.[1]?.trim();
-    const freeText = answerBlock.match(/<FreeText>([\s\S]*?)<\/FreeText>/)?.[1]?.trim() ?? "";
+    const identifier = answerBlock
+      .match(/<QuestionIdentifier>([\s\S]*?)<\/QuestionIdentifier>/)?.[1]
+      ?.trim();
+    const freeText =
+      answerBlock.match(/<FreeText>([\s\S]*?)<\/FreeText>/)?.[1]?.trim() ?? "";
     if (identifier) {
       fields.set(identifier, decodeXml(freeText));
     }
@@ -320,7 +447,10 @@ export function normalizeAssignment(input: {
   return {
     criterion_results: input.criterionIds.map((criterionId, index) => ({
       criterion_id: criterionId,
-      confidence: (fields.get(`criterion_${index}_confidence`) ?? "medium") as "low" | "medium" | "high",
+      confidence: (fields.get(`criterion_${index}_confidence`) ?? "medium") as
+        | "low"
+        | "medium"
+        | "high",
       status: (fields.get(`criterion_${index}_status`) ?? "unclear") as
         | "pass"
         | "fail"
@@ -341,7 +471,12 @@ export function normalizeAssignment(input: {
     provider_task_id: input.providerTaskId,
     quality_flags: splitCsv(fields.get("quality_flags") ?? ""),
     reviewer_pseudonymous_id: input.workerId,
-    severity: (fields.get("severity") ?? "S3") as "S0" | "S1" | "S2" | "S3" | "S4"
+    severity: (fields.get("severity") ?? "S3") as
+      | "S0"
+      | "S1"
+      | "S2"
+      | "S3"
+      | "S4"
   };
 }
 
@@ -363,6 +498,10 @@ function radioGroup(name: string, values: string[]) {
       `
     )
     .join("\n");
+}
+
+function escapeAttribute(value: string) {
+  return escapeHtml(value).replace(/"/g, "&quot;");
 }
 
 function escapeHtml(value: string) {

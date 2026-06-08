@@ -8,6 +8,15 @@ export type BridgeDispatchBody = {
   reviewer_pool: string;
   sanitized_package_id: string;
   task_template: string;
+  visual_evidence?: BridgeVisualEvidence;
+};
+
+export type BridgeVisualEvidence = {
+  artifact_id: string;
+  caption: string;
+  content_hash: string;
+  data_url: string;
+  viewport: string;
 };
 
 export type BridgeTaskRecord = {
@@ -34,6 +43,7 @@ export type BridgeTaskRecord = {
   reviewerPool: string;
   sanitizedPackageId: string;
   taskTemplate: string;
+  visualEvidence?: BridgeVisualEvidence;
 };
 
 export type BridgeDeadLetterAssignment = {
@@ -128,7 +138,9 @@ export const emptyBridgeState = (): BridgeState => ({ tasks: {} });
 
 export function loadBridgeState(path: string): BridgeState {
   try {
-    const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<BridgeState>;
+    const parsed = JSON.parse(
+      readFileSync(path, "utf8")
+    ) as Partial<BridgeState>;
     return {
       tasks: parsed.tasks ?? {}
     };
@@ -155,8 +167,12 @@ export function mergeSaveBridgeState(path: string, state: BridgeState) {
 export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
   const tasks = Object.values(state.tasks).map((task) => ({
     approvedAssignmentCount: task.approvedAssignmentIds?.length ?? 0,
-    callbackAttemptedAssignmentCount: Object.keys(task.callbackAttempts ?? {}).length,
-    callbackAttemptTotal: Object.values(task.callbackAttempts ?? {}).reduce((total, attempts) => total + attempts, 0),
+    callbackAttemptedAssignmentCount: Object.keys(task.callbackAttempts ?? {})
+      .length,
+    callbackAttemptTotal: Object.values(task.callbackAttempts ?? {}).reduce(
+      (total, attempts) => total + attempts,
+      0
+    ),
     deadLetterCount: task.deadLetterAssignments?.length ?? 0,
     deliveredAssignmentCount: task.deliveredAssignmentIds.length,
     expiredAt: task.expiredAt,
@@ -187,11 +203,19 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
     deadLetters,
     tasks,
     totals: {
-      approvedAssignments: tasks.reduce((total, task) => total + task.approvedAssignmentCount, 0),
+      approvedAssignments: tasks.reduce(
+        (total, task) => total + task.approvedAssignmentCount,
+        0
+      ),
       deadLetters: deadLetters.length,
-      deliveredAssignments: tasks.reduce((total, task) => total + task.deliveredAssignmentCount, 0),
+      deliveredAssignments: tasks.reduce(
+        (total, task) => total + task.deliveredAssignmentCount,
+        0
+      ),
       expiredTasks: tasks.filter((task) => task.expiredAt).length,
-      qualificationRestrictedTasks: tasks.filter((task) => task.qualificationRequirementCount > 0).length,
+      qualificationRestrictedTasks: tasks.filter(
+        (task) => task.qualificationRequirementCount > 0
+      ).length,
       tasks: tasks.length
     }
   };
