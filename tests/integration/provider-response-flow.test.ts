@@ -26,7 +26,7 @@ describe("provider response flow", () => {
     await app.close();
   });
 
-  it("normalizes a provider callback and advances the existing consensus path", async () => {
+  it("normalizes a provider callback and advances through verdict feedback", async () => {
     const jobId = await createProviderEligibleJob(app);
     const taskResponse = await app.inject({
       method: "POST",
@@ -66,22 +66,28 @@ describe("provider response flow", () => {
       }
     });
 
-    const consensusResponse = await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/consensus`,
-      payload: {
-        artifact_sufficiency: "sufficient",
-        disagreement_level: "low",
-        quorum_state: "met",
-        recommended_outcome: "pass",
-        review_task_id: taskPayload.review_task_id,
-        severity_summary: "none",
-        valid_response_count: 1
-      }
+    const verdictResponse = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/verdict`
+    });
+    const feedbackResponse = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/feedback`
     });
 
     expect(callbackResponse.statusCode).toBe(202);
-    expect(consensusResponse.statusCode).toBe(202);
+    expect(callbackResponse.json()).toMatchObject({
+      adjudication_id: expect.stringMatching(/^adjudication_/),
+      consensus_id: expect.stringMatching(/^consensus_/)
+    });
+    expect(verdictResponse.json()).toMatchObject({
+      final_verdict: "pass",
+      human_consensus_summary: expect.stringContaining("real-provider")
+    });
+    expect(feedbackResponse.json()).toMatchObject({
+      final_verdict: "pass",
+      provider_response_ids: ["provider-response-flow"]
+    });
   });
 });
 

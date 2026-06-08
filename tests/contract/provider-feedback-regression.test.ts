@@ -66,30 +66,6 @@ describe("provider feedback regression", () => {
       }
     });
 
-    await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/consensus`,
-      payload: {
-        artifact_sufficiency: "sufficient",
-        disagreement_level: "high",
-        quorum_state: "met",
-        recommended_outcome: "unclear",
-        review_task_id: taskPayload.review_task_id,
-        severity_summary: "S2",
-        valid_response_count: 1,
-        adjudication_trigger: "provider_disagreement"
-      }
-    });
-
-    await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/adjudications`,
-      payload: {
-        decision: "retry",
-        trigger_reason: "provider_disagreement"
-      }
-    });
-
     const feedbackResponse = await app.inject({
       method: "GET",
       url: `/verification-jobs/${jobId}/feedback`
@@ -101,7 +77,7 @@ describe("provider feedback regression", () => {
       provider_ids: ["real-provider"],
       provider_response_ids: ["provider-feedback"],
       retry_allowed: true,
-      retry_reason: "provider_disagreement"
+      retry_reason: "provider_callback_auto_resolution"
     });
   });
 });

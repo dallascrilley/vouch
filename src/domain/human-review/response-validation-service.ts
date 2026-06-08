@@ -41,7 +41,9 @@ export class ResponseValidationService {
       });
 
       job.state = "human_responses_received";
+      reviewTask.state = "responses_received";
       await this.jobService.save(job);
+      await this.reviewTaskRepository.save(reviewTask);
       await this.responseRepository.save(response);
     });
   }
