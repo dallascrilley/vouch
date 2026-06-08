@@ -129,6 +129,7 @@ describe("verdict and feedback routes", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
+      agent_next_action: "pass",
       job_id: jobId,
       final_verdict: "pass",
       retry_allowed: false

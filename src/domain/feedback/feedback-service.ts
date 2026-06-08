@@ -1,6 +1,7 @@
 import type { AgentFeedbackSignal, FinalVerdict } from "./models.js";
 import type { AgentFeedbackRepository } from "../../adapters/storage/repositories.js";
 import type { VerificationJob } from "../jobs/models.js";
+import { deriveAgentNextActionFromVerdict } from "./agent-action.js";
 
 type FeedbackOptions = {
   budgetState?: string;
@@ -26,6 +27,7 @@ export class FeedbackService {
       feedbackId: `feedback_${job.jobId}`,
       jobId: job.jobId,
       finalVerdict: verdict.finalVerdict,
+      agentNextAction: deriveAgentNextActionFromVerdict(verdict.finalVerdict, options.retryAllowed),
       failedCriteria: verdict.criterionOutcomes
         .filter((criterion) => criterion.status === "fail" || criterion.status === "unclear")
         .map((criterion) => criterion.criterionId),
