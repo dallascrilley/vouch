@@ -9,6 +9,7 @@ import Fastify from "fastify";
 import {
   buildHtmlQuestion,
   loadBridgeState,
+  mergeSaveBridgeState,
   normalizeAssignment,
   normalizeMturkTimestamp,
   parseAssignmentApprovalPolicy,
@@ -163,7 +164,7 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
       sanitizedPackageId: request.body.sanitized_package_id,
       taskTemplate: request.body.task_template
     };
-    saveBridgeState(config.statePath, state);
+    mergeSaveBridgeState(config.statePath, state);
     app.log.info(
       {
         hitId,
