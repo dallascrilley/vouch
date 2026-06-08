@@ -31,6 +31,27 @@ describe("mturk bridge helpers", () => {
     expect(question).toContain("desktop-layout");
   });
 
+  it("renders embedded visual evidence in the HTMLQuestion payload", () => {
+    const question = buildHtmlQuestion({
+      criterionIds: ["hero-cta-no-overlap"],
+      reviewTaskId: "review_visual_123",
+      sandbox: true,
+      taskTemplate: "Check whether the CTA overlaps the headline.",
+      visualEvidence: {
+        artifact_id: "artifact_visual_123",
+        caption: "Desktop screenshot at 1440x900.",
+        content_hash: "sha256-demo",
+        data_url: "data:image/png;base64,abc123",
+        viewport: "1440x900"
+      }
+    });
+
+    expect(question).toContain("Visual evidence");
+    expect(question).toContain("data:image/png;base64,abc123");
+    expect(question).toContain("artifact_visual_123");
+    expect(question).toContain("1440x900");
+  });
+
   it("parses MTurk answer xml into broker callback shape", () => {
     const answerXml = `
       <QuestionFormAnswers>
@@ -168,7 +189,10 @@ describe("mturk bridge helpers", () => {
         }
       });
 
-      expect(Object.keys(loadBridgeState(statePath).tasks).sort()).toEqual(["hit_existing", "hit_new"]);
+      expect(Object.keys(loadBridgeState(statePath).tasks).sort()).toEqual([
+        "hit_existing",
+        "hit_new"
+      ]);
     } finally {
       rmSync(tempDir, { force: true, recursive: true });
     }
@@ -279,15 +303,21 @@ describe("mturk bridge helpers", () => {
   it("parses the assignment approval policy", () => {
     expect(parseAssignmentApprovalPolicy(undefined)).toBe("manual");
     expect(parseAssignmentApprovalPolicy("manual")).toBe("manual");
-    expect(parseAssignmentApprovalPolicy("approve_on_callback_success")).toBe("approve_on_callback_success");
+    expect(parseAssignmentApprovalPolicy("approve_on_callback_success")).toBe(
+      "approve_on_callback_success"
+    );
     expect(() => parseAssignmentApprovalPolicy("always")).toThrow(
       'MTURK_ASSIGNMENT_APPROVAL_POLICY must be "manual" or "approve_on_callback_success"'
     );
   });
 
   it("normalizes MTurk timestamps from AWS CLI output", () => {
-    expect(normalizeMturkTimestamp(1780966968)?.toISOString()).toBe("2026-06-09T01:02:48.000Z");
-    expect(normalizeMturkTimestamp("2026-06-09T01:02:48.000Z")?.toISOString()).toBe("2026-06-09T01:02:48.000Z");
+    expect(normalizeMturkTimestamp(1780966968)?.toISOString()).toBe(
+      "2026-06-09T01:02:48.000Z"
+    );
+    expect(
+      normalizeMturkTimestamp("2026-06-09T01:02:48.000Z")?.toISOString()
+    ).toBe("2026-06-09T01:02:48.000Z");
     expect(normalizeMturkTimestamp("")).toBeUndefined();
     expect(normalizeMturkTimestamp(Number.NaN)).toBeUndefined();
   });
@@ -328,13 +358,21 @@ describe("mturk bridge helpers", () => {
   });
 
   it("rejects invalid MTurk qualification requirements", () => {
-    expect(() => parseQualificationRequirements("{}")).toThrow("must be a JSON array");
-    expect(() => parseQualificationRequirements('[{"Comparator":"Exists"}]')).toThrow("QualificationTypeId must be a non-empty string");
+    expect(() => parseQualificationRequirements("{}")).toThrow(
+      "must be a JSON array"
+    );
     expect(() =>
-      parseQualificationRequirements('[{"QualificationTypeId":"abc","Comparator":"GreaterThan","IntegerValues":["not-a-number"]}]')
+      parseQualificationRequirements('[{"Comparator":"Exists"}]')
+    ).toThrow("QualificationTypeId must be a non-empty string");
+    expect(() =>
+      parseQualificationRequirements(
+        '[{"QualificationTypeId":"abc","Comparator":"GreaterThan","IntegerValues":["not-a-number"]}]'
+      )
     ).toThrow("IntegerValues must contain only integers");
     expect(() =>
-      parseQualificationRequirements('[{"QualificationTypeId":"abc","Comparator":"In","LocaleValues":[{}]}]')
+      parseQualificationRequirements(
+        '[{"QualificationTypeId":"abc","Comparator":"In","LocaleValues":[{}]}]'
+      )
     ).toThrow("LocaleValues[0] must include Country or Subdivision");
   });
 

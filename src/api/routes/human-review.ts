@@ -1,8 +1,16 @@
 import type { FastifyInstance } from "fastify";
 
 import { localQueueJobNames } from "../../adapters/queue/local-queue.js";
-import type { AdjudicationDecision, ConsensusOutcome, DisagreementLevel, QuorumState } from "../../domain/consensus/models.js";
-import type { HumanReviewVerdict, Severity } from "../../domain/human-review/models.js";
+import type {
+  AdjudicationDecision,
+  ConsensusOutcome,
+  DisagreementLevel,
+  QuorumState
+} from "../../domain/consensus/models.js";
+import type {
+  HumanReviewVerdict,
+  Severity
+} from "../../domain/human-review/models.js";
 import { shouldFallbackProvider } from "../../domain/human-review/provider-routing-policy.js";
 import type { ReviewerPoolType } from "../../domain/shared/types.js";
 
@@ -14,6 +22,13 @@ type HumanReviewTaskBody = {
   reviewer_pool: ReviewerPoolType;
   sanitized_package_id: string;
   task_template: string;
+  visual_evidence?: {
+    artifact_id: string;
+    caption: string;
+    content_hash: string;
+    data_url: string;
+    viewport: string;
+  };
 };
 
 type HumanResponseBody = {
@@ -63,7 +78,16 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
           qualityPolicy: request.body.quality_policy,
           reviewerPool: request.body.reviewer_pool,
           sanitizedPackageId: request.body.sanitized_package_id,
-          taskTemplate: request.body.task_template
+          taskTemplate: request.body.task_template,
+          visualEvidence: request.body.visual_evidence
+            ? {
+                artifactId: request.body.visual_evidence.artifact_id,
+                caption: request.body.visual_evidence.caption,
+                contentHash: request.body.visual_evidence.content_hash,
+                dataUrl: request.body.visual_evidence.data_url,
+                viewport: request.body.visual_evidence.viewport
+              }
+            : undefined
         });
 
         let providerTaskId: string | undefined;
@@ -83,8 +107,12 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
             preferredProviderId: app.services.providerConfig.providerId
           });
 
-          if (!fallbackDecision.fallback && app.services.providerDispatchWorker) {
-            const dispatchResult = await app.services.providerDispatchWorker.dispatch(reviewTask);
+          if (
+            !fallbackDecision.fallback &&
+            app.services.providerDispatchWorker
+          ) {
+            const dispatchResult =
+              await app.services.providerDispatchWorker.dispatch(reviewTask);
             reviewTask.providerTaskRef = dispatchResult.providerTaskId;
             reviewTask.state = "dispatched";
             await app.services.humanReviewTaskService.save(reviewTask);
@@ -116,7 +144,10 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
         });
       } catch (error) {
         return reply.code(403).send({
-          message: error instanceof Error ? error.message : "Human review task rejected"
+          message:
+            error instanceof Error
+              ? error.message
+              : "Human review task rejected"
         });
       }
     }
@@ -146,10 +177,15 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
           submittedAt: new Date()
         });
 
-        return reply.code(202).send({ review_task_id: request.params.reviewTaskId });
+        return reply
+          .code(202)
+          .send({ review_task_id: request.params.reviewTaskId });
       } catch (error) {
         return reply.code(422).send({
-          message: error instanceof Error ? error.message : "Invalid human review response"
+          message:
+            error instanceof Error
+              ? error.message
+              : "Invalid human review response"
         });
       }
     }
@@ -178,7 +214,8 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
         return reply.code(202).send({ consensus_id: consensusId });
       } catch (error) {
         return reply.code(400).send({
-          message: error instanceof Error ? error.message : "Invalid consensus result"
+          message:
+            error instanceof Error ? error.message : "Invalid consensus result"
         });
       }
     }
@@ -204,7 +241,8 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
         return reply.code(202).send({ adjudication_id: adjudicationId });
       } catch (error) {
         return reply.code(400).send({
-          message: error instanceof Error ? error.message : "Invalid adjudication case"
+          message:
+            error instanceof Error ? error.message : "Invalid adjudication case"
         });
       }
     }

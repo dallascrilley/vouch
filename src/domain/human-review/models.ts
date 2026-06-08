@@ -1,4 +1,8 @@
-import type { ConfidenceLevel, Identifier, ReviewerPoolType } from "../shared/types.js";
+import type {
+  ConfidenceLevel,
+  Identifier,
+  ReviewerPoolType
+} from "../shared/types.js";
 import type { CriterionResult } from "../self-verification/models.js";
 
 export type HumanReviewTaskState =
@@ -21,6 +25,15 @@ export type HumanReviewTask = {
   providerAdapter?: string;
   providerTaskRef?: string;
   state: HumanReviewTaskState;
+  visualEvidence?: VisualEvidence;
+};
+
+export type VisualEvidence = {
+  artifactId: Identifier;
+  caption: string;
+  contentHash: string;
+  dataUrl: string;
+  viewport: string;
 };
 
 export type ProviderDispatchMode = "api" | "mock";
@@ -88,7 +101,11 @@ export type LocalProviderValidationProfile = {
   expectedIngestionEvidence: string[];
 };
 
-export type HumanReviewVerdict = "pass" | "fail" | "unclear" | "artifact_insufficient";
+export type HumanReviewVerdict =
+  | "pass"
+  | "fail"
+  | "unclear"
+  | "artifact_insufficient";
 
 export type Severity = "S0" | "S1" | "S2" | "S3" | "S4";
 

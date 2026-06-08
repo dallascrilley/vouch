@@ -22,7 +22,8 @@ import {
 import { deliverProviderCallback } from "./lib/provider-bridge.js";
 
 const execFileAsync = promisify(execFile);
-const sandboxEndpoint = "https://mturk-requester-sandbox.us-east-1.amazonaws.com";
+const sandboxEndpoint =
+  "https://mturk-requester-sandbox.us-east-1.amazonaws.com";
 
 function requireEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -35,9 +36,15 @@ function requireEnv(name: string) {
 const config = {
   awsEndpointUrl: process.env.MTURK_AWS_ENDPOINT_URL ?? sandboxEndpoint,
   awsRegion: process.env.MTURK_AWS_REGION ?? "us-east-1",
-  assignmentApprovalPolicy: parseAssignmentApprovalPolicy(process.env.MTURK_ASSIGNMENT_APPROVAL_POLICY),
-  autoApprovalDelaySeconds: Number(process.env.MTURK_AUTO_APPROVAL_DELAY_SECONDS ?? 259200),
-  brokerCallbackUrl: process.env.MTURK_BROKER_CALLBACK_URL ?? "http://127.0.0.1:3000/provider-callback",
+  assignmentApprovalPolicy: parseAssignmentApprovalPolicy(
+    process.env.MTURK_ASSIGNMENT_APPROVAL_POLICY
+  ),
+  autoApprovalDelaySeconds: Number(
+    process.env.MTURK_AUTO_APPROVAL_DELAY_SECONDS ?? 259200
+  ),
+  brokerCallbackUrl:
+    process.env.MTURK_BROKER_CALLBACK_URL ??
+    "http://127.0.0.1:3000/provider-callback",
   bridgeApiKey: requireEnv("MTURK_BRIDGE_API_KEY"),
   expirationSeconds: Number(process.env.MTURK_EXPIRATION_SECONDS ?? 86400),
   maxCallbackAttempts: Number(process.env.MTURK_MAX_CALLBACK_ATTEMPTS ?? 3),
@@ -45,23 +52,32 @@ const config = {
   maxAssignmentsPerHit: Number(process.env.MTURK_MAX_ASSIGNMENTS_PER_HIT ?? 3),
   maxRewardUsd: Number(process.env.MTURK_MAX_REWARD_USD ?? 1),
   maxSpendPerHitUsd: Number(process.env.MTURK_MAX_SPEND_PER_HIT_USD ?? 3),
-  minAutoApprovalDelaySeconds: Number(process.env.MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS ?? 86400),
+  minAutoApprovalDelaySeconds: Number(
+    process.env.MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS ?? 86400
+  ),
   minExpirationSeconds: Number(process.env.MTURK_MIN_EXPIRATION_SECONDS ?? 300),
-  minTaskDurationSeconds: Number(process.env.MTURK_MIN_TASK_DURATION_SECONDS ?? 60),
+  minTaskDurationSeconds: Number(
+    process.env.MTURK_MIN_TASK_DURATION_SECONDS ?? 60
+  ),
   pollIntervalMs: Number(process.env.MTURK_POLL_INTERVAL_MS ?? 15000),
   port: Number(process.env.MTURK_BRIDGE_PORT ?? 3100),
   providerId: process.env.MTURK_PROVIDER_ID ?? "real-provider",
-  qualificationRequirements: parseQualificationRequirements(process.env.MTURK_QUALIFICATION_REQUIREMENTS_JSON),
+  qualificationRequirements: parseQualificationRequirements(
+    process.env.MTURK_QUALIFICATION_REQUIREMENTS_JSON
+  ),
   reward: process.env.MTURK_REWARD ?? "0.05",
   sharedSecret: requireEnv("PROVIDER_SHARED_SECRET"),
-  statePath: process.env.MTURK_BRIDGE_STATE_PATH ?? ".runtime/mturk-bridge-state.json",
+  statePath:
+    process.env.MTURK_BRIDGE_STATE_PATH ?? ".runtime/mturk-bridge-state.json",
   taskDurationSeconds: Number(process.env.MTURK_TASK_DURATION_SECONDS ?? 900),
   titlePrefix: process.env.MTURK_TITLE_PREFIX ?? "AI Broker UI Verification"
 };
 
 const safetyErrors = validateBridgeSafety(config);
 if (safetyErrors.length > 0) {
-  throw new Error(`Unsafe MTurk bridge configuration: ${safetyErrors.join("; ")}`);
+  throw new Error(
+    `Unsafe MTurk bridge configuration: ${safetyErrors.join("; ")}`
+  );
 }
 
 function isAuthorized(authorization: string | undefined) {
@@ -85,7 +101,10 @@ app.get("/dead-letters", (request, reply) => {
     return reply.code(401).send({ message: "Invalid bridge authorization" });
   }
 
-  return { dead_letters: summarizeBridgeState(loadBridgeState(config.statePath)).deadLetters };
+  return {
+    dead_letters: summarizeBridgeState(loadBridgeState(config.statePath))
+      .deadLetters
+  };
 });
 
 app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
@@ -97,7 +116,8 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
     criterionIds: request.body.criterion_ids,
     reviewTaskId: request.body.review_task_id,
     sandbox: config.awsEndpointUrl === sandboxEndpoint,
-    taskTemplate: request.body.task_template
+    taskTemplate: request.body.task_template,
+    visualEvidence: request.body.visual_evidence
   });
 
   const tempDir = mkdtempSync(join(tmpdir(), "mturk-bridge-"));
@@ -137,7 +157,10 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
       "json"
     ];
     if (config.qualificationRequirements.length > 0) {
-      args.push("--qualification-requirements", JSON.stringify(config.qualificationRequirements));
+      args.push(
+        "--qualification-requirements",
+        JSON.stringify(config.qualificationRequirements)
+      );
     }
     const { stdout } = await execFileAsync("aws", args, {
       env: process.env
@@ -162,7 +185,8 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
       reviewTaskId: request.body.review_task_id,
       reviewerPool: request.body.reviewer_pool,
       sanitizedPackageId: request.body.sanitized_package_id,
-      taskTemplate: request.body.task_template
+      taskTemplate: request.body.task_template,
+      visualEvidence: request.body.visual_evidence
     };
     mergeSaveBridgeState(config.statePath, state);
     app.log.info(
@@ -221,12 +245,20 @@ async function pollAssignments() {
       );
 
       const payload = JSON.parse(stdout) as {
-        Assignments?: Array<{ Answer?: string; AssignmentId: string; WorkerId: string }>;
+        Assignments?: Array<{
+          Answer?: string;
+          AssignmentId: string;
+          WorkerId: string;
+        }>;
       };
       const assignments = payload.Assignments ?? [];
 
       app.log.info(
-        { assignmentCount: assignments.length, hitId, reviewTaskId: task.reviewTaskId },
+        {
+          assignmentCount: assignments.length,
+          hitId,
+          reviewTaskId: task.reviewTaskId
+        },
         "mturk bridge polled assignments"
       );
 
@@ -236,7 +268,12 @@ async function pollAssignments() {
             config.assignmentApprovalPolicy === "approve_on_callback_success" &&
             !task.approvedAssignmentIds.includes(assignment.AssignmentId)
           ) {
-            await approveAssignmentAfterCallback({ assignment, hitId, state, task });
+            await approveAssignmentAfterCallback({
+              assignment,
+              hitId,
+              state,
+              task
+            });
           }
 
           app.log.info(
@@ -252,7 +289,11 @@ async function pollAssignments() {
           continue;
         }
 
-        if (task.deadLetterAssignments.some((deadLetter) => deadLetter.assignmentId === assignment.AssignmentId)) {
+        if (
+          task.deadLetterAssignments.some(
+            (deadLetter) => deadLetter.assignmentId === assignment.AssignmentId
+          )
+        ) {
           continue;
         }
 
@@ -268,7 +309,10 @@ async function pollAssignments() {
         recordedAt: new Date().toISOString()
       };
       saveBridgeState(config.statePath, state);
-      app.log.error({ err: error, hitId, reviewTaskId: task.reviewTaskId }, "mturk bridge hit polling failed");
+      app.log.error(
+        { err: error, hitId, reviewTaskId: task.reviewTaskId },
+        "mturk bridge hit polling failed"
+      );
     }
   }
 }
@@ -341,7 +385,10 @@ async function refreshHitStatus(input: {
       recordedAt: new Date().toISOString()
     };
     saveBridgeState(config.statePath, state);
-    app.log.error({ err: error, hitId, reviewTaskId: task.reviewTaskId }, "mturk bridge hit status refresh failed");
+    app.log.error(
+      { err: error, hitId, reviewTaskId: task.reviewTaskId },
+      "mturk bridge hit status refresh failed"
+    );
   }
 }
 
@@ -352,7 +399,8 @@ async function deliverAssignment(input: {
   task: ReturnType<typeof loadBridgeState>["tasks"][string];
 }) {
   const { assignment, hitId, state, task } = input;
-  const nextAttempt = (task.callbackAttempts?.[assignment.AssignmentId] ?? 0) + 1;
+  const nextAttempt =
+    (task.callbackAttempts?.[assignment.AssignmentId] ?? 0) + 1;
 
   app.log.info(
     {
@@ -394,7 +442,10 @@ async function deliverAssignment(input: {
       workerId: assignment.WorkerId
     };
     if (delivery.deadLettered) {
-      app.log.error(logContext, "mturk bridge dead-lettered assignment callback");
+      app.log.error(
+        logContext,
+        "mturk bridge dead-lettered assignment callback"
+      );
     } else {
       app.log.warn(logContext, "mturk bridge callback delivery failed");
     }
