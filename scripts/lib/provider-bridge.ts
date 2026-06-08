@@ -1,0 +1,237 @@
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+
+export type BridgeDispatchBody = {
+  callback_url?: string;
+  criterion_ids: string[];
+  review_task_id: string;
+  reviewer_pool: string;
+  sanitized_package_id: string;
+  task_template: string;
+};
+
+export type BridgeTaskRecord = {
+  approvedAssignmentIds?: string[];
+  callbackAttempts?: Record<string, number>;
+  createdAt: string;
+  deadLetterAssignments?: BridgeDeadLetterAssignment[];
+  criterionIds: string[];
+  deliveredAssignmentIds: string[];
+  expiredAt?: string;
+  hitId: string;
+  hitExpirationAt?: string;
+  hitReviewStatus?: string;
+  hitStatus?: string;
+  lastApprovalAt?: string;
+  lastApprovalError?: BridgeTaskError;
+  lastDeliveryAt?: string;
+  lastError?: BridgeTaskError;
+  lastHitStatusAt?: string;
+  lastHitStatusError?: BridgeTaskError;
+  lastPollAt?: string;
+  qualificationRequirements?: unknown[];
+  reviewTaskId: string;
+  reviewerPool: string;
+  sanitizedPackageId: string;
+  taskTemplate: string;
+};
+
+export type BridgeDeadLetterAssignment = {
+  assignmentId: string;
+  attempts: number;
+  reason: string;
+  recordedAt: string;
+  workerId?: string;
+};
+
+export type BridgeTaskError = {
+  assignmentId?: string;
+  message: string;
+  recordedAt: string;
+};
+
+export type BridgeState = {
+  tasks: Record<string, BridgeTaskRecord>;
+};
+
+export type BridgeStateSummary = {
+  deadLetters: Array<
+    BridgeDeadLetterAssignment & {
+      hitId: string;
+      reviewTaskId: string;
+    }
+  >;
+  tasks: Array<{
+    approvedAssignmentCount: number;
+    callbackAttemptedAssignmentCount: number;
+    callbackAttemptTotal: number;
+    deadLetterCount: number;
+    deliveredAssignmentCount: number;
+    expiredAt?: string;
+    hitId: string;
+    hitExpirationAt?: string;
+    hitReviewStatus?: string;
+    hitStatus?: string;
+    lastApprovalAt?: string;
+    lastApprovalError?: BridgeTaskError;
+    lastDeliveryAt?: string;
+    lastError?: BridgeTaskError;
+    lastHitStatusAt?: string;
+    lastHitStatusError?: BridgeTaskError;
+    lastPollAt?: string;
+    qualificationRequirementCount: number;
+    reviewTaskId: string;
+    reviewerPool: string;
+  }>;
+  totals: {
+    approvedAssignments: number;
+    deadLetters: number;
+    deliveredAssignments: number;
+    expiredTasks: number;
+    qualificationRestrictedTasks: number;
+    tasks: number;
+  };
+};
+
+export type ProviderBridgeCallbackPayload = Record<string, unknown> & {
+  provider_id: string;
+  provider_response_id: string;
+  provider_task_id: string;
+};
+
+export type DeliverProviderCallbackResult =
+  | {
+      attempts: number;
+      delivered: true;
+    }
+  | {
+      attempts: number;
+      deadLettered: boolean;
+      delivered: false;
+      reason: string;
+    };
+
+export const emptyBridgeState = (): BridgeState => ({ tasks: {} });
+
+export function loadBridgeState(path: string): BridgeState {
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8")) as Partial<BridgeState>;
+    return {
+      tasks: parsed.tasks ?? {}
+    };
+  } catch {
+    return emptyBridgeState();
+  }
+}
+
+export function saveBridgeState(path: string, state: BridgeState) {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify(state, null, 2));
+}
+
+export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
+  const tasks = Object.values(state.tasks).map((task) => ({
+    approvedAssignmentCount: task.approvedAssignmentIds?.length ?? 0,
+    callbackAttemptedAssignmentCount: Object.keys(task.callbackAttempts ?? {}).length,
+    callbackAttemptTotal: Object.values(task.callbackAttempts ?? {}).reduce((total, attempts) => total + attempts, 0),
+    deadLetterCount: task.deadLetterAssignments?.length ?? 0,
+    deliveredAssignmentCount: task.deliveredAssignmentIds.length,
+    expiredAt: task.expiredAt,
+    hitId: task.hitId,
+    hitExpirationAt: task.hitExpirationAt,
+    hitReviewStatus: task.hitReviewStatus,
+    hitStatus: task.hitStatus,
+    lastApprovalAt: task.lastApprovalAt,
+    lastApprovalError: task.lastApprovalError,
+    lastDeliveryAt: task.lastDeliveryAt,
+    lastError: task.lastError,
+    lastHitStatusAt: task.lastHitStatusAt,
+    lastHitStatusError: task.lastHitStatusError,
+    lastPollAt: task.lastPollAt,
+    qualificationRequirementCount: task.qualificationRequirements?.length ?? 0,
+    reviewTaskId: task.reviewTaskId,
+    reviewerPool: task.reviewerPool
+  }));
+  const deadLetters = Object.values(state.tasks).flatMap((task) =>
+    (task.deadLetterAssignments ?? []).map((deadLetter) => ({
+      ...deadLetter,
+      hitId: task.hitId,
+      reviewTaskId: task.reviewTaskId
+    }))
+  );
+
+  return {
+    deadLetters,
+    tasks,
+    totals: {
+      approvedAssignments: tasks.reduce((total, task) => total + task.approvedAssignmentCount, 0),
+      deadLetters: deadLetters.length,
+      deliveredAssignments: tasks.reduce((total, task) => total + task.deliveredAssignmentCount, 0),
+      expiredTasks: tasks.filter((task) => task.expiredAt).length,
+      qualificationRestrictedTasks: tasks.filter((task) => task.qualificationRequirementCount > 0).length,
+      tasks: tasks.length
+    }
+  };
+}
+
+export async function deliverProviderCallback(input: {
+  brokerCallbackUrl: string;
+  fetchImpl?: typeof fetch;
+  maxCallbackAttempts: number;
+  now?: () => Date;
+  payload: ProviderBridgeCallbackPayload;
+  responseId: string;
+  save: () => void;
+  sharedSecret: string;
+  task: BridgeTaskRecord;
+  workerId?: string;
+}): Promise<DeliverProviderCallbackResult> {
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const now = input.now ?? (() => new Date());
+  const attempts = (input.task.callbackAttempts?.[input.responseId] ?? 0) + 1;
+  input.task.callbackAttempts = {
+    ...input.task.callbackAttempts,
+    [input.responseId]: attempts
+  };
+  input.save();
+
+  const response = await fetchImpl(input.brokerCallbackUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      ...input.payload,
+      shared_secret: input.sharedSecret
+    })
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    const reason = `Broker callback failed: ${response.status} ${message}`;
+    input.task.lastError = {
+      assignmentId: input.responseId,
+      message: reason,
+      recordedAt: now().toISOString()
+    };
+
+    const deadLettered = attempts >= input.maxCallbackAttempts;
+    if (deadLettered) {
+      input.task.deadLetterAssignments ??= [];
+      input.task.deadLetterAssignments.push({
+        assignmentId: input.responseId,
+        attempts,
+        reason,
+        recordedAt: now().toISOString(),
+        workerId: input.workerId
+      });
+    }
+    input.save();
+    return { attempts, deadLettered, delivered: false, reason };
+  }
+
+  input.task.deliveredAssignmentIds.push(input.responseId);
+  input.task.lastDeliveryAt = now().toISOString();
+  delete input.task.lastError;
+  input.save();
+
+  return { attempts, delivered: true };
+}

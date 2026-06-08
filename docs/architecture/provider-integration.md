@@ -15,3 +15,32 @@ intact and adds a narrow managed-provider lane:
 The callback path deliberately feeds the same `ResponseValidationService`,
 `ConsensusService`, `AdjudicationService`, and feedback endpoints already used
 by the rest of the runtime.
+
+## Provider Bridge Contract
+
+Provider bridges are intentionally outside broker core. The broker dispatches a
+review task to a bridge over HTTP, and the bridge is responsible for provider
+task creation, provider polling or webhook handling, and normalizing returned
+provider answers into the broker callback payload.
+
+Shared bridge behavior lives in `scripts/lib/provider-bridge.ts`:
+
+- persisted task mapping state
+- callback attempt counting
+- broker callback delivery
+- receipt dedupe via delivered response IDs
+- dead-letter recording after bounded retries
+- operator state summaries
+
+Provider-specific bridge behavior remains isolated to adapter scripts such as
+`scripts/mturk-bridge.ts`:
+
+- provider task creation API
+- provider answer parsing
+- provider status/expiration refresh
+- provider-specific approval or qualification controls
+
+The broker core should not need provider-specific branching for MTurk versus a
+similar provider. A new provider must normalize its response into the callback
+schema and can reuse the common bridge delivery helper for the retry/dedupe
+state machine.
