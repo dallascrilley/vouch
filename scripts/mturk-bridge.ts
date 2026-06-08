@@ -32,6 +32,7 @@ const config = {
   brokerCallbackUrl: process.env.MTURK_BROKER_CALLBACK_URL ?? "http://127.0.0.1:3000/provider-callback",
   bridgeApiKey: requireEnv("MTURK_BRIDGE_API_KEY"),
   expirationSeconds: Number(process.env.MTURK_EXPIRATION_SECONDS ?? 86400),
+  maxCallbackAttempts: Number(process.env.MTURK_MAX_CALLBACK_ATTEMPTS ?? 3),
   maxAssignments: Number(process.env.MTURK_MAX_ASSIGNMENTS ?? 1),
   pollIntervalMs: Number(process.env.MTURK_POLL_INTERVAL_MS ?? 15000),
   port: Number(process.env.MTURK_BRIDGE_PORT ?? 3100),
@@ -109,6 +110,8 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
     state.tasks[hitId] = {
       createdAt: new Date().toISOString(),
       criterionIds: request.body.criterion_ids,
+      callbackAttempts: {},
+      deadLetterAssignments: [],
       deliveredAssignmentIds: [],
       hitId,
       reviewTaskId: request.body.review_task_id,
@@ -133,64 +136,179 @@ async function pollAssignments() {
 
   for (const hitId of hitIds) {
     const task = state.tasks[hitId];
-    const { stdout } = await execFileAsync(
-      "aws",
-      [
-        "mturk",
-        "list-assignments-for-hit",
-        "--endpoint-url",
-        config.awsEndpointUrl,
-        "--region",
-        config.awsRegion,
-        "--hit-id",
-        hitId,
-        "--assignment-statuses",
-        "Submitted",
-        "Approved",
-        "Rejected",
-        "--output",
-        "json"
-      ],
-      { env: process.env }
-    );
+    task.callbackAttempts ??= {};
+    task.deadLetterAssignments ??= [];
+    task.lastPollAt = new Date().toISOString();
+    saveBridgeState(config.statePath, state);
 
-    const payload = JSON.parse(stdout) as {
-      Assignments?: Array<{ Answer?: string; AssignmentId: string; WorkerId: string }>;
-    };
-    const assignments = payload.Assignments ?? [];
+    try {
+      const { stdout } = await execFileAsync(
+        "aws",
+        [
+          "mturk",
+          "list-assignments-for-hit",
+          "--endpoint-url",
+          config.awsEndpointUrl,
+          "--region",
+          config.awsRegion,
+          "--hit-id",
+          hitId,
+          "--assignment-statuses",
+          "Submitted",
+          "Approved",
+          "Rejected",
+          "--output",
+          "json"
+        ],
+        { env: process.env }
+      );
 
-    for (const assignment of assignments) {
-      if (task.deliveredAssignmentIds.includes(assignment.AssignmentId) || !assignment.Answer) {
-        continue;
+      const payload = JSON.parse(stdout) as {
+        Assignments?: Array<{ Answer?: string; AssignmentId: string; WorkerId: string }>;
+      };
+      const assignments = payload.Assignments ?? [];
+
+      app.log.info(
+        { assignmentCount: assignments.length, hitId, reviewTaskId: task.reviewTaskId },
+        "mturk bridge polled assignments"
+      );
+
+      for (const assignment of assignments) {
+        if (task.deliveredAssignmentIds.includes(assignment.AssignmentId)) {
+          app.log.info(
+            {
+              assignmentId: assignment.AssignmentId,
+              hitId,
+              reviewTaskId: task.reviewTaskId,
+              workerId: assignment.WorkerId
+            },
+            "mturk bridge skipped duplicate assignment"
+          );
+          continue;
+        }
+
+        if (task.deadLetterAssignments.some((deadLetter) => deadLetter.assignmentId === assignment.AssignmentId)) {
+          continue;
+        }
+
+        if (!assignment.Answer) {
+          continue;
+        }
+
+        await deliverAssignment({ assignment, hitId, state, task });
       }
-
-      const callbackPayload = normalizeAssignment({
-        answerXml: assignment.Answer,
-        assignmentId: assignment.AssignmentId,
-        criterionIds: task.criterionIds,
-        providerId: config.providerId,
-        providerTaskId: hitId,
-        workerId: assignment.WorkerId
-      });
-
-      const response = await fetch(config.brokerCallbackUrl, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          ...callbackPayload,
-          shared_secret: config.sharedSecret
-        })
-      });
-
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(`Broker callback failed for ${assignment.AssignmentId}: ${response.status} ${message}`);
-      }
-
-      task.deliveredAssignmentIds.push(assignment.AssignmentId);
+    } catch (error) {
+      task.lastError = {
+        message: error instanceof Error ? error.message : String(error),
+        recordedAt: new Date().toISOString()
+      };
       saveBridgeState(config.statePath, state);
+      app.log.error({ err: error, hitId, reviewTaskId: task.reviewTaskId }, "mturk bridge hit polling failed");
     }
   }
+}
+
+async function deliverAssignment(input: {
+  assignment: { Answer?: string; AssignmentId: string; WorkerId: string };
+  hitId: string;
+  state: ReturnType<typeof loadBridgeState>;
+  task: ReturnType<typeof loadBridgeState>["tasks"][string];
+}) {
+  const { assignment, hitId, state, task } = input;
+  const attempts = (task.callbackAttempts?.[assignment.AssignmentId] ?? 0) + 1;
+  task.callbackAttempts = {
+    ...task.callbackAttempts,
+    [assignment.AssignmentId]: attempts
+  };
+  saveBridgeState(config.statePath, state);
+
+  app.log.info(
+    {
+      assignmentId: assignment.AssignmentId,
+      attempt: attempts,
+      hitId,
+      reviewTaskId: task.reviewTaskId,
+      workerId: assignment.WorkerId
+    },
+    "mturk bridge delivering assignment callback"
+  );
+
+  const callbackPayload = normalizeAssignment({
+    answerXml: assignment.Answer ?? "",
+    assignmentId: assignment.AssignmentId,
+    criterionIds: task.criterionIds,
+    providerId: config.providerId,
+    providerTaskId: hitId,
+    workerId: assignment.WorkerId
+  });
+
+  const response = await fetch(config.brokerCallbackUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      ...callbackPayload,
+      shared_secret: config.sharedSecret
+    })
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    const reason = `Broker callback failed: ${response.status} ${message}`;
+    task.lastError = {
+      assignmentId: assignment.AssignmentId,
+      message: reason,
+      recordedAt: new Date().toISOString()
+    };
+
+    if (attempts >= config.maxCallbackAttempts) {
+      task.deadLetterAssignments ??= [];
+      task.deadLetterAssignments.push({
+        assignmentId: assignment.AssignmentId,
+        attempts,
+        reason,
+        recordedAt: new Date().toISOString(),
+        workerId: assignment.WorkerId
+      });
+      app.log.error(
+        {
+          assignmentId: assignment.AssignmentId,
+          attempts,
+          hitId,
+          reviewTaskId: task.reviewTaskId,
+          workerId: assignment.WorkerId
+        },
+        "mturk bridge dead-lettered assignment callback"
+      );
+    } else {
+      app.log.warn(
+        {
+          assignmentId: assignment.AssignmentId,
+          attempts,
+          hitId,
+          reviewTaskId: task.reviewTaskId,
+          workerId: assignment.WorkerId
+        },
+        "mturk bridge callback delivery failed"
+      );
+    }
+    saveBridgeState(config.statePath, state);
+    return;
+  }
+
+  task.deliveredAssignmentIds.push(assignment.AssignmentId);
+  task.lastDeliveryAt = new Date().toISOString();
+  delete task.lastError;
+  saveBridgeState(config.statePath, state);
+  app.log.info(
+    {
+      assignmentId: assignment.AssignmentId,
+      attempts,
+      hitId,
+      reviewTaskId: task.reviewTaskId,
+      workerId: assignment.WorkerId
+    },
+    "mturk bridge delivered assignment callback"
+  );
 }
 
 async function main() {

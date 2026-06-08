@@ -11,14 +11,33 @@ export type BridgeDispatchBody = {
 };
 
 export type BridgeTaskRecord = {
+  callbackAttempts?: Record<string, number>;
   createdAt: string;
+  deadLetterAssignments?: BridgeDeadLetterAssignment[];
   criterionIds: string[];
   deliveredAssignmentIds: string[];
   hitId: string;
+  lastDeliveryAt?: string;
+  lastError?: BridgeTaskError;
+  lastPollAt?: string;
   reviewTaskId: string;
   reviewerPool: string;
   sanitizedPackageId: string;
   taskTemplate: string;
+};
+
+export type BridgeDeadLetterAssignment = {
+  assignmentId: string;
+  attempts: number;
+  reason: string;
+  recordedAt: string;
+  workerId?: string;
+};
+
+export type BridgeTaskError = {
+  assignmentId?: string;
+  message: string;
+  recordedAt: string;
 };
 
 export type BridgeState = {
