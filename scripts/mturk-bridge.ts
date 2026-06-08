@@ -149,6 +149,7 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
       deadLetterAssignments: [],
       deliveredAssignmentIds: [],
       hitId,
+      lastHitStatusAt: new Date().toISOString(),
       reviewTaskId: request.body.review_task_id,
       reviewerPool: request.body.reviewer_pool,
       sanitizedPackageId: request.body.sanitized_package_id,
@@ -178,6 +179,8 @@ async function pollAssignments() {
     saveBridgeState(config.statePath, state);
 
     try {
+      await refreshHitStatus({ hitId, state, task });
+
       const { stdout } = await execFileAsync(
         "aws",
         [
@@ -249,6 +252,73 @@ async function pollAssignments() {
       saveBridgeState(config.statePath, state);
       app.log.error({ err: error, hitId, reviewTaskId: task.reviewTaskId }, "mturk bridge hit polling failed");
     }
+  }
+}
+
+async function refreshHitStatus(input: {
+  hitId: string;
+  state: ReturnType<typeof loadBridgeState>;
+  task: ReturnType<typeof loadBridgeState>["tasks"][string];
+}) {
+  const { hitId, state, task } = input;
+  try {
+    const { stdout } = await execFileAsync(
+      "aws",
+      [
+        "mturk",
+        "get-hit",
+        "--endpoint-url",
+        config.awsEndpointUrl,
+        "--region",
+        config.awsRegion,
+        "--hit-id",
+        hitId,
+        "--output",
+        "json"
+      ],
+      { env: process.env }
+    );
+
+    const payload = JSON.parse(stdout) as {
+      HIT?: {
+        Expiration?: string;
+        HITReviewStatus?: string;
+        HITStatus?: string;
+      };
+    };
+    const hit = payload.HIT;
+    const now = new Date();
+    const expiration = hit?.Expiration ? new Date(hit.Expiration) : undefined;
+
+    task.hitStatus = hit?.HITStatus;
+    task.hitExpirationAt = hit?.Expiration;
+    task.hitReviewStatus = hit?.HITReviewStatus;
+    task.lastHitStatusAt = now.toISOString();
+    delete task.lastHitStatusError;
+
+    if (expiration && Number.isFinite(expiration.getTime()) && expiration <= now && !task.expiredAt) {
+      task.expiredAt = now.toISOString();
+    }
+
+    saveBridgeState(config.statePath, state);
+    app.log.info(
+      {
+        expiredAt: task.expiredAt,
+        hitExpirationAt: task.hitExpirationAt,
+        hitId,
+        hitReviewStatus: task.hitReviewStatus,
+        hitStatus: task.hitStatus,
+        reviewTaskId: task.reviewTaskId
+      },
+      "mturk bridge refreshed hit status"
+    );
+  } catch (error) {
+    task.lastHitStatusError = {
+      message: error instanceof Error ? error.message : String(error),
+      recordedAt: new Date().toISOString()
+    };
+    saveBridgeState(config.statePath, state);
+    app.log.error({ err: error, hitId, reviewTaskId: task.reviewTaskId }, "mturk bridge hit status refresh failed");
   }
 }
 

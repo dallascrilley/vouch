@@ -92,9 +92,14 @@ describe("mturk bridge helpers", () => {
               }
             ],
             deliveredAssignmentIds: ["assignment_456"],
+            expiredAt: "2026-06-08T00:03:00.000Z",
             hitId: "hit_123",
+            hitExpirationAt: "2026-06-08T00:02:59.000Z",
+            hitReviewStatus: "NotReviewed",
+            hitStatus: "Reviewable",
             lastApprovalAt: "2026-06-08T00:02:10.000Z",
             lastDeliveryAt: "2026-06-08T00:02:00.000Z",
+            lastHitStatusAt: "2026-06-08T00:03:00.000Z",
             lastPollAt: "2026-06-08T00:02:30.000Z",
             reviewTaskId: "review_123",
             reviewerPool: "managed",
@@ -115,8 +120,13 @@ describe("mturk bridge helpers", () => {
           }
         ],
         deliveredAssignmentIds: ["assignment_456"],
+        expiredAt: "2026-06-08T00:03:00.000Z",
+        hitExpirationAt: "2026-06-08T00:02:59.000Z",
+        hitReviewStatus: "NotReviewed",
+        hitStatus: "Reviewable",
         lastApprovalAt: "2026-06-08T00:02:10.000Z",
         lastDeliveryAt: "2026-06-08T00:02:00.000Z",
+        lastHitStatusAt: "2026-06-08T00:03:00.000Z",
         lastPollAt: "2026-06-08T00:02:30.000Z"
       });
     } finally {
@@ -142,7 +152,11 @@ describe("mturk bridge helpers", () => {
             }
           ],
           deliveredAssignmentIds: ["assignment_456"],
+          expiredAt: "2026-06-08T00:03:00.000Z",
           hitId: "hit_123",
+          hitExpirationAt: "2026-06-08T00:02:59.000Z",
+          hitReviewStatus: "NotReviewed",
+          hitStatus: "Reviewable",
           lastApprovalAt: "2026-06-08T00:02:10.000Z",
           lastApprovalError: {
             assignmentId: "assignment_789",
@@ -153,6 +167,11 @@ describe("mturk bridge helpers", () => {
             assignmentId: "assignment_123",
             message: "Broker callback failed: 503 unavailable",
             recordedAt: "2026-06-08T00:01:00.000Z"
+          },
+          lastHitStatusAt: "2026-06-08T00:03:00.000Z",
+          lastHitStatusError: {
+            message: "get-hit throttled",
+            recordedAt: "2026-06-08T00:03:30.000Z"
           },
           lastPollAt: "2026-06-08T00:02:30.000Z",
           reviewTaskId: "review_123",
@@ -180,11 +199,19 @@ describe("mturk bridge helpers", () => {
           callbackAttemptTotal: 3,
           deadLetterCount: 1,
           deliveredAssignmentCount: 1,
+          expiredAt: "2026-06-08T00:03:00.000Z",
           hitId: "hit_123",
+          hitExpirationAt: "2026-06-08T00:02:59.000Z",
+          hitReviewStatus: "NotReviewed",
+          hitStatus: "Reviewable",
           lastApprovalAt: "2026-06-08T00:02:10.000Z",
           lastApprovalError: {
             assignmentId: "assignment_789",
             message: "approval failed"
+          },
+          lastHitStatusAt: "2026-06-08T00:03:00.000Z",
+          lastHitStatusError: {
+            message: "get-hit throttled"
           },
           lastPollAt: "2026-06-08T00:02:30.000Z",
           reviewTaskId: "review_123"
@@ -194,6 +221,7 @@ describe("mturk bridge helpers", () => {
         approvedAssignments: 1,
         deadLetters: 1,
         deliveredAssignments: 1,
+        expiredTasks: 1,
         tasks: 1
       }
     });
