@@ -12,6 +12,7 @@ import {
   normalizeAssignment,
   saveBridgeState,
   summarizeBridgeState,
+  validateBridgeSafety,
   type BridgeDispatchBody
 } from "./lib/mturk-bridge.js";
 
@@ -35,6 +36,12 @@ const config = {
   expirationSeconds: Number(process.env.MTURK_EXPIRATION_SECONDS ?? 86400),
   maxCallbackAttempts: Number(process.env.MTURK_MAX_CALLBACK_ATTEMPTS ?? 3),
   maxAssignments: Number(process.env.MTURK_MAX_ASSIGNMENTS ?? 1),
+  maxAssignmentsPerHit: Number(process.env.MTURK_MAX_ASSIGNMENTS_PER_HIT ?? 3),
+  maxRewardUsd: Number(process.env.MTURK_MAX_REWARD_USD ?? 1),
+  maxSpendPerHitUsd: Number(process.env.MTURK_MAX_SPEND_PER_HIT_USD ?? 3),
+  minAutoApprovalDelaySeconds: Number(process.env.MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS ?? 86400),
+  minExpirationSeconds: Number(process.env.MTURK_MIN_EXPIRATION_SECONDS ?? 300),
+  minTaskDurationSeconds: Number(process.env.MTURK_MIN_TASK_DURATION_SECONDS ?? 60),
   pollIntervalMs: Number(process.env.MTURK_POLL_INTERVAL_MS ?? 15000),
   port: Number(process.env.MTURK_BRIDGE_PORT ?? 3100),
   providerId: process.env.MTURK_PROVIDER_ID ?? "real-provider",
@@ -44,6 +51,11 @@ const config = {
   taskDurationSeconds: Number(process.env.MTURK_TASK_DURATION_SECONDS ?? 900),
   titlePrefix: process.env.MTURK_TITLE_PREFIX ?? "AI Broker UI Verification"
 };
+
+const safetyErrors = validateBridgeSafety(config);
+if (safetyErrors.length > 0) {
+  throw new Error(`Unsafe MTurk bridge configuration: ${safetyErrors.join("; ")}`);
+}
 
 function isAuthorized(authorization: string | undefined) {
   return authorization === `Bearer ${config.bridgeApiKey}`;

@@ -35,9 +35,16 @@ Bridge:
 - `MTURK_POLL_INTERVAL_MS=15000`
 - `MTURK_MAX_CALLBACK_ATTEMPTS=3`
 - `MTURK_MAX_ASSIGNMENTS=1`
+- `MTURK_MAX_ASSIGNMENTS_PER_HIT=3`
+- `MTURK_MAX_REWARD_USD=1`
+- `MTURK_MAX_SPEND_PER_HIT_USD=3`
 - `MTURK_REWARD=0.05`
 - `MTURK_EXPIRATION_SECONDS=86400`
+- `MTURK_MIN_EXPIRATION_SECONDS=300`
 - `MTURK_TASK_DURATION_SECONDS=900`
+- `MTURK_MIN_TASK_DURATION_SECONDS=60`
+- `MTURK_AUTO_APPROVAL_DELAY_SECONDS=259200`
+- `MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS=86400`
 
 ## Start order
 
@@ -64,8 +71,15 @@ All are synthetic or staging-only and safe for managed external review.
 - Assignment fan-out and spend per HIT are bounded by `MTURK_MAX_ASSIGNMENTS`
   and `MTURK_REWARD`. Keep sandbox values low unless a test explicitly needs
   multiple independent workers.
+- Startup fails before any AWS call if `MTURK_MAX_ASSIGNMENTS`,
+  `MTURK_REWARD`, or their product exceed `MTURK_MAX_ASSIGNMENTS_PER_HIT`,
+  `MTURK_MAX_REWARD_USD`, or `MTURK_MAX_SPEND_PER_HIT_USD`.
 - HIT lifetime and worker assignment duration are bounded by
   `MTURK_EXPIRATION_SECONDS` and `MTURK_TASK_DURATION_SECONDS`.
+- Startup also enforces minimum HIT lifetime, assignment duration, and
+  auto-approval delay with `MTURK_MIN_EXPIRATION_SECONDS`,
+  `MTURK_MIN_TASK_DURATION_SECONDS`, and
+  `MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS`.
 - Callback delivery retries are bounded by `MTURK_MAX_CALLBACK_ATTEMPTS`.
   Repeated failures are persisted in `deadLetterAssignments` inside
   `MTURK_BRIDGE_STATE_PATH` and are not retried indefinitely.
