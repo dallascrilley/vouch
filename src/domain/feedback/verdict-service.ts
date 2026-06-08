@@ -4,12 +4,14 @@ import type { TransactionManager } from "../../adapters/storage/transaction-mana
 import type { JobService } from "../jobs/job-service.js";
 import type { CriterionResult } from "../self-verification/models.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
+import type { Severity } from "../human-review/models.js";
 
 type FinalizeOptions = {
   adjudicationSummary?: string;
   criterionOutcomes?: CriterionResult[];
   humanConsensusSummary?: string;
   machineCheckFailures?: string[];
+  maxSeverity?: Severity | "none";
   policyConstraints?: string[];
   retryRecommendation?: string;
 };
@@ -49,7 +51,7 @@ export class VerdictService {
         finalVerdict,
         criterionOutcomes: options.criterionOutcomes ?? [],
         confidence: "high",
-        maxSeverity: "none",
+        maxSeverity: options.maxSeverity ?? "none",
         evidenceRefs: job.artifactManifestId ? [job.artifactManifestId] : [],
         humanConsensusSummary: options.humanConsensusSummary,
         adjudicationSummary: options.adjudicationSummary,
