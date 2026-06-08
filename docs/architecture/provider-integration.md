@@ -44,3 +44,20 @@ The broker core should not need provider-specific branching for MTurk versus a
 similar provider. A new provider must normalize its response into the callback
 schema and can reuse the common bridge delivery helper for the retry/dedupe
 state machine.
+
+`scripts/mock-provider-bridge.ts` is the runnable second-provider prototype. It
+exposes the same bridge shape as MTurk for dispatch, state inspection, and
+provider response delivery:
+
+- `POST /dispatch` accepts the broker dispatch payload and returns a provider
+  task ID.
+- `POST /responses` simulates a provider-side worker response and delivers the
+  normalized callback through `deliverProviderCallback`.
+- `GET /state` exposes the common bridge summary.
+
+This prototype is intentionally provider-agnostic: it does not know broker job,
+privacy, verdict, or feedback internals. It proves that another provider can
+plug into the same dispatch/callback contract without changing broker core
+concepts. Broker dispatch worker construction is config-driven when
+`PROVIDER_ENABLED=true`; it is not gated to MTurk or the staging
+`real-provider` ID.

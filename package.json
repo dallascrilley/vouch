@@ -11,6 +11,7 @@
     "dev": "tsx watch src/api/server.ts",
     "lint": "eslint .",
     "format": "prettier --check .",
+    "mock-provider:bridge": "tsx scripts/mock-provider-bridge.ts",
     "mturk:bridge": "tsx scripts/mturk-bridge.ts",
     "seed:mturk-staging": "tsx scripts/seed-mturk-staging.ts",
     "test": "vitest run",
