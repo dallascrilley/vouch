@@ -79,7 +79,7 @@ export function registerProviderCallbackRoutes(app: FastifyInstance) {
         adjudicationId,
         jobId: reviewTask.jobId,
         triggerReason: "provider_callback_auto_resolution",
-        assignedPool: "managed",
+        assignedPool: reviewTask.reviewerPool,
         normalizedEvidenceRefs: [request.body.provider_response_id],
         decision: toAdjudicationDecision(request.body.overall_verdict),
         decisionNotes: request.body.evidence_note,

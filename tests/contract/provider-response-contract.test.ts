@@ -96,6 +96,10 @@ describe("provider response normalization contract", () => {
       recommendedOutcome: "pass",
       validResponseCount: 1
     });
+    expect(inspection.json().adjudication).toMatchObject({
+      assignedPool: "managed",
+      triggerReason: "provider_callback_auto_resolution"
+    });
     expect(verdictResponse.json()).toMatchObject({
       final_verdict: "pass",
       human_consensus_summary: expect.stringContaining("real-provider")
