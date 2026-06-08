@@ -8,7 +8,8 @@ import {
   loadBridgeState,
   normalizeAssignment,
   parseAnswerXml,
-  saveBridgeState
+  saveBridgeState,
+  summarizeBridgeState
 } from "../../scripts/lib/mturk-bridge.js";
 
 describe("mturk bridge helpers", () => {
@@ -115,5 +116,66 @@ describe("mturk bridge helpers", () => {
     } finally {
       rmSync(tempDir, { force: true, recursive: true });
     }
+  });
+
+  it("summarizes task health and dead letters for operator inspection", () => {
+    const summary = summarizeBridgeState({
+      tasks: {
+        hit_123: {
+          callbackAttempts: { assignment_123: 3 },
+          createdAt: "2026-06-08T00:00:00.000Z",
+          criterionIds: ["desktop-layout"],
+          deadLetterAssignments: [
+            {
+              assignmentId: "assignment_123",
+              attempts: 3,
+              reason: "Broker callback failed: 503 unavailable",
+              recordedAt: "2026-06-08T00:01:00.000Z",
+              workerId: "worker_123"
+            }
+          ],
+          deliveredAssignmentIds: ["assignment_456"],
+          hitId: "hit_123",
+          lastError: {
+            assignmentId: "assignment_123",
+            message: "Broker callback failed: 503 unavailable",
+            recordedAt: "2026-06-08T00:01:00.000Z"
+          },
+          lastPollAt: "2026-06-08T00:02:30.000Z",
+          reviewTaskId: "review_123",
+          reviewerPool: "managed",
+          sanitizedPackageId: "package_123",
+          taskTemplate: "Check the staged screenshot."
+        }
+      }
+    });
+
+    expect(summary).toMatchObject({
+      deadLetters: [
+        {
+          assignmentId: "assignment_123",
+          attempts: 3,
+          hitId: "hit_123",
+          reviewTaskId: "review_123",
+          workerId: "worker_123"
+        }
+      ],
+      tasks: [
+        {
+          callbackAttemptedAssignmentCount: 1,
+          callbackAttemptTotal: 3,
+          deadLetterCount: 1,
+          deliveredAssignmentCount: 1,
+          hitId: "hit_123",
+          lastPollAt: "2026-06-08T00:02:30.000Z",
+          reviewTaskId: "review_123"
+        }
+      ],
+      totals: {
+        deadLetters: 1,
+        deliveredAssignments: 1,
+        tasks: 1
+      }
+    });
   });
 });

@@ -11,6 +11,7 @@ import {
   loadBridgeState,
   normalizeAssignment,
   saveBridgeState,
+  summarizeBridgeState,
   type BridgeDispatchBody
 } from "./lib/mturk-bridge.js";
 
@@ -44,13 +45,32 @@ const config = {
   titlePrefix: process.env.MTURK_TITLE_PREFIX ?? "AI Broker UI Verification"
 };
 
+function isAuthorized(authorization: string | undefined) {
+  return authorization === `Bearer ${config.bridgeApiKey}`;
+}
+
 const app = Fastify({ logger: true });
 
 app.get("/health", () => ({ ok: true, provider_id: config.providerId }));
 
+app.get("/state", (request, reply) => {
+  if (!isAuthorized(request.headers.authorization)) {
+    return reply.code(401).send({ message: "Invalid bridge authorization" });
+  }
+
+  return summarizeBridgeState(loadBridgeState(config.statePath));
+});
+
+app.get("/dead-letters", (request, reply) => {
+  if (!isAuthorized(request.headers.authorization)) {
+    return reply.code(401).send({ message: "Invalid bridge authorization" });
+  }
+
+  return { dead_letters: summarizeBridgeState(loadBridgeState(config.statePath)).deadLetters };
+});
+
 app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
-  const authorization = request.headers.authorization;
-  if (authorization !== `Bearer ${config.bridgeApiKey}`) {
+  if (!isAuthorized(request.headers.authorization)) {
     return reply.code(401).send({ message: "Invalid bridge authorization" });
   }
 

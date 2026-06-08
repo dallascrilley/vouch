@@ -44,6 +44,32 @@ export type BridgeState = {
   tasks: Record<string, BridgeTaskRecord>;
 };
 
+export type BridgeStateSummary = {
+  deadLetters: Array<
+    BridgeDeadLetterAssignment & {
+      hitId: string;
+      reviewTaskId: string;
+    }
+  >;
+  tasks: Array<{
+    callbackAttemptedAssignmentCount: number;
+    callbackAttemptTotal: number;
+    deadLetterCount: number;
+    deliveredAssignmentCount: number;
+    hitId: string;
+    lastDeliveryAt?: string;
+    lastError?: BridgeTaskError;
+    lastPollAt?: string;
+    reviewTaskId: string;
+    reviewerPool: string;
+  }>;
+  totals: {
+    deadLetters: number;
+    deliveredAssignments: number;
+    tasks: number;
+  };
+};
+
 export const emptyBridgeState = (): BridgeState => ({ tasks: {} });
 
 export function loadBridgeState(path: string): BridgeState {
@@ -60,6 +86,38 @@ export function loadBridgeState(path: string): BridgeState {
 export function saveBridgeState(path: string, state: BridgeState) {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, JSON.stringify(state, null, 2));
+}
+
+export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
+  const tasks = Object.values(state.tasks).map((task) => ({
+    callbackAttemptedAssignmentCount: Object.keys(task.callbackAttempts ?? {}).length,
+    callbackAttemptTotal: Object.values(task.callbackAttempts ?? {}).reduce((total, attempts) => total + attempts, 0),
+    deadLetterCount: task.deadLetterAssignments?.length ?? 0,
+    deliveredAssignmentCount: task.deliveredAssignmentIds.length,
+    hitId: task.hitId,
+    lastDeliveryAt: task.lastDeliveryAt,
+    lastError: task.lastError,
+    lastPollAt: task.lastPollAt,
+    reviewTaskId: task.reviewTaskId,
+    reviewerPool: task.reviewerPool
+  }));
+  const deadLetters = Object.values(state.tasks).flatMap((task) =>
+    (task.deadLetterAssignments ?? []).map((deadLetter) => ({
+      ...deadLetter,
+      hitId: task.hitId,
+      reviewTaskId: task.reviewTaskId
+    }))
+  );
+
+  return {
+    deadLetters,
+    tasks,
+    totals: {
+      deadLetters: deadLetters.length,
+      deliveredAssignments: tasks.reduce((total, task) => total + task.deliveredAssignmentCount, 0),
+      tasks: tasks.length
+    }
+  };
 }
 
 export function buildHtmlQuestion(input: {
