@@ -297,8 +297,13 @@ async function refreshHitStatus(input: {
     task.lastHitStatusAt = now.toISOString();
     delete task.lastHitStatusError;
 
-    if (expiration && Number.isFinite(expiration.getTime()) && expiration <= now && !task.expiredAt) {
-      task.expiredAt = now.toISOString();
+    if (expiration && Number.isFinite(expiration.getTime())) {
+      if (expiration <= now && !task.expiredAt) {
+        task.expiredAt = now.toISOString();
+      }
+      if (expiration > now) {
+        delete task.expiredAt;
+      }
     }
 
     saveBridgeState(config.statePath, state);
