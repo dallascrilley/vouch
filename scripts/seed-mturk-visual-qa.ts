@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -24,6 +25,7 @@ async function main() {
     process.env.MTURK_VISUAL_QA_IDEMPOTENCY_SUFFIX ??
     new Date().toISOString().replace(/[-:.]/g, "");
   const idempotencyKey = `mturk-visual-hero-cta-${suffix}`;
+  const commit = process.env.SOURCE_COMMIT ?? currentGitCommit();
 
   const createResponse = await postJson(`${baseUrl}/verification-jobs`, {
     acceptance_criteria: [
@@ -45,7 +47,7 @@ async function main() {
     idempotency_key: idempotencyKey,
     risk_tier: "medium",
     source: {
-      commit: "mturk-staging",
+      commit,
       environment: "visual-fixture",
       feature_flags: ["visual-qa-fixture"],
       repository: "ai-human-review-broker",
@@ -60,7 +62,7 @@ async function main() {
     {
       artifact_quality: "sufficient",
       environment: {
-        commit: "mturk-staging",
+        commit,
         environment: "visual-fixture",
         feature_flags: ["visual-qa-fixture"],
         repository: "ai-human-review-broker",
@@ -157,6 +159,16 @@ async function postJson(url: string, payload: unknown) {
     );
   }
   return response;
+}
+
+function currentGitCommit() {
+  try {
+    return execFileSync("git", ["rev-parse", "HEAD"], {
+      encoding: "utf8"
+    }).trim();
+  } catch {
+    return "unknown";
+  }
 }
 
 void main();
