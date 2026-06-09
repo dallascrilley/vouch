@@ -3,6 +3,11 @@
 **Branch**: `002-sqlite-local-runtime` | **Date**: 2026-05-31 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/002-sqlite-local-runtime/spec.md`
 
+## Current Implementation Status (2026-06)
+
+Shipped: SQLite runtime on Node.js 24+ with in-memory metrics (`InMemoryMetricsRecorder`).
+OpenTelemetry export is a production-target gap — see `docs/architecture/runtime-target.md`.
+
 ## Summary
 
 Replace the current in-memory verification runtime with a durable local runtime centered on SQLite, while preserving the existing route contracts and verification semantics. The implementation will introduce SQLite-backed repositories, a local queue state model, local provider simulation paths, startup/config validation, and local-only operational validation so the full verification loop can survive restart and run without GitHub Actions or hosted infrastructure.
