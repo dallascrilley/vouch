@@ -33,6 +33,14 @@ export class ProviderResponseService {
       throw new Error(`Provider task mapping not found: ${payload.provider_task_id}`);
     }
 
+    // Reconcile the claimed provider identity against the mapping so a caller
+    // cannot spoof provenance or escape the dedupe namespace by varying it.
+    if (payload.provider_id !== mapping.providerId) {
+      throw new Error(
+        `Provider id mismatch for task ${payload.provider_task_id}: expected ${mapping.providerId}`
+      );
+    }
+
     const dedupeKey = `${payload.provider_id}:${payload.provider_response_id}`;
     const receipt: ProviderResponseReceipt = {
       receiptId: `receipt_${crypto.randomUUID()}`,
@@ -43,7 +51,19 @@ export class ProviderResponseService {
       receivedAt: new Date(),
       dedupeKey
     };
-    await this.mappingService.recordReceipt(receipt);
+    const { receipt: storedReceipt, deduplicated } = await this.mappingService.recordReceipt(receipt);
+
+    // Replayed callbacks (same provider_id:provider_response_id) must not be
+    // reprocessed — that would create duplicate responses and duplicate ledger
+    // transitions. Return the existing receipt without re-recording.
+    if (deduplicated) {
+      return {
+        receipt: storedReceipt,
+        response: null,
+        reviewTaskId: mapping.reviewTaskId,
+        deduplicated: true
+      };
+    }
 
     const response: HumanResponse = {
       responseId: `response_${crypto.randomUUID()}`,
@@ -72,8 +92,10 @@ export class ProviderResponseService {
     await this.mappingService.markStatus(mapping.reviewTaskId, "normalized");
 
     return {
-      receipt,
-      response
+      receipt: storedReceipt,
+      response,
+      reviewTaskId: mapping.reviewTaskId,
+      deduplicated: false
     };
   }
 }

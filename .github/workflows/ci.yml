@@ -11,12 +11,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-      - run: npm test
+      - run: npm run build:js
+      - name: Broker gate (lint + type-check + tests → durable verdict)
+        run: npm run verify
       - name: Validate OpenAPI contract
         run: ruby -ryaml -e 'data = YAML.load_file("specs/001-verification-control-plane/contracts/openapi.yaml"); abort("openapi version mismatch") unless data["openapi"] == "3.1.0"'
       - name: Markdown link check

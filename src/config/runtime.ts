@@ -9,6 +9,7 @@ export type RuntimeConfig = {
   queueClaimTtlSeconds: number;
   runtimeValidationScript: string;
   logLevel: string;
+  operatorToken?: string;
 };
 
 const DEFAULT_PORT = 3000;
@@ -44,6 +45,7 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Runtime
     providerValidationScript: env.PROVIDER_VALIDATION_SCRIPT ?? "npm run validate:provider",
     queueClaimTtlSeconds,
     runtimeValidationScript: "npm run validate:local-runtime",
-    logLevel: env.LOG_LEVEL ?? "info"
+    logLevel: env.LOG_LEVEL ?? "info",
+    operatorToken: env.RUNTIME_OPERATOR_TOKEN
   };
 }
