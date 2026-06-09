@@ -34,10 +34,16 @@ export function registerProviderCallbackRoutes(app: FastifyInstance) {
       }
 
       const ingested = await app.services.providerResponseService.ingest(request.body);
+      const advanced = await app.services.providerWorkflowService.maybeAutoAdvanceAfterIngest({
+        deduplicated: ingested.deduplicated,
+        response: ingested.response,
+        reviewTaskId: ingested.reviewTaskId
+      });
       return reply.code(202).send({
+        auto_advanced: advanced.advanced,
+        deduplicated: ingested.deduplicated,
         provider_response_id: ingested.receipt.providerResponseId,
-        review_task_id: ingested.reviewTaskId,
-        deduplicated: ingested.deduplicated
+        review_task_id: ingested.reviewTaskId
       });
     } catch (error) {
       return reply.code(422).send({

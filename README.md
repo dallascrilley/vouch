@@ -26,6 +26,7 @@ Without mise, use any Node 24 install and ensure `node -v` reports v24+ before `
 - `npm run start:worker` — run the compiled dispatch worker
 - `npm run validate:local-runtime`
 - `npm run validate:provider`
+- `npm run validate:provider-e2e` — simulated dispatch → callback → pass verdict
 - `npm run verify` — run lint + build + tests through the broker and gate on the verdict
 
 ## Dev Workflow Gate

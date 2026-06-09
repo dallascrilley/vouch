@@ -18,6 +18,7 @@
     "start:worker": "node dist/workers/index.js",
     "validate:local-runtime": "tsx scripts/validate-local-runtime.ts",
     "validate:provider": "tsx scripts/validate-provider-config.ts",
+    "validate:provider-e2e": "tsx scripts/validate-provider-e2e-simulated.ts",
     "verify": "tsx scripts/verify-change.ts"
   },
   "dependencies": {

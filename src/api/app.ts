@@ -40,6 +40,7 @@ import { ProviderConfigService } from "../domain/human-review/provider-config-se
 import { ProviderOperationsService } from "../domain/human-review/provider-operations-service.js";
 import { ProviderResponseService } from "../domain/human-review/provider-response-service.js";
 import { ProviderTaskMappingService } from "../domain/human-review/provider-task-mapping-service.js";
+import { ProviderWorkflowService } from "../domain/human-review/provider-workflow-service.js";
 import { ResponseValidationService } from "../domain/human-review/response-validation-service.js";
 import { AcceptanceCriteriaService } from "../domain/jobs/acceptance-criteria-service.js";
 import { JobService } from "../domain/jobs/job-service.js";
@@ -129,6 +130,7 @@ export type AppServices = {
   providerMappingService: ProviderTaskMappingService;
   providerOperationsService: ProviderOperationsService;
   providerResponseService: ProviderResponseService;
+  providerWorkflowService: ProviderWorkflowService;
   queueStore: SQLiteLocalQueueStore;
   responseValidationService: ResponseValidationService;
   runtimeConfig: RuntimeConfig;
@@ -284,6 +286,11 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     providerMappingService,
     responseValidationService
   );
+  const providerWorkflowService = new ProviderWorkflowService(
+    consensusService,
+    adjudicationService,
+    repositories.humanReviewTaskRepository
+  );
   const providerDispatchWorker =
     providerConfig.enabled && providerConfig.providerId === "real-provider"
       ? new ProviderDispatchWorker(
@@ -307,6 +314,7 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     providerMappingService,
     providerOperationsService,
     providerResponseService,
+    providerWorkflowService,
     queueStore,
     responseValidationService,
     runtimeConfig: config,

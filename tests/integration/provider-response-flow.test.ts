@@ -55,22 +55,8 @@ describe("provider response flow", () => {
       }
     });
 
-    const consensusResponse = await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/consensus`,
-      payload: {
-        artifact_sufficiency: "sufficient",
-        disagreement_level: "low",
-        quorum_state: "met",
-        recommended_outcome: "pass",
-        review_task_id: taskPayload.review_task_id,
-        severity_summary: "none",
-        valid_response_count: 1
-      }
-    });
-
     expect(callbackResponse.statusCode).toBe(202);
-    expect(consensusResponse.statusCode).toBe(202);
+    expect(callbackResponse.json()).toMatchObject({ auto_advanced: true });
   });
 });
 

@@ -71,8 +71,18 @@ curl -s "http://localhost:3000/verification-jobs/<job_id>/feedback" | jq .
 
 **Phase 2 done when:** one job reaches truthful post-response outcome with agent-actionable verdict/feedback.
 
-## Phase 3 — Automation gap (future)
+## Simulated proof (no MTurk)
 
-After Phase 1–2 proof, implement the smallest orchestration so callback ingestion advances consensus without manual contract POSTs. Add regression coverage for that path.
+In-repo mock path — dispatch → callback → auto-advance → pass verdict:
+
+```bash
+npm run validate:provider-e2e
+```
+
+Covers Phase 3 automation for **pass** callbacks. Unclear/fail responses still need manual consensus/adjudication.
+
+## Phase 3 — Sandbox proof (remaining)
+
+Run Phase 1–2 against real sandbox assignments using the bridge on Bux. Capture proof in `docs/ops/provider-integration-proof.md`.
 
 Tracked: `td-b4292c`, `docs/planning/goalplan.md`.
