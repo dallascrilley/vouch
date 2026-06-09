@@ -33,5 +33,6 @@ Or use **Actions → ci → Run workflow** in GitHub.
 ## Troubleshooting
 
 - **Zero runs in history:** enable Actions under repo **Settings → Actions → General**.
+- **Runs stuck in `queued`:** private repos need available GitHub-hosted runners (billing/minutes) or a self-hosted runner. Local `npm run verify` is the interim gate.
 - **Engine errors:** CI uses Node 24; match locally with `.mise.toml`.
 - **Link check failures:** fix broken `docs/**/*.md` or `README.md` links before merge.
