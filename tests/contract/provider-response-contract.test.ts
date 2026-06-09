@@ -55,25 +55,22 @@ describe("provider response normalization contract", () => {
       }
     });
 
-    const consensusResponse = await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/consensus`,
-      payload: {
-        artifact_sufficiency: "sufficient",
-        disagreement_level: "low",
-        quorum_state: "met",
-        recommended_outcome: "pass",
-        review_task_id: taskPayload.review_task_id,
-        severity_summary: "none",
-        valid_response_count: 1
-      }
+    const inspection = await app.inject({
+      method: "GET",
+      url: `/runtime/inspection/jobs/${jobId}`
     });
 
     expect(callbackResponse.statusCode).toBe(202);
-    expect(consensusResponse.statusCode).toBe(202);
     expect(callbackResponse.json()).toMatchObject({
+      auto_advanced: true,
       provider_response_id: "provider-response-1",
       review_task_id: taskPayload.review_task_id
+    });
+    expect(inspection.json()).toMatchObject({
+      feedback: expect.objectContaining({
+        finalVerdict: "pass",
+        providerResponseIds: ["provider-response-1"]
+      })
     });
   });
 });
