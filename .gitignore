@@ -2,6 +2,7 @@ node_modules/
 dist/
 build/
 coverage/
+.runtime/
 *.log
 .env*
 .DS_Store
@@ -10,3 +11,7 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+.todos/
+.warp/
+.warp.json
+/goalplan.md
