@@ -73,6 +73,9 @@ Provider integration validation is documented in
 `docs/ops/provider-integration-validation.md`, with local setup guidance in
 `docs/ops/provider-integration-local-setup.md`.
 
+Sandbox E2E proof steps (worker submit through verdict) are in
+`docs/ops/provider-e2e-playbook.md`.
+
 ## Local Provider Hygiene
 
 - Keep `.env*`, provider callback secrets, and local validation logs out of the repository.
