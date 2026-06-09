@@ -32,7 +32,7 @@ describe("provider disagreement regression", () => {
     });
     const taskPayload = taskResponse.json();
 
-    await app.inject({
+    const callbackResponse = await app.inject({
       method: "POST",
       url: "/provider-callback",
       payload: {
@@ -54,6 +54,7 @@ describe("provider disagreement regression", () => {
         shared_secret: "top-secret"
       }
     });
+    expect(callbackResponse.json()).toMatchObject({ auto_advanced: false });
 
     const consensusResponse = await app.inject({
       method: "POST",
