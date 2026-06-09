@@ -81,8 +81,10 @@ npm run validate:provider-e2e
 
 Covers Phase 3 automation for **pass** callbacks. Unclear/fail responses still need manual consensus/adjudication.
 
-## Phase 3 — Sandbox proof (remaining)
+## Phase 3 — Sandbox proof
 
-Run Phase 1–2 against real sandbox assignments using the bridge on Bux. Capture proof in `docs/ops/provider-integration-proof.md`.
+**Pass case (done):** `docs/ops/mturk-sandbox-e2e-proof.md` — real sandbox assignment → bridge → verdict pass.
 
-Tracked: `td-b4292c`, `docs/planning/goalplan.md`.
+**Remaining:** ambiguous/fail sandbox HIT on Bux; `validate:mturk-phase6` AWS list step on Bux.
+
+Summary: `docs/ops/provider-integration-proof.md`, `docs/planning/goalplan.md`.
