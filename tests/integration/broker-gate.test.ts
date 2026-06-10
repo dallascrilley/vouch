@@ -72,4 +72,27 @@ describe("broker dev-workflow gate", () => {
     expect(verdict.release_gate_effect).toBe("block");
     expect(feedback?.failed_criteria).toContain("test");
   });
+
+  it("escalates unresolved checks to human review and resolves via the simulated provider", async () => {
+    client = await BrokerClient.connect();
+    const { verdict, feedback } = await client.runSelfVerificationGate({
+      runId: "gate-hitl",
+      source,
+      criteria,
+      results: [
+        result("lint", true),
+        {
+          criterionId: "test",
+          status: "unclear",
+          confidence: "low",
+          evidenceHash: "hash-test-unclear",
+          failureCategories: ["test-ambiguous"]
+        }
+      ]
+    });
+
+    expect(verdict.final_verdict).toBe("pass");
+    expect(verdict.release_gate_effect).toBe("allow");
+    expect(feedback?.final_verdict).toBe("pass");
+  });
 });

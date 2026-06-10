@@ -281,8 +281,21 @@ export class BrokerClient {
     );
     this.expect(classified, [202], "privacy classification");
 
+    // Definite machine failures stay machine-resolved (fail). Checks the
+    // machine cannot resolve (unclear/not_visible/pending) escalate to a real
+    // human review package instead of a fake retry.
     const allPass = results.every((result) => result.status === "pass");
-    const recommendedAction: RecommendedAction = allPass ? "pass" : "fail";
+    const anyUnresolved = results.some(
+      (result) =>
+        result.status === "unclear" ||
+        result.status === "not_visible" ||
+        result.status === "pending"
+    );
+    const recommendedAction: RecommendedAction = allPass
+      ? "pass"
+      : anyUnresolved
+        ? "human_review"
+        : "fail";
     const failureCategories = results.flatMap(
       (result) => result.failureCategories ?? []
     );
@@ -304,9 +317,27 @@ export class BrokerClient {
     );
     this.expect(verified, [202], "self-verification");
 
-    const verdictRes = await this.transport.get(
+    // Escalated jobs have no verdict until the human callback lands. Block up
+    // to VERIFY_HITL_TIMEOUT_MS (the simulated provider resolves synchronously,
+    // so local runs never wait), then surface stuck-state instead of hanging.
+    const hitlTimeoutMs = Number(process.env.VERIFY_HITL_TIMEOUT_MS ?? 0);
+    const pollDeadline = Date.now() + (Number.isFinite(hitlTimeoutMs) ? hitlTimeoutMs : 0);
+    let verdictRes = await this.transport.get(
       `/verification-jobs/${jobId}/verdict`
     );
+    while (verdictRes.status === 404 && Date.now() < pollDeadline) {
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      verdictRes = await this.transport.get(`/verification-jobs/${jobId}/verdict`);
+    }
+    if (verdictRes.status === 404) {
+      const stuck = await this.transport.get(
+        `/verification-jobs/${jobId}/stuck-state`
+      );
+      throw new Error(
+        `verification job ${jobId} is blocked on human review (${JSON.stringify(stuck.body)}). ` +
+          "Set VERIFY_HITL_TIMEOUT_MS to wait for the provider callback, or resolve via the stuck-state API."
+      );
+    }
     this.expect(verdictRes, [200], "read verdict");
     const verdict = verdictRes.body as Verdict;
 

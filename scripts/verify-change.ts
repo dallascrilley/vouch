@@ -60,6 +60,11 @@ function runCheck(check: Check): {
   const res = spawnSync(command, args, { encoding: "utf8" });
   const output = `${res.stdout ?? ""}${res.stderr ?? ""}`;
   const passed = res.status === 0;
+  // Dogfood knob: VERIFY_FORCE_HUMAN_REVIEW=true reports failures as
+  // "unclear" so the gate exercises the full HITL escalation (sim provider
+  // locally, Bux when PROVIDER_ENABLED). Default keeps hard failures
+  // machine-resolved so the gate cannot be greenwashed by the simulator.
+  const escalateFailures = process.env.VERIFY_FORCE_HUMAN_REVIEW === "true";
   const evidenceHash = createHash("sha256")
     .update(output)
     .digest("hex")
@@ -69,8 +74,8 @@ function runCheck(check: Check): {
     output,
     result: {
       criterionId: check.id,
-      status: passed ? "pass" : "fail",
-      confidence: "high",
+      status: passed ? "pass" : escalateFailures ? "unclear" : "fail",
+      confidence: passed ? "high" : escalateFailures ? "low" : "high",
       evidenceHash,
       failureCategories: passed ? [] : [`${check.id}-failed`]
     }

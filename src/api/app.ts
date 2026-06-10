@@ -254,7 +254,8 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     ledgerService,
     verdictService,
     feedbackService,
-    transactionManager
+    transactionManager,
+    humanReviewTaskService
   );
 
   const providerConfig = loadDefaultProviderConfig(env);
