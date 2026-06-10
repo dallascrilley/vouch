@@ -19,7 +19,14 @@ const allowedTransitions: Record<JobState, JobState[]> = {
   ],
   external_review_queued: ["human_responses_received", "adjudication_required", "fail_closed", "canceled"],
   internal_review_queued: ["human_responses_received", "adjudication_required", "fail_closed", "canceled"],
-  human_responses_received: ["consensus_running", "adjudication_required", "final_pass", "final_fail", "fail_closed"],
+  human_responses_received: [
+    "consensus_running",
+    "adjudication_required",
+    "final_pass",
+    "final_fail",
+    "external_review_queued",
+    "fail_closed"
+  ],
   consensus_running: ["final_pass", "final_fail", "artifact_recapture_requested", "adjudication_required", "fail_closed"],
   adjudication_required: ["final_pass", "final_fail", "agent_retry_requested", "artifact_recapture_requested", "fail_closed"],
   final_pass: [],
@@ -132,6 +139,29 @@ export class LedgerService {
       jobId: input.jobId,
       eventType: "verification.provider.auto_resolved",
       actorType: "provider",
+      occurredAt: new Date(),
+      payloadHash: input.payloadHash,
+      artifactHashes: input.artifactHashes ?? [],
+      policyVersion: input.policyVersion,
+      correlationId: input.correlationId
+    };
+
+    await this.append(event);
+    return event;
+  }
+
+  async recordProviderPairwiseQueued(
+    input: StateTransitionInput & {
+      disagreementVerdicts: string[];
+      pairwiseReviewTaskId: string;
+      sourceReviewTaskId: string;
+    }
+  ): Promise<VerdictLedgerEvent> {
+    const event: VerdictLedgerEvent = {
+      eventId: `${input.jobId}:provider_pairwise_queued:${input.correlationId}`,
+      jobId: input.jobId,
+      eventType: "verification.provider.pairwise_queued",
+      actorType: "system",
       occurredAt: new Date(),
       payloadHash: input.payloadHash,
       artifactHashes: input.artifactHashes ?? [],
