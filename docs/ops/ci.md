@@ -33,6 +33,14 @@ Or use **Actions → ci → Run workflow** in GitHub.
 ## Troubleshooting
 
 - **Zero runs in history:** enable Actions under repo **Settings → Actions → General**.
-- **Runs stuck in `queued`:** private repos need available GitHub-hosted runners (billing/minutes) or a self-hosted runner. Local `npm run verify` is the interim gate.
+- **Runs stuck in `queued`:** check repo Actions permissions first:
+
+  ```bash
+  gh api repos/DallasCrilleyMarTech/review-qa-broker/actions/permissions
+  ```
+
+  If `"enabled": false` with org conflict (`409`), Actions is disabled at the **organization** level — a repo admin must allow Actions under **Org → Settings → Actions → Policies**, then re-enable on the repo. Until then, use local `npm run verify`.
+
+- **Queued with Actions enabled:** private repos need GitHub-hosted runner minutes or a self-hosted runner. Local `npm run verify` is the interim gate.
 - **Engine errors:** CI uses Node 24; match locally with `.mise.toml`.
 - **Link check failures:** fix broken `docs/**/*.md` or `README.md` links before merge.
