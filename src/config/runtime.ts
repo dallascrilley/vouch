@@ -10,6 +10,7 @@ export type RuntimeConfig = {
   runtimeValidationScript: string;
   logLevel: string;
   operatorToken?: string;
+  releaseGateSigningKey?: string;
 };
 
 const DEFAULT_PORT = 3000;
@@ -46,6 +47,7 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Runtime
     queueClaimTtlSeconds,
     runtimeValidationScript: "npm run validate:local-runtime",
     logLevel: env.LOG_LEVEL ?? "info",
-    operatorToken: env.RUNTIME_OPERATOR_TOKEN
+    operatorToken: env.RUNTIME_OPERATOR_TOKEN,
+    releaseGateSigningKey: env.RELEASE_GATE_SIGNING_KEY
   };
 }
