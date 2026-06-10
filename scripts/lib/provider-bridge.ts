@@ -26,7 +26,13 @@ export type BridgeTaskRecord = {
   deadLetterAssignments?: BridgeDeadLetterAssignment[];
   criterionIds: string[];
   deliveredAssignmentIds: string[];
+  deliveryComplete?: boolean;
+  deliveryCompletedAt?: string;
   expiredAt?: string;
+  lastDeliveryLagMs?: number;
+  nextPollAt?: string;
+  pollBackoffMs?: number;
+  throttleEvents?: BridgeThrottleEvent[];
   hitId: string;
   hitExpirationAt?: string;
   hitReviewStatus?: string;
@@ -60,6 +66,12 @@ export type BridgeTaskError = {
   recordedAt: string;
 };
 
+export type BridgeThrottleEvent = {
+  message: string;
+  nextPollAt: string;
+  recordedAt: string;
+};
+
 export type BridgeState = {
   tasks: Record<string, BridgeTaskRecord>;
 };
@@ -77,6 +89,9 @@ export type BridgeStateSummary = {
     callbackAttemptTotal: number;
     deadLetterCount: number;
     deliveredAssignmentCount: number;
+    deliveryComplete: boolean;
+    deliveryCompletedAt?: string;
+    deliveryLagMs?: number;
     expiredAt?: string;
     hitId: string;
     hitExpirationAt?: string;
@@ -89,14 +104,17 @@ export type BridgeStateSummary = {
     lastHitStatusAt?: string;
     lastHitStatusError?: BridgeTaskError;
     lastPollAt?: string;
+    nextPollAt?: string;
     qualificationRequirementCount: number;
     reviewTaskId: string;
     reviewerPool: string;
+    throttleEvents: BridgeThrottleEvent[];
   }>;
   totals: {
     approvedAssignments: number;
     deadLetters: number;
     deliveredAssignments: number;
+    deliveryCompleteTasks: number;
     expiredTasks: number;
     qualificationRestrictedTasks: number;
     tasks: number;
@@ -175,6 +193,9 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
     ),
     deadLetterCount: task.deadLetterAssignments?.length ?? 0,
     deliveredAssignmentCount: task.deliveredAssignmentIds.length,
+    deliveryComplete: task.deliveryComplete ?? false,
+    deliveryCompletedAt: task.deliveryCompletedAt,
+    deliveryLagMs: task.lastDeliveryLagMs,
     expiredAt: task.expiredAt,
     hitId: task.hitId,
     hitExpirationAt: task.hitExpirationAt,
@@ -187,9 +208,11 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
     lastHitStatusAt: task.lastHitStatusAt,
     lastHitStatusError: task.lastHitStatusError,
     lastPollAt: task.lastPollAt,
+    nextPollAt: task.nextPollAt,
     qualificationRequirementCount: task.qualificationRequirements?.length ?? 0,
     reviewTaskId: task.reviewTaskId,
-    reviewerPool: task.reviewerPool
+    reviewerPool: task.reviewerPool,
+    throttleEvents: task.throttleEvents ?? []
   }));
   const deadLetters = Object.values(state.tasks).flatMap((task) =>
     (task.deadLetterAssignments ?? []).map((deadLetter) => ({
@@ -212,6 +235,7 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
         (total, task) => total + task.deliveredAssignmentCount,
         0
       ),
+      deliveryCompleteTasks: tasks.filter((task) => task.deliveryComplete).length,
       expiredTasks: tasks.filter((task) => task.expiredAt).length,
       qualificationRestrictedTasks: tasks.filter(
         (task) => task.qualificationRequirementCount > 0
@@ -223,6 +247,7 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
 
 export async function deliverProviderCallback(input: {
   brokerCallbackUrl: string;
+  expectedAssignmentCount?: number;
   fetchImpl?: typeof fetch;
   maxCallbackAttempts: number;
   now?: () => Date;
@@ -230,6 +255,7 @@ export async function deliverProviderCallback(input: {
   responseId: string;
   save: () => void;
   sharedSecret: string;
+  submittedAt?: Date;
   task: BridgeTaskRecord;
   workerId?: string;
 }): Promise<DeliverProviderCallbackResult> {
@@ -275,8 +301,22 @@ export async function deliverProviderCallback(input: {
     return { attempts, deadLettered, delivered: false, reason };
   }
 
+  const deliveredAt = now();
   input.task.deliveredAssignmentIds.push(input.responseId);
-  input.task.lastDeliveryAt = now().toISOString();
+  input.task.lastDeliveryAt = deliveredAt.toISOString();
+  if (input.submittedAt && Number.isFinite(input.submittedAt.getTime())) {
+    input.task.lastDeliveryLagMs = Math.max(
+      0,
+      deliveredAt.getTime() - input.submittedAt.getTime()
+    );
+  }
+  if (
+    input.expectedAssignmentCount &&
+    input.task.deliveredAssignmentIds.length >= input.expectedAssignmentCount
+  ) {
+    input.task.deliveryComplete = true;
+    input.task.deliveryCompletedAt = deliveredAt.toISOString();
+  }
   delete input.task.lastError;
   input.save();
 
