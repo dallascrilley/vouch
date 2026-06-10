@@ -1,6 +1,7 @@
 /**
- * Replay a provider return-path proof bundle offline (no Bux/AWS/bridge).
- * Usage: npm run validate:provider-proof-bundle -- mturk-sandbox-pass-v1
+ * Replay provider return-path proof bundles offline (no Bux/AWS/bridge).
+ * Usage: npm run validate:provider-proof-bundle            # replays every bundle
+ *        npm run validate:provider-proof-bundle -- <id>    # replays one bundle
  */
 import { buildApp } from "../src/api/app.js";
 import {
@@ -11,14 +12,14 @@ import {
 } from "../tests/helpers/provider-proof-bundle.js";
 
 async function main() {
-  const bundleId = process.argv[2]?.trim() ?? "mturk-sandbox-pass-v1";
+  const requestedBundleId = process.argv[2]?.trim();
   const available = listProviderProofBundles();
 
-  if (!available.includes(bundleId)) {
-    throw new Error(`Unknown bundle ${bundleId}. Available: ${available.join(", ")}`);
+  if (requestedBundleId && !available.includes(requestedBundleId)) {
+    throw new Error(`Unknown bundle ${requestedBundleId}. Available: ${available.join(", ")}`);
   }
 
-  const bundle = loadProviderProofBundle(bundleId);
+  const bundleIds = requestedBundleId ? [requestedBundleId] : available;
   const app = buildApp({
     env: {
       ...process.env,
@@ -38,28 +39,31 @@ async function main() {
   await app.ready();
 
   try {
-    const result = await replayProviderProofBundle(app, bundle, {
-      operatorToken: "proof-bundle-operator",
-      sharedSecret: "top-secret"
-    });
-    assertProviderProofReplay(bundle, result);
+    for (const bundleId of bundleIds) {
+      const bundle = loadProviderProofBundle(bundleId);
+      const result = await replayProviderProofBundle(app, bundle, {
+        operatorToken: "proof-bundle-operator",
+        sharedSecret: "top-secret"
+      });
+      assertProviderProofReplay(bundle, result);
 
-    console.log(
-      JSON.stringify(
-        {
-          auto_advanced: result.callbackBody.auto_advanced,
-          bundle_id: bundleId,
-          final_verdict: result.feedbackBody.final_verdict,
-          job_id: result.jobId,
-          ledger_events: (result.inspectionBody?.ledger as unknown[])?.length ?? 0,
-          provider_task_id: result.providerTaskId,
-          reference_correlation_ids: bundle.manifest.reference_correlation_ids,
-          status: "provider proof-bundle replay passed"
-        },
-        null,
-        2
-      )
-    );
+      console.log(
+        JSON.stringify(
+          {
+            auto_advanced: result.callbackBody.auto_advanced,
+            bundle_id: bundleId,
+            final_verdict: result.feedbackBody.final_verdict,
+            job_id: result.jobId,
+            ledger_events: (result.inspectionBody?.ledger as unknown[])?.length ?? 0,
+            provider_task_id: result.providerTaskId,
+            reference_correlation_ids: bundle.manifest.reference_correlation_ids,
+            status: "provider proof-bundle replay passed"
+          },
+          null,
+          2
+        )
+      );
+    }
   } finally {
     await app.close();
   }

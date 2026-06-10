@@ -1,10 +1,37 @@
 import type { FeedbackService } from "../feedback/feedback-service.js";
 import type { VerdictService } from "../feedback/verdict-service.js";
 import type { JobService } from "../jobs/job-service.js";
+import { resolveBudgetPolicy } from "../jobs/budget-policy.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
 import type { HumanResponse } from "./models.js";
 import type { HumanReviewTaskRepository } from "../../adapters/storage/repositories.js";
 import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
+
+type UnanimousVerdict = "pass" | "fail";
+
+// Fail auto-advance demands high confidence on every criterion; a pass is the
+// provider's affirmative claim while a fail terminates the job against the
+// agent, so the bar is deliberately higher.
+function classifyUnanimousVerdict(response: HumanResponse): UnanimousVerdict | null {
+  if (
+    response.overallVerdict === "pass" &&
+    response.criterionResults.every((criterion) => criterion.status === "pass")
+  ) {
+    return "pass";
+  }
+
+  if (
+    response.overallVerdict === "fail" &&
+    response.criterionResults.length > 0 &&
+    response.criterionResults.every(
+      (criterion) => criterion.status === "fail" && criterion.confidence === "high"
+    )
+  ) {
+    return "fail";
+  }
+
+  return null;
+}
 
 export class ProviderWorkflowService {
   constructor(
@@ -32,11 +59,8 @@ export class ProviderWorkflowService {
 
     const response = input.response;
 
-    if (response.overallVerdict !== "pass") {
-      return { advanced: false };
-    }
-
-    if (!response.criterionResults.every((criterion) => criterion.status === "pass")) {
+    const unanimousVerdict = classifyUnanimousVerdict(response);
+    if (!unanimousVerdict) {
       return { advanced: false };
     }
 
@@ -50,6 +74,9 @@ export class ProviderWorkflowService {
     if (!providerId || !providerResponseId) {
       return { advanced: false };
     }
+
+    const resolvedBudgetPolicy = resolveBudgetPolicy(job.budgetPolicy, job.riskTier);
+    const retryAllowed = unanimousVerdict === "fail" && resolvedBudgetPolicy.maxRetries > 0;
 
     await this.transactionManager.inTransaction(async () => {
       await this.ledgerService.recordProviderAutoResolved({
@@ -69,17 +96,21 @@ export class ProviderWorkflowService {
         throw new Error(`Verification job not found: ${job.jobId}`);
       }
 
-      const verdict = await this.verdictService.finalize(currentJob, "pass", {
-        adjudicationSummary: "Auto-advanced after unanimous provider pass callback",
-        humanConsensusSummary: `Single provider response (${providerResponseId}); no human quorum`
+      const verdict = await this.verdictService.finalize(currentJob, unanimousVerdict, {
+        adjudicationSummary: `Auto-advanced after unanimous provider ${unanimousVerdict} callback`,
+        criterionOutcomes: unanimousVerdict === "fail" ? response.criterionResults : [],
+        humanConsensusSummary: `Single provider response (${providerResponseId}); no human quorum`,
+        maxSeverity: unanimousVerdict === "fail" ? response.severity : "none"
       });
 
       await this.feedbackService.emit(currentJob, verdict, {
+        defectCategory: unanimousVerdict === "fail" ? response.defectCategory : undefined,
         humanAnnotations: response.annotationRefs,
         policyConstraints: ["provider_auto_resolved"],
         providerIds: [providerId],
         providerResponseIds: [providerResponseId],
-        retryAllowed: false
+        retryAllowed,
+        retryReason: retryAllowed ? "provider_unanimous_fail" : undefined
       });
     });
 
