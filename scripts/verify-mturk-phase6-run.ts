@@ -6,11 +6,16 @@ const execFileAsync = promisify(execFile);
 type BridgeTask = {
     deliveredAssignmentCount?: number;
     deliveredAssignmentIds?: string[];
+    deliveryComplete?: boolean;
+    deliveryCompletedAt?: string;
+    deliveryLagMs?: number;
     hitId: string;
     hitStatus?: string;
     lastDeliveryAt?: string;
     lastPollAt?: string;
+    nextPollAt?: string;
     reviewTaskId: string;
+    throttleEvents?: Array<{ message?: string; nextPollAt?: string; recordedAt?: string }>;
   };
 
 type BridgeStateResponse = {
@@ -60,8 +65,21 @@ async function main() {
   const bridgeTask = bridgeTasks.find((task) => task.hitId === hitId || task.reviewTaskId === reviewTaskId);
   const feedback = await getOptionalJson<FeedbackResponse>(`${brokerBaseUrl}/verification-jobs/${jobId}/feedback`);
 
+  const bridgeHealthErrors = bridgeTask ? validateBridgeHealth(bridgeTask) : [];
+
   const result = {
     assignments,
+    bridge_health: bridgeTask
+      ? {
+          delivery_complete: bridgeTask.deliveryComplete ?? false,
+          delivery_completed_at: bridgeTask.deliveryCompletedAt ?? null,
+          delivery_lag_ms: bridgeTask.deliveryLagMs ?? null,
+          last_poll_at: bridgeTask.lastPollAt ?? null,
+          next_poll_at: bridgeTask.nextPollAt ?? null,
+          schema_errors: bridgeHealthErrors,
+          throttle_events: bridgeTask.throttleEvents ?? []
+        }
+      : null,
     bridge_task: bridgeTask,
     feedback,
     hit_id: hitId,
@@ -69,6 +87,12 @@ async function main() {
     review_task_id: reviewTaskId,
     status: "pending_worker_submission"
   };
+
+  if (bridgeHealthErrors.length > 0) {
+    console.log(JSON.stringify({ ...result, status: "bridge_health_schema_violation" }, null, 2));
+    process.exitCode = 6;
+    return;
+  }
 
   if (assignments.length === 0) {
     console.log(JSON.stringify(result, null, 2));
@@ -90,7 +114,7 @@ async function main() {
 
   const deliveredCount =
     bridgeTask?.deliveredAssignmentCount ?? bridgeTask?.deliveredAssignmentIds?.length ?? 0;
-  if (!bridgeTask || deliveredCount < assignments.length) {
+  if (!bridgeTask?.deliveryComplete && (!bridgeTask || deliveredCount < assignments.length)) {
     console.log(
       JSON.stringify(
         {
@@ -106,6 +130,36 @@ async function main() {
   }
 
   console.log(JSON.stringify({ ...result, status: "verified" }, null, 2));
+}
+
+// Asserts bridge-health schema fields when present.
+// See docs/ops/bridge-health-contract.md.
+function validateBridgeHealth(task: BridgeTask): string[] {
+  const errors: string[] = [];
+
+  if (task.deliveryComplete !== undefined && typeof task.deliveryComplete !== "boolean") {
+    errors.push("deliveryComplete must be a boolean when present");
+  }
+  if (
+    task.deliveryLagMs !== undefined &&
+    (typeof task.deliveryLagMs !== "number" || task.deliveryLagMs < 0)
+  ) {
+    errors.push("deliveryLagMs must be a non-negative number when present");
+  }
+  if (task.throttleEvents !== undefined && !Array.isArray(task.throttleEvents)) {
+    errors.push("throttleEvents must be an array when present");
+  }
+  for (const field of ["deliveryCompletedAt", "lastPollAt", "nextPollAt"] as const) {
+    const value = task[field];
+    if (value !== undefined && Number.isNaN(new Date(value).getTime())) {
+      errors.push(`${field} must be an ISO timestamp when present`);
+    }
+  }
+  if (task.deliveryComplete === true && (task.deliveredAssignmentIds?.length ?? task.deliveredAssignmentCount ?? 0) === 0) {
+    errors.push("deliveryComplete is true but no assignments were delivered");
+  }
+
+  return errors;
 }
 
 function normalizeBridgeTasks(tasks: BridgeStateResponse["tasks"]): BridgeTask[] {
