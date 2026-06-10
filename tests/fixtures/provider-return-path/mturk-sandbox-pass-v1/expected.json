@@ -1,0 +1,23 @@
+{
+  "callback": {
+    "status_code": 202,
+    "auto_advanced": true,
+    "deduplicated": false
+  },
+  "feedback": {
+    "final_verdict": "pass",
+    "retry_allowed": false,
+    "retry_reason": null,
+    "failed_criteria": [],
+    "human_annotations": ["39DD6S19JQC8DD8WYIB2ZFIKGVUEZ7"],
+    "policy_constraints": ["provider_auto_resolved"]
+  },
+  "verdict": {
+    "final_verdict": "pass"
+  },
+  "ledger": {
+    "contains_event_types": ["verification.provider.auto_resolved"],
+    "contains_states": ["human_responses_received", "final_pass"],
+    "min_event_count": 3
+  }
+}
