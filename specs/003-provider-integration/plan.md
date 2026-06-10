@@ -3,6 +3,11 @@
 **Branch**: `003-provider-integration` | **Date**: 2026-05-31 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/003-provider-integration/spec.md`
 
+## Current Implementation Status (2026-06)
+
+Shipped: real provider adapter with mock dispatch, callback ingestion, and SQLite mapping persistence.
+Sandbox E2E proof (worker → bridge → broker verdict) is documented in `docs/ops/provider-e2e-playbook.md` but requires external MTurk/bridge infra.
+
 ## Summary
 
 Integrate the first real human-review provider into the verification control plane while preserving the provider-neutral contracts, privacy gate, consensus/adjudication behavior, and machine-readable feedback semantics. The implementation will add one real adapter, local secret/config handling, provider task mapping, response ingestion via callback or retrieval path, provider health/fallback behavior, and local-only validation that proves the real adapter can participate in the existing verification loop without GitHub Actions.

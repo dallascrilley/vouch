@@ -1,28 +1,48 @@
 # Provider Integration Proof
 
-## Validation Run
-
-Executed on 2026-05-31 in the `003-provider-integration` feature worktree.
+## Latest validation (2026-06-09, main)
 
 ```bash
-npm run build
-PROVIDER_ENABLED=true PROVIDER_ID=real-provider PROVIDER_DISPATCH_MODE=mock PROVIDER_INGESTION_MODE=callback PROVIDER_API_KEY=local-test-key PROVIDER_CALLBACK_BASE_URL=http://localhost:3000 PROVIDER_SHARED_SECRET=top-secret npm run validate:provider
-npm run lint
-npm test
+mise install
+npm ci
+npm run verify
+npm run validate:provider
+npm run validate:provider-e2e
+# Bux only (linked AWS account):
+npm run validate:mturk-phase6
 ```
 
 ## Outcome
 
-- `npm run build`: passed
-- `npm run validate:provider`: passed
-- `npm run lint`: passed
-- `npm test`: passed with 38 test files and 51 tests
+- `npm run verify`: pass → allow (lint, build, 82 tests via broker gate)
+- `npm run validate:provider`: config validation passes with mock provider env
+- `npm run validate:provider-e2e`: simulated dispatch → callback → `auto_advanced: true` → `final_verdict: pass`
 
-## Key Evidence
+## Key evidence (in-repo)
 
-- Managed provider dispatch returns `dispatch_status: "dispatched"`
-- SQLite-backed provider mappings survive app restart when `PROVIDER_SQLITE_PATH` is reused
-- Provider callback ingestion records normalized responses without bypassing consensus
+- Pass provider callbacks auto-advance through consensus/adjudication (`ProviderWorkflowService`)
+- Unclear callbacks do **not** auto-advance — manual consensus/adjudication still required
+- Managed provider dispatch returns `dispatch_status: "dispatched"` in mock mode
+- SQLite-backed provider mappings survive restart when `PROVIDER_SQLITE_PATH` is reused
 - Privacy-blocked externalization rejects provider dispatch
 - Degraded-provider fallback keeps the task queued
-- Feedback and verdict outputs retain provider-origin summaries after provider-originated adjudication
+
+## Sandbox E2E (real MTurk)
+
+Phase 1 pass receipt captured in mturk-staging worktree — see
+`docs/ops/mturk-sandbox-e2e-proof.md` (synced from worktree proof).
+
+| Field | Value |
+|-------|-------|
+| Job ID | `job_fa7b9778-cfe6-4e54-9374-d6d0140f67ee` |
+| HIT ID | `3EGKVCRQFXT8E0OD232RVG7ISQDBY7` |
+| Assignment ID | `39DD6S19JQC8DD8WYIB2ZFIKGVUEZ7` |
+| Outcome | worker pass → bridge callback → verdict pass |
+
+**Bux verified (2026-06-10):** `npm run validate:mturk-phase6` exit 0 — AWS sandbox assignment + broker `agent_next_action: pass`.
+
+**Remaining:** ambiguous/fail sandbox HIT on Bux.
+
+## Historical run (2026-05-31)
+
+Feature worktree `003-provider-integration`: 38 test files, 51 tests at time of capture.

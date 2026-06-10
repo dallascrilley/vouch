@@ -1,24 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { FastifyInstance } from "fastify";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { buildApp } from "../../src/api/app.js";
+import { buildProviderTestApp, createProviderEligibleJob } from "../helpers/provider-test-app.js";
 
 describe("provider feedback regression", () => {
-  let app: ReturnType<typeof buildApp>;
+  let app: FastifyInstance;
 
   beforeEach(async () => {
-    app = buildApp({
-      env: {
-        ...process.env,
-        PROVIDER_ENABLED: "true",
-        PROVIDER_ID: "real-provider",
-        PROVIDER_DISPATCH_MODE: "mock",
-        PROVIDER_INGESTION_MODE: "callback",
-        PROVIDER_API_KEY: "local-test-key",
-        PROVIDER_CALLBACK_BASE_URL: "http://localhost:3000",
-        PROVIDER_SHARED_SECRET: "top-secret"
-      },
-      fetchImpl: vi.fn()
-    });
+    app = buildProviderTestApp();
     await app.ready();
   });
 
@@ -66,6 +55,31 @@ describe("provider feedback regression", () => {
       }
     });
 
+    // Ambiguous callbacks stay manual; resolve through consensus + adjudication.
+    await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${jobId}/consensus`,
+      payload: {
+        adjudication_trigger: "provider_ambiguous_callback",
+        artifact_sufficiency: "sufficient",
+        disagreement_level: "medium",
+        quorum_state: "met",
+        recommended_outcome: "adjudicate",
+        review_task_id: taskPayload.review_task_id,
+        severity_summary: "S2",
+        valid_response_count: 1
+      }
+    });
+    await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${jobId}/adjudications`,
+      payload: {
+        assigned_pool: "internal",
+        decision: "retry",
+        trigger_reason: "provider reviewer could not confirm the state"
+      }
+    });
+
     const feedbackResponse = await app.inject({
       method: "GET",
       url: `/verification-jobs/${jobId}/feedback`
@@ -73,14 +87,11 @@ describe("provider feedback regression", () => {
 
     expect(feedbackResponse.statusCode).toBe(200);
     expect(feedbackResponse.json()).toMatchObject({
-      defect_category: "layout",
       failed_criteria: ["managed-check"],
       final_verdict: "retry",
       provider_ids: ["real-provider"],
       provider_response_ids: ["provider-feedback"],
-      retry_allowed: true,
-      retry_reason: "provider_callback_auto_resolution",
-      severity: "S2"
+      retry_allowed: true
     });
   });
 
@@ -148,76 +159,3 @@ describe("provider feedback regression", () => {
   });
 });
 
-async function createProviderEligibleJob(app: ReturnType<typeof buildApp>) {
-  const createResponse = await app.inject({
-    method: "POST",
-    url: "/verification-jobs",
-    payload: {
-      acceptance_criteria: [
-        {
-          criterion_id: "managed-check",
-          criticality: "critical",
-          evidence_requirements: ["screenshot"],
-          human_visible_text: "The managed provider check passes"
-        }
-      ],
-      budget_policy: {
-        maxJobCost: 10,
-        maxAssignments: 2,
-        maxRetries: 1
-      },
-      deadline_at: "2026-06-01T00:00:00.000Z",
-      idempotency_key: crypto.randomUUID(),
-      risk_tier: "medium",
-      source: {
-        repository: "repo",
-        commit: "abc123",
-        environment: "staging",
-        route: "/managed"
-      }
-    }
-  });
-  const jobId = createResponse.json().job_id as string;
-
-  await app.inject({
-    method: "POST",
-    url: `/verification-jobs/${jobId}/artifacts`,
-    payload: {
-      manifest_id: "manifest-managed",
-      job_id: jobId,
-      raw_artifacts: [
-        {
-          artifact_id: "artifact-managed",
-          artifact_type: "screenshot",
-          content_hash: "hash-managed",
-          provenance: "playwright"
-        }
-      ],
-      artifact_quality: "sufficient",
-      environment: {
-        repository: "repo",
-        commit: "abc123",
-        environment: "staging",
-        route: "/managed"
-      }
-    }
-  });
-
-  await app.inject({
-    method: "POST",
-    url: `/verification-jobs/${jobId}/privacy-classification`,
-    payload: {
-      classification_id: "classification-managed",
-      job_id: jobId,
-      artifact_manifest_id: "manifest-managed",
-      data_class: "internal_low",
-      redaction_status: "completed",
-      allowed_reviewer_routes: ["managed"],
-      policy_version: "v1",
-      externalization_decision: "allowed",
-      audit_record_id: "audit-managed"
-    }
-  });
-
-  return jobId;
-}

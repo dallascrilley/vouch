@@ -4,14 +4,13 @@ import type { TransactionManager } from "../../adapters/storage/transaction-mana
 import type { JobService } from "../jobs/job-service.js";
 import type { CriterionResult } from "../self-verification/models.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
-import type { Severity } from "../human-review/models.js";
 
 type FinalizeOptions = {
   adjudicationSummary?: string;
   criterionOutcomes?: CriterionResult[];
   humanConsensusSummary?: string;
   machineCheckFailures?: string[];
-  maxSeverity?: Severity | "none";
+  maxSeverity?: FinalVerdict["maxSeverity"];
   policyConstraints?: string[];
   retryRecommendation?: string;
 };

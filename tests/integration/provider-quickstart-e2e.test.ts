@@ -1,24 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { FastifyInstance } from "fastify";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { buildApp } from "../../src/api/app.js";
+import { buildProviderTestApp, createProviderEligibleJob } from "../helpers/provider-test-app.js";
 
 describe("provider quickstart e2e", () => {
-  let app: ReturnType<typeof buildApp>;
+  let app: FastifyInstance;
 
   beforeEach(async () => {
-    app = buildApp({
-      env: {
-        ...process.env,
-        PROVIDER_ENABLED: "true",
-        PROVIDER_ID: "real-provider",
-        PROVIDER_DISPATCH_MODE: "mock",
-        PROVIDER_INGESTION_MODE: "callback",
-        PROVIDER_API_KEY: "local-test-key",
-        PROVIDER_CALLBACK_BASE_URL: "http://localhost:3000",
-        PROVIDER_SHARED_SECRET: "top-secret"
-      },
-      fetchImpl: vi.fn()
-    });
+    app = buildProviderTestApp();
     await app.ready();
   });
 
@@ -27,76 +16,7 @@ describe("provider quickstart e2e", () => {
   });
 
   it("runs the documented provider quickstart from dispatch through feedback", async () => {
-    const createResponse = await app.inject({
-      method: "POST",
-      url: "/verification-jobs",
-      payload: {
-        acceptance_criteria: [
-          {
-            criterion_id: "managed-check",
-            criticality: "critical",
-            evidence_requirements: ["screenshot"],
-            human_visible_text: "The managed provider check passes"
-          }
-        ],
-        budget_policy: {
-          maxJobCost: 10,
-          maxAssignments: 2,
-          maxRetries: 1
-        },
-        deadline_at: "2026-06-01T00:00:00.000Z",
-        idempotency_key: crypto.randomUUID(),
-        risk_tier: "medium",
-        source: {
-          repository: "repo",
-          commit: "abc123",
-          environment: "staging",
-          route: "/managed"
-        }
-      }
-    });
-    const jobId = createResponse.json().job_id as string;
-
-    await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/artifacts`,
-      payload: {
-        manifest_id: "manifest-managed",
-        job_id: jobId,
-        raw_artifacts: [
-          {
-            artifact_id: "artifact-managed",
-            artifact_type: "screenshot",
-            content_hash: "hash-managed",
-            provenance: "playwright"
-          }
-        ],
-        artifact_quality: "sufficient",
-        environment: {
-          repository: "repo",
-          commit: "abc123",
-          environment: "staging",
-          route: "/managed"
-        }
-      }
-    });
-
-    await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/privacy-classification`,
-      payload: {
-        classification_id: "classification-managed",
-        job_id: jobId,
-        artifact_manifest_id: "manifest-managed",
-        data_class: "internal_low",
-        redaction_status: "completed",
-        allowed_reviewer_routes: ["managed"],
-        policy_version: "v1",
-        externalization_decision: "allowed",
-        audit_record_id: "audit-managed"
-      }
-    });
-
+    const jobId = await createProviderEligibleJob(app);
     const taskResponse = await app.inject({
       method: "POST",
       url: `/verification-jobs/${jobId}/human-review-tasks`,
@@ -112,7 +32,7 @@ describe("provider quickstart e2e", () => {
     });
     const taskPayload = taskResponse.json();
 
-    await app.inject({
+    const callbackResponse = await app.inject({
       method: "POST",
       url: "/provider-callback",
       payload: {
@@ -135,28 +55,7 @@ describe("provider quickstart e2e", () => {
       }
     });
 
-    await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/consensus`,
-      payload: {
-        artifact_sufficiency: "sufficient",
-        disagreement_level: "low",
-        quorum_state: "met",
-        recommended_outcome: "pass",
-        review_task_id: taskPayload.review_task_id,
-        severity_summary: "none",
-        valid_response_count: 1
-      }
-    });
-
-    await app.inject({
-      method: "POST",
-      url: `/verification-jobs/${jobId}/adjudications`,
-      payload: {
-        decision: "pass",
-        trigger_reason: "quickstart_complete"
-      }
-    });
+    expect(callbackResponse.json()).toMatchObject({ auto_advanced: true });
 
     const feedbackResponse = await app.inject({
       method: "GET",

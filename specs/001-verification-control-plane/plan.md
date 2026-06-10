@@ -5,6 +5,16 @@
 
 **Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
 
+## Current Implementation Status (2026-06)
+
+The shipped runtime is **SQLite-first** on Node.js 24+: structured state and queue
+claims persist in `node:sqlite` databases; artifacts use a local filesystem store;
+metrics are in-memory. Docker deployment and `npm run verify` dogfooding gate run
+against this path.
+
+The PostgreSQL, pg-boss, S3, and OpenTelemetry items below describe the **production
+target**, not what is wired in `src/` today. See `docs/architecture/runtime-target.md`.
+
 ## Summary
 
 Build a provider-neutral verification control plane that accepts agent evidence, classifies and sanitizes artifacts, runs self-verification, escalates uncertain safe cases to human review, normalizes responses, applies consensus/adjudication, records an immutable verdict ledger, and returns machine-readable feedback to agents and release gates. The implementation approach is contract-first: define stable domain models and external interfaces before provider adapters, build privacy and self-verification before public dispatch, and keep MTurk/Prolific/managed/internal reviewer details behind capability adapters.

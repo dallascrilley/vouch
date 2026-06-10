@@ -122,6 +122,32 @@ describe("mock second-provider bridge e2e", () => {
         severity: "S2"
       }
     });
+    // Ambiguous provider responses stay manual under the honest-provenance
+    // model: the agent (or operator) resolves via consensus + adjudication.
+    const consensusResponse = await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${jobId}/consensus`,
+      payload: {
+        adjudication_trigger: "provider_ambiguous_callback",
+        artifact_sufficiency: "sufficient",
+        disagreement_level: "medium",
+        quorum_state: "met",
+        recommended_outcome: "adjudicate",
+        review_task_id: taskPayload.review_task_id,
+        severity_summary: "S2",
+        valid_response_count: 1
+      }
+    });
+    const adjudicationResponse = await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${jobId}/adjudications`,
+      payload: {
+        assigned_pool: "internal",
+        decision: "retry",
+        trigger_reason: "mock provider could not verify the supplied evidence"
+      }
+    });
+
     const verdictResponse = await app.inject({
       method: "GET",
       url: `/verification-jobs/${jobId}/verdict`
@@ -144,20 +170,17 @@ describe("mock second-provider bridge e2e", () => {
       delivered: true,
       provider_response_id: "mock-provider-response-1"
     });
+    expect(consensusResponse.statusCode).toBe(202);
+    expect(adjudicationResponse.statusCode).toBe(202);
     expect(verdictResponse.json()).toMatchObject({
-      final_verdict: "retry",
-      human_consensus_summary: expect.stringContaining("mock-second-provider")
+      final_verdict: "retry"
     });
     expect(feedbackResponse.json()).toMatchObject({
       agent_next_action: "retry",
-      defect_category: "ambiguous_evidence",
-      evidence_pointers: ["manifest-managed"],
       failed_criteria: ["managed-check"],
       final_verdict: "retry",
       provider_response_ids: ["mock-provider-response-1"],
-      retry_allowed: true,
-      repair_hint: "retry",
-      severity: "S2"
+      retry_allowed: true
     });
     expect(bridgeStateResponse.json()).toMatchObject({
       totals: {

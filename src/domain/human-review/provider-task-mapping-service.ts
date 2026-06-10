@@ -43,13 +43,15 @@ export class ProviderTaskMappingService {
     return this.mappingRepository.findByProviderTaskId(providerTaskId);
   }
 
-  async recordReceipt(receipt: ProviderResponseReceipt) {
+  async recordReceipt(
+    receipt: ProviderResponseReceipt
+  ): Promise<{ receipt: ProviderResponseReceipt; deduplicated: boolean }> {
     const existing = await this.receiptRepository.findByDedupeKey(receipt.dedupeKey);
     if (existing) {
-      return existing;
+      return { receipt: existing, deduplicated: true };
     }
 
     await this.receiptRepository.save(receipt);
-    return receipt;
+    return { receipt, deduplicated: false };
   }
 }

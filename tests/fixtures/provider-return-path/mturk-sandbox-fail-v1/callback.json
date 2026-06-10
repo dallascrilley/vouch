@@ -1,0 +1,16 @@
+{
+  "provider_id": "real-provider",
+  "provider_response_id": "SIM-FAIL-ASSIGNMENT-0001",
+  "reviewer_pseudonymous_id": "SIM-WORKER-FAIL",
+  "overall_verdict": "fail",
+  "criterion_results": [
+    {
+      "criterion_id": "hero-cta-no-overlap",
+      "status": "fail",
+      "confidence": "high"
+    }
+  ],
+  "defect_category": "layout",
+  "evidence_note": "Hero CTA overlaps the primary navigation at the captured viewport.",
+  "severity": "S2"
+}
