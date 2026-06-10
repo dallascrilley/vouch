@@ -70,3 +70,5 @@ if (!verifyReleaseArtifact(artifact, process.env.RELEASE_GATE_SIGNING_KEY!) ||
 ```
 
 **Key rotation:** rotate by setting a new `RELEASE_GATE_SIGNING_KEY` on the broker and all verifiers in one deploy window; artifacts only verify against the key that signed them, so re-run `npm run verify` (or re-fetch the artifact) after rotation. The artifact contains only verdict metadata and hashes — never raw evidence.
+
+Over HTTP the endpoint is guarded like the inspection routes: send `x-operator-token` when `RUNTIME_OPERATOR_TOKEN` is configured (required in production).

@@ -1,11 +1,19 @@
 import type { FastifyInstance } from "fastify";
 
 import { buildReleaseArtifact } from "../../domain/feedback/release-artifact.js";
+import { authorizeOperator } from "./runtime-operations.js";
 
 export function registerReleaseArtifactRoutes(app: FastifyInstance) {
   app.get<{ Params: { jobId: string } }>(
     "/verification-jobs/:jobId/release-artifact",
     async (request, reply) => {
+      // Same operator gate as the inspection endpoints: the HMAC signature
+      // proves integrity, not access — downstream consumers present
+      // x-operator-token when RUNTIME_OPERATOR_TOKEN is configured.
+      if (!authorizeOperator(app, request, reply)) {
+        return reply;
+      }
+
       const signingKey = app.services.runtimeConfig.releaseGateSigningKey;
       if (!signingKey) {
         return reply.code(503).send({
