@@ -67,6 +67,7 @@ async function main() {
       estimate: { type: "boolean" },
       field: { multiple: true, type: "string" },
       instructions: { type: "string" },
+      "no-wait": { type: "boolean" },
       "poll-seconds": { type: "string" },
       pool: { type: "string" },
       provider: { type: "string" },
@@ -171,7 +172,7 @@ async function main() {
       : undefined,
     template: envelope,
     timeoutMs,
-    waitForFeedback: values.wait !== false
+    waitForFeedback: values["no-wait"] !== true
   });
 
   emit({

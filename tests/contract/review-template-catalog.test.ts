@@ -1,5 +1,10 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
+import { screenshotToVisualEvidence } from "../../scripts/lib/agent-review-client.js";
 import {
   buildHtmlQuestion,
   normalizeAssignment,
@@ -8,6 +13,7 @@ import {
 import {
   buildStructuredTaskTemplate,
   estimateTemplateCost,
+  MAX_VISUAL_DATA_URL_CHARS,
   normalizeStructuredAnswers,
   parseTaskTemplate,
   recommendedPricing,
@@ -88,6 +94,38 @@ describe("task template envelope", () => {
         attention_check: { expected: "maybe", prompt: "Select No." }
       })
     ).toThrowError(/attention_check.expected/);
+  });
+
+  it("rejects pairwise variants whose combined data URLs exceed the QuestionXML budget", () => {
+    const oversized = `data:image/jpeg;base64,${"A".repeat(MAX_VISUAL_DATA_URL_CHARS / 2 + 100)}`;
+    expect(() =>
+      buildStructuredTaskTemplate({
+        ...pairwiseEnvelope,
+        params: {
+          ...pairwiseEnvelope.params,
+          variant_a: { caption: "Baseline", data_url: oversized },
+          variant_b: { caption: "Candidate", data_url: oversized }
+        }
+      })
+    ).toThrowError(/QuestionXML limit/);
+  });
+});
+
+describe("screenshot size guard", () => {
+  it("rejects screenshots whose data URL would exceed the QuestionXML budget", () => {
+    const tempDir = mkdtempSync(join(tmpdir(), "review-template-guard-"));
+    try {
+      const oversizedPath = join(tempDir, "huge.png");
+      writeFileSync(
+        oversizedPath,
+        Buffer.alloc(Math.ceil((MAX_VISUAL_DATA_URL_CHARS * 3) / 4) + 1024)
+      );
+      expect(() =>
+        screenshotToVisualEvidence({ path: oversizedPath })
+      ).toThrowError(/QuestionXML budget/);
+    } finally {
+      rmSync(tempDir, { force: true, recursive: true });
+    }
   });
 });
 

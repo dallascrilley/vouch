@@ -172,6 +172,12 @@ forms:
 - The broker never parses the envelope; only the client builds it and the
   bridge consumes it. Other provider bridges may define their own structured
   interpretations or treat it as text.
+- **Size budget (learned from a real sandbox rejection):** AWS caps the
+  CreateHIT Question parameter at 131,072 characters, and inline screenshot
+  data URLs dominate it. The client rejects screenshots whose data URL would
+  exceed `MAX_VISUAL_DATA_URL_CHARS` (110,000 — re-encode as JPEG ≤ ~80KB;
+  pairwise variants share the budget), and the bridge returns `400` before
+  calling AWS if the rendered QuestionXML is over the hard limit.
 
 ## Survey template catalog
 

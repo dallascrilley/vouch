@@ -21,6 +21,9 @@ export type {
   BridgeTaskRecord
 } from "./provider-bridge.js";
 
+// AWS rejects CreateHIT when the Question parameter exceeds this many chars.
+export const QUESTION_XML_MAX_CHARS = 131_072;
+
 export type BridgeAssignmentApprovalPolicy =
   | "manual"
   | "approve_on_callback_success";
