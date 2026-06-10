@@ -85,6 +85,6 @@ Covers Phase 3 automation for **pass** callbacks. Unclear/fail responses still n
 
 **Pass case (done):** `docs/ops/mturk-sandbox-e2e-proof.md` — real sandbox assignment → bridge → verdict pass.
 
-**Remaining:** ambiguous/fail sandbox HIT on Bux; `validate:mturk-phase6` AWS list step on Bux.
+**Remaining:** ambiguous/fail sandbox HIT on Bux — see `docs/ops/bux-mturk-runbook.md`.
 
 Summary: `docs/ops/provider-integration-proof.md`, `docs/planning/goalplan.md`.

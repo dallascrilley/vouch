@@ -8,6 +8,8 @@ npm ci
 npm run verify
 npm run validate:provider
 npm run validate:provider-e2e
+# Bux only (linked AWS account):
+npm run validate:mturk-phase6
 ```
 
 ## Outcome

@@ -167,8 +167,8 @@
   1. ~~Complete one real worker submission on the existing HITs.~~ **Done** — see proof below.
   2. ~~Verify ingestion and capture proof.~~ **Done** — 2026-06-08 receipt captured.
   3. ~~Manually drive verdict/feedback once, if necessary.~~ **Done for pass case** on job below.
-  4. Automate the post-ingestion transition (Phase 3).
-  5. ~~Re-run live sandbox proof after broker/bridge restart~~ **Done on Mac** — AWS list step still on Bux.
+  4. ~~Automate the post-ingestion transition (Phase 3).~~ **Done** — `ProviderWorkflowService`, `auto_advanced` on pass callbacks, `provider-auto-advance.test.ts`, `npm run validate:provider-e2e`.
+  5. ~~Re-run live sandbox proof after broker/bridge restart~~ **Done on Mac** — AWS list step still on Bux (`npm run validate:mturk-phase6`).
   6. Then harden MTurk operationally.
   7. Then generalize to additional providers.
 
@@ -176,7 +176,7 @@
 
   Phase 1 receipt exists in the mturk-staging worktree runtime DB:
 
-  - Proof doc: `~/Code/.worktrees/ai-human-review-broker/mturk-staging/docs/ops/mturk-e2e-proof.md`
+  - Proof doc (main): `docs/ops/mturk-sandbox-e2e-proof.md` (synced from mturk-staging worktree)
   - Job: `job_fa7b9778-cfe6-4e54-9374-d6d0140f67ee`
   - HIT: `3EGKVCRQFXT8E0OD232RVG7ISQDBY7`
   - Assignment: `39DD6S19JQC8DD8WYIB2ZFIKGVUEZ7`
@@ -187,5 +187,5 @@
 
   What I would do next
 
-  Submit one ambiguous/fail sandbox HIT on Bux, confirm retry/adjudication semantics, and add
-  Phase 3 regression tests pinning post-ingestion auto-orchestration.
+  1. Org admin: enable GitHub Actions for `DallasCrilleyMarTech` (repo currently `enabled: false`).
+  2. On Bux: run `npm run validate:mturk-phase6` for pass proof job; submit ambiguous/fail sandbox HIT per `docs/ops/bux-mturk-runbook.md`.
