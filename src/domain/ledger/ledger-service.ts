@@ -19,7 +19,7 @@ const allowedTransitions: Record<JobState, JobState[]> = {
   ],
   external_review_queued: ["human_responses_received", "adjudication_required", "fail_closed", "canceled"],
   internal_review_queued: ["human_responses_received", "adjudication_required", "fail_closed", "canceled"],
-  human_responses_received: ["consensus_running", "adjudication_required", "final_pass", "fail_closed"],
+  human_responses_received: ["consensus_running", "adjudication_required", "final_pass", "final_fail", "fail_closed"],
   consensus_running: ["final_pass", "final_fail", "artifact_recapture_requested", "adjudication_required", "fail_closed"],
   adjudication_required: ["final_pass", "final_fail", "agent_retry_requested", "artifact_recapture_requested", "fail_closed"],
   final_pass: [],

@@ -21,8 +21,10 @@ describe("provider proof-bundle replay", () => {
     await app.close();
   });
 
-  it("discovers at least one bundled return-path fixture", () => {
-    expect(listProviderProofBundles()).toContain("mturk-sandbox-pass-v1");
+  it("discovers the bundled return-path fixtures", () => {
+    const bundles = listProviderProofBundles();
+    expect(bundles).toContain("mturk-sandbox-pass-v1");
+    expect(bundles).toContain("mturk-sandbox-fail-v1");
   });
 
   it("replays mturk-sandbox-pass-v1 offline through callback → auto-advance → pass", async () => {
@@ -37,6 +39,21 @@ describe("provider proof-bundle replay", () => {
       policy_constraints: ["provider_auto_resolved"]
     });
     expect(result.verdictBody).toMatchObject({ final_verdict: "pass" });
+  });
+
+  it("replays mturk-sandbox-fail-v1 offline through callback → auto-advance → fail", async () => {
+    const bundle = loadProviderProofBundle("mturk-sandbox-fail-v1");
+    const result = await replayProviderProofBundle(app, bundle);
+
+    expect(() => assertProviderProofReplay(bundle, result)).not.toThrow();
+    expect(result.callbackBody).toMatchObject({ auto_advanced: true });
+    expect(result.feedbackBody).toMatchObject({
+      final_verdict: "fail",
+      retry_allowed: true,
+      retry_reason: "provider_unanimous_fail",
+      policy_constraints: ["provider_auto_resolved"]
+    });
+    expect(result.verdictBody).toMatchObject({ final_verdict: "fail" });
   });
 
   it("replays with inspection ledger assertions when operator token is set", async () => {

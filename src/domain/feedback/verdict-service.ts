@@ -10,6 +10,7 @@ type FinalizeOptions = {
   criterionOutcomes?: CriterionResult[];
   humanConsensusSummary?: string;
   machineCheckFailures?: string[];
+  maxSeverity?: FinalVerdict["maxSeverity"];
   policyConstraints?: string[];
   retryRecommendation?: string;
 };
@@ -49,7 +50,7 @@ export class VerdictService {
         finalVerdict,
         criterionOutcomes: options.criterionOutcomes ?? [],
         confidence: "high",
-        maxSeverity: "none",
+        maxSeverity: options.maxSeverity ?? "none",
         evidenceRefs: job.artifactManifestId ? [job.artifactManifestId] : [],
         humanConsensusSummary: options.humanConsensusSummary,
         adjudicationSummary: options.adjudicationSummary,

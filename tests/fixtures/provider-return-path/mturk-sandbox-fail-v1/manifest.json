@@ -1,0 +1,22 @@
+{
+  "bundle_id": "mturk-sandbox-fail-v1",
+  "bundle_version": "1.0.0",
+  "source": {
+    "proof_doc": "tests/integration/provider-auto-advance-fail.test.ts",
+    "captured_at": "2026-06-09",
+    "description": "Simulated unanimous high-confidence fail: callback ingested, auto-advanced to final fail with retry feedback. Replace with live sandbox capture when a Staging fail HIT is run."
+  },
+  "reference_correlation_ids": {
+    "hit_id": "SIM-FAIL-HIT-0001",
+    "assignment_id": "SIM-FAIL-ASSIGNMENT-0001",
+    "worker_pseudonym": "SIM-WORKER-FAIL",
+    "sanitized_package_id": "mturk-visual-hero-cta-fail-sim-package",
+    "criterion_id": "hero-cta-no-overlap"
+  },
+  "files": {
+    "job_setup": "job-setup.json",
+    "callback": "callback.json",
+    "bridge_state": "bridge-state.json",
+    "expected": "expected.json"
+  }
+}

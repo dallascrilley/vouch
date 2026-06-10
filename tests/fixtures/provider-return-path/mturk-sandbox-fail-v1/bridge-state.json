@@ -1,0 +1,9 @@
+{
+  "hit_id": "SIM-FAIL-HIT-0001",
+  "hit_status": "Reviewable",
+  "delivered_assignment_ids": ["SIM-FAIL-ASSIGNMENT-0001"],
+  "callback_attempts": 1,
+  "last_poll_at": "2026-06-09T00:00:10.000Z",
+  "last_delivery_at": "2026-06-09T00:00:05.000Z",
+  "dead_letter_assignments": []
+}
