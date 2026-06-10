@@ -29,7 +29,15 @@ export async function startWorkers() {
 
       try {
         const reviewTask = JSON.parse(claim.payloadJson) as HumanReviewTask;
-        await dispatchLocalProviderTask(app.services.responseValidationService, reviewTask);
+        const simulated = await dispatchLocalProviderTask(
+          app.services.responseValidationService,
+          reviewTask
+        );
+        await app.services.providerWorkflowService.maybeAutoAdvanceAfterIngest({
+          deduplicated: false,
+          response: simulated,
+          reviewTaskId: reviewTask.reviewTaskId
+        });
         await queueStore.markCompleted(claim.claimId);
         processedClaims += 1;
       } catch (error) {
@@ -63,9 +71,12 @@ export async function startWorkers() {
   };
 }
 
+// The timer must stay ref'd: an unref'd idle sleep leaves the event loop empty
+// between polls, so Node exits the long-lived worker as soon as the queue is
+// drained.
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
-    setTimeout(resolve, ms).unref?.();
+    setTimeout(resolve, ms);
   });
 }
 
@@ -99,7 +110,15 @@ export async function runWorkerLoop(pollIntervalMs = 1000) {
           drained += 1;
           try {
             const reviewTask = JSON.parse(claim.payloadJson) as HumanReviewTask;
-            await dispatchLocalProviderTask(app.services.responseValidationService, reviewTask);
+            const simulated = await dispatchLocalProviderTask(
+              app.services.responseValidationService,
+              reviewTask
+            );
+            await app.services.providerWorkflowService.maybeAutoAdvanceAfterIngest({
+              deduplicated: false,
+              response: simulated,
+              reviewTaskId: reviewTask.reviewTaskId
+            });
             await queueStore.markCompleted(claim.claimId);
           } catch (error) {
             app.log.error(

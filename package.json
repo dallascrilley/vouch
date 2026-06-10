@@ -10,6 +10,7 @@
     "build": "tsc --noEmit",
     "build:js": "tsc -p tsconfig.build.json",
     "dev": "tsx watch src/api/server.ts",
+    "dev:worker": "tsx watch src/workers/index.ts",
     "lint": "eslint .",
     "format": "prettier --check .",
     "mock-provider:bridge": "tsx scripts/mock-provider-bridge.ts",
