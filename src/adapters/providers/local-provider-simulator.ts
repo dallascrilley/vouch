@@ -20,6 +20,8 @@ export function simulateProviderResponse(input: SimulatedResponseInput): HumanRe
     defectCategory: "none",
     evidenceNote: "Local provider simulation generated a deterministic pass response.",
     overallVerdict: "pass",
+    providerId: "local-provider-simulator",
+    providerResponseId: `simulated_${input.reviewTask.reviewTaskId}`,
     qualityFlags: [],
     responseId: `simulated_${input.reviewTask.reviewTaskId}`,
     reviewTaskId: input.reviewTask.reviewTaskId,
