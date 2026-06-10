@@ -1,6 +1,6 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { buildApp } from "../../src/api/app.js";
 import { loadRuntimeConfig } from "../../src/config/runtime.js";
@@ -79,6 +79,15 @@ export type Feedback = {
   repair_hint: string | null;
 };
 
+export type ReleaseArtifact = {
+  job_id: string;
+  final_verdict: string;
+  release_gate_effect: string;
+  ledger_attestation_hash: string;
+  signed_at: string;
+  signature: string;
+};
+
 type Response = { status: number; body: unknown };
 
 interface Transport {
@@ -138,6 +147,9 @@ class InProcessTransport implements Transport {
   static async create(): Promise<InProcessTransport> {
     let cleanup = (): void => {};
     const env = { ...process.env };
+    // Local runs sign release artifacts with a well-known dev key; set
+    // RELEASE_GATE_SIGNING_KEY for any artifact that leaves the machine.
+    env.RELEASE_GATE_SIGNING_KEY ??= "local-dev-release-gate-key";
     if (!env.RUNTIME_SQLITE_PATH) {
       const runtimeRoot = mkdtempSync(join(tmpdir(), "broker-gate-"));
       env.RUNTIME_SQLITE_PATH = join(runtimeRoot, "runtime.sqlite");
@@ -214,7 +226,14 @@ export class BrokerClient {
     criteria: GateCriterion[];
     results: GateCheckResult[];
     deadlineMs?: number;
-  }): Promise<{ jobId: string; verdict: Verdict; feedback: Feedback | null }> {
+    /** Where to persist the signed release artifact; null disables the write. */
+    releaseArtifactPath?: string | null;
+  }): Promise<{
+    jobId: string;
+    verdict: Verdict;
+    feedback: Feedback | null;
+    releaseArtifact: ReleaseArtifact | null;
+  }> {
     const { runId, source, criteria, results } = input;
     const manifestId = `manifest-${runId}`;
     const deadlineAt = new Date(
@@ -347,6 +366,22 @@ export class BrokerClient {
     const feedback =
       feedbackRes.status === 200 ? (feedbackRes.body as Feedback) : null;
 
-    return { jobId, verdict, feedback };
+    // Persist the signed release artifact so downstream policy checks (CI,
+    // release tooling) can verify the verdict without broker access.
+    const artifactRes = await this.transport.get(
+      `/verification-jobs/${jobId}/release-artifact`
+    );
+    const releaseArtifact =
+      artifactRes.status === 200 ? (artifactRes.body as ReleaseArtifact) : null;
+    const artifactPath =
+      input.releaseArtifactPath === undefined
+        ? ".runtime/verify-verdict.json"
+        : input.releaseArtifactPath;
+    if (releaseArtifact && artifactPath) {
+      mkdirSync(dirname(artifactPath), { recursive: true });
+      writeFileSync(artifactPath, `${JSON.stringify(releaseArtifact, null, 2)}\n`);
+    }
+
+    return { jobId, verdict, feedback, releaseArtifact };
   }
 }

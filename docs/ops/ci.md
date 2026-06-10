@@ -44,3 +44,29 @@ Or use **Actions → ci → Run workflow** in GitHub.
 - **Queued with Actions enabled:** private repos need GitHub-hosted runner minutes or a self-hosted runner. Local `npm run verify` is the interim gate.
 - **Engine errors:** CI uses Node 24; match locally with `.mise.toml`.
 - **Link check failures:** fix broken `docs/**/*.md` or `README.md` links before merge.
+
+## Signed release-gate artifact
+
+On every gate run `npm run verify` writes a signed verdict export to `.runtime/verify-verdict.json` (fetched from `GET /verification-jobs/:jobId/release-artifact`):
+
+```json
+{
+  "job_id": "job_…",
+  "final_verdict": "pass",
+  "release_gate_effect": "allow",
+  "ledger_attestation_hash": "<sha256 over the job ledger>",
+  "signed_at": "2026-06-10T00:00:00.000Z",
+  "signature": "<hmac-sha256 hex>"
+}
+```
+
+Signing uses HMAC-SHA256 with `RELEASE_GATE_SIGNING_KEY`. Locally the gate falls back to the well-known dev key `local-dev-release-gate-key`; CI and any artifact that leaves the machine must set a real secret. A downstream policy service verifies with `verifyReleaseArtifact` from `src/domain/feedback/release-artifact.ts` (or any HMAC-SHA256 implementation over the canonical payload) and requires `release_gate_effect === "allow"`:
+
+```ts
+import { verifyReleaseArtifact } from "./release-artifact.js";
+const artifact = JSON.parse(readFileSync(".runtime/verify-verdict.json", "utf8"));
+if (!verifyReleaseArtifact(artifact, process.env.RELEASE_GATE_SIGNING_KEY!) ||
+    artifact.release_gate_effect !== "allow") process.exit(1);
+```
+
+**Key rotation:** rotate by setting a new `RELEASE_GATE_SIGNING_KEY` on the broker and all verifiers in one deploy window; artifacts only verify against the key that signed them, so re-run `npm run verify` (or re-fetch the artifact) after rotation. The artifact contains only verdict metadata and hashes — never raw evidence.

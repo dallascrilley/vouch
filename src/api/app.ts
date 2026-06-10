@@ -58,6 +58,7 @@ import { ProviderDispatchWorker } from "../workers/provider-dispatch-worker.js";
 import { registerEvidenceRoutes } from "./routes/evidence.js";
 import { registerHumanReviewRoutes } from "./routes/human-review.js";
 import { registerProviderCallbackRoutes } from "./routes/provider-callback.js";
+import { registerReleaseArtifactRoutes } from "./routes/release-artifact.js";
 import { registerRuntimeOperationsRoutes } from "./routes/runtime-operations.js";
 import { registerStuckStateRoutes } from "./routes/stuck-state.js";
 import { registerVerificationJobRoutes } from "./routes/verification-jobs.js";
@@ -351,6 +352,7 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
   void registerRuntimeOperationsRoutes(app);
   void registerProviderCallbackRoutes(app);
   void registerStuckStateRoutes(app);
+  void registerReleaseArtifactRoutes(app);
 
   return app;
 }

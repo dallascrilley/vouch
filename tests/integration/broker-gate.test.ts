@@ -1,3 +1,7 @@
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -46,17 +50,31 @@ describe("broker dev-workflow gate", () => {
     await client.close();
   });
 
-  it("allows the release gate when every check passes", async () => {
-    client = await BrokerClient.connect();
-    const { verdict } = await client.runSelfVerificationGate({
-      runId: "gate-pass",
-      source,
-      criteria,
-      results: [result("lint", true), result("test", true)]
-    });
+  it("allows the release gate and writes a signed release artifact when every check passes", async () => {
+    const artifactDir = mkdtempSync(join(tmpdir(), "verify-verdict-"));
+    const artifactPath = join(artifactDir, "verify-verdict.json");
+    try {
+      client = await BrokerClient.connect();
+      const { verdict, releaseArtifact } = await client.runSelfVerificationGate({
+        runId: "gate-pass",
+        source,
+        criteria,
+        results: [result("lint", true), result("test", true)],
+        releaseArtifactPath: artifactPath
+      });
 
-    expect(verdict.final_verdict).toBe("pass");
-    expect(verdict.release_gate_effect).toBe("allow");
+      expect(verdict.final_verdict).toBe("pass");
+      expect(verdict.release_gate_effect).toBe("allow");
+      expect(releaseArtifact).toMatchObject({
+        final_verdict: "pass",
+        release_gate_effect: "allow"
+      });
+      expect(releaseArtifact?.signature).toMatch(/^[0-9a-f]{64}$/);
+      expect(existsSync(artifactPath)).toBe(true);
+      expect(JSON.parse(readFileSync(artifactPath, "utf8"))).toEqual(releaseArtifact);
+    } finally {
+      rmSync(artifactDir, { force: true, recursive: true });
+    }
   });
 
   it("blocks the release gate and reports the failing criterion", async () => {
