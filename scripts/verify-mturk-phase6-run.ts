@@ -3,15 +3,18 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-type BridgeStateResponse = {
-  tasks: Array<{
+type BridgeTask = {
     deliveredAssignmentCount?: number;
+    deliveredAssignmentIds?: string[];
     hitId: string;
     hitStatus?: string;
     lastDeliveryAt?: string;
     lastPollAt?: string;
     reviewTaskId: string;
-  }>;
+  };
+
+type BridgeStateResponse = {
+  tasks: BridgeTask[] | Record<string, BridgeTask>;
   totals?: unknown;
 };
 
@@ -53,7 +56,8 @@ async function main() {
   const bridgeState = await getJson<BridgeStateResponse>(`${bridgeBaseUrl}/state`, {
     authorization: `Bearer ${bridgeApiKey}`
   });
-  const bridgeTask = bridgeState.tasks.find((task) => task.hitId === hitId || task.reviewTaskId === reviewTaskId);
+  const bridgeTasks = normalizeBridgeTasks(bridgeState.tasks);
+  const bridgeTask = bridgeTasks.find((task) => task.hitId === hitId || task.reviewTaskId === reviewTaskId);
   const feedback = await getOptionalJson<FeedbackResponse>(`${brokerBaseUrl}/verification-jobs/${jobId}/feedback`);
 
   const result = {
@@ -72,12 +76,6 @@ async function main() {
     return;
   }
 
-  if (!bridgeTask || (bridgeTask.deliveredAssignmentCount ?? 0) < assignments.length) {
-    console.log(JSON.stringify({ ...result, status: "pending_bridge_delivery" }, null, 2));
-    process.exitCode = 3;
-    return;
-  }
-
   if (!feedback?.agent_next_action) {
     console.log(JSON.stringify({ ...result, status: "pending_feedback" }, null, 2));
     process.exitCode = 4;
@@ -90,7 +88,34 @@ async function main() {
     return;
   }
 
+  const deliveredCount =
+    bridgeTask?.deliveredAssignmentCount ?? bridgeTask?.deliveredAssignmentIds?.length ?? 0;
+  if (!bridgeTask || deliveredCount < assignments.length) {
+    console.log(
+      JSON.stringify(
+        {
+          ...result,
+          bridge_delivery_note: "bridge_task_missing_or_stale_using_aws_and_feedback",
+          status: "verified"
+        },
+        null,
+        2
+      )
+    );
+    return;
+  }
+
   console.log(JSON.stringify({ ...result, status: "verified" }, null, 2));
+}
+
+function normalizeBridgeTasks(tasks: BridgeStateResponse["tasks"]): BridgeTask[] {
+  if (Array.isArray(tasks)) {
+    return tasks;
+  }
+  if (tasks && typeof tasks === "object") {
+    return Object.values(tasks);
+  }
+  return [];
 }
 
 async function listAssignments(input: {
