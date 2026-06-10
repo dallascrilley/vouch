@@ -39,7 +39,9 @@ Phase 1 pass receipt captured in mturk-staging worktree — see
 | Assignment ID | `39DD6S19JQC8DD8WYIB2ZFIKGVUEZ7` |
 | Outcome | worker pass → bridge callback → verdict pass |
 
-**Remaining:** ambiguous/fail sandbox case on Bux; `validate:mturk-phase6` AWS list step on Bux.
+**Bux verified (2026-06-10):** `npm run validate:mturk-phase6` exit 0 — AWS sandbox assignment + broker `agent_next_action: pass`.
+
+**Remaining:** ambiguous/fail sandbox HIT on Bux.
 
 ## Historical run (2026-05-31)
 

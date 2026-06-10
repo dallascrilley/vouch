@@ -135,7 +135,8 @@ AWS-side assignment listing must still run on Bux.
 | `GET /verification-jobs/:jobId/verdict` | `final_verdict: pass` |
 | `GET /verification-jobs/:jobId/feedback` | `agent_next_action: pass`, `retry_reason: provider_callback_auto_resolution` |
 | `GET /state` (bridge) | 1 task; `deliveredAssignmentCount: 1`; same `lastDeliveryAt` |
-| `npm run validate:mturk-phase6` | blocked here — AWS account not linked on this host |
+| `npm run validate:mturk-phase6` (Mac) | blocked — `AWS.AccountNotLinked` on this host |
+| `npm run validate:mturk-phase6` (Bux, 2026-06-10) | **verified** — AWS assignment + broker feedback; `bridge_delivery_note: bridge_task_missing_or_stale_using_aws_and_feedback` |
 
 ## Phase 1 acceptance
 
