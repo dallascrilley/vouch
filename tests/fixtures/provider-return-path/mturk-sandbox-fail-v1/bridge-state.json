@@ -2,8 +2,12 @@
   "hit_id": "SIM-FAIL-HIT-0001",
   "hit_status": "Reviewable",
   "delivered_assignment_ids": ["SIM-FAIL-ASSIGNMENT-0001"],
+  "delivery_complete": true,
+  "delivery_completed_at": "2026-06-09T00:00:05.000Z",
+  "delivery_lag_ms": 5000,
   "callback_attempts": 1,
   "last_poll_at": "2026-06-09T00:00:10.000Z",
   "last_delivery_at": "2026-06-09T00:00:05.000Z",
+  "throttle_events": [],
   "dead_letter_assignments": []
 }
