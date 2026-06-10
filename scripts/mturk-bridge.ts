@@ -14,11 +14,14 @@ import {
   normalizeMturkTimestamp,
   parseAssignmentApprovalPolicy,
   parseQualificationRequirements,
+  QUESTION_XML_MAX_CHARS,
+  resolveDispatchPricing,
   saveBridgeState,
   summarizeBridgeState,
   validateBridgeSafety,
   type BridgeDispatchBody
 } from "./lib/mturk-bridge.js";
+import { parseTaskTemplate } from "./lib/review-templates.js";
 import { deliverProviderCallback } from "./lib/provider-bridge.js";
 
 const execFileAsync = promisify(execFile);
@@ -114,6 +117,28 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
     return reply.code(401).send({ message: "Invalid bridge authorization" });
   }
 
+  let parsedTemplate;
+  try {
+    parsedTemplate = parseTaskTemplate(request.body.task_template);
+  } catch (error) {
+    return reply.code(400).send({
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
+
+  const pricing = resolveDispatchPricing({
+    config,
+    pricing:
+      parsedTemplate.kind === "structured"
+        ? parsedTemplate.envelope.pricing
+        : undefined
+  });
+  if (pricing.errors.length > 0) {
+    return reply.code(400).send({
+      message: `Unsafe task template pricing: ${pricing.errors.join("; ")}`
+    });
+  }
+
   const htmlQuestion = buildHtmlQuestion({
     criterionIds: request.body.criterion_ids,
     reviewTaskId: request.body.review_task_id,
@@ -121,6 +146,11 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
     taskTemplate: request.body.task_template,
     visualEvidence: request.body.visual_evidence
   });
+  if (htmlQuestion.length > QUESTION_XML_MAX_CHARS) {
+    return reply.code(400).send({
+      message: `QuestionXML is ${htmlQuestion.length} chars, over MTurk's ${QUESTION_XML_MAX_CHARS}-char limit; compress embedded screenshots (JPEG, ~80KB or less)`
+    });
+  }
 
   const tempDir = mkdtempSync(join(tmpdir(), "mturk-bridge-"));
   const questionPath = join(tempDir, "question.xml");
@@ -139,9 +169,9 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
       "--description",
       `Observable UI verification for ${request.body.review_task_id}`,
       "--reward",
-      config.reward,
+      pricing.reward,
       "--max-assignments",
-      String(config.maxAssignments),
+      String(pricing.maxAssignments),
       "--assignment-duration-in-seconds",
       String(config.taskDurationSeconds),
       "--lifetime-in-seconds",
@@ -183,6 +213,7 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
       deliveredAssignmentIds: [],
       hitId,
       lastHitStatusAt: new Date().toISOString(),
+      maxAssignments: pricing.maxAssignments,
       qualificationRequirements: config.qualificationRequirements,
       reviewTaskId: request.body.review_task_id,
       reviewerPool: request.body.reviewer_pool,
@@ -361,7 +392,9 @@ async function pollAssignments() {
 }
 
 function isThrottlingError(message: string) {
-  return /throttl|rate exceeded|toomanyrequests|slow ?down|requestlimitexceeded/i.test(message);
+  return /throttl|rate exceeded|toomanyrequests|slow ?down|requestlimitexceeded/i.test(
+    message
+  );
 }
 
 async function refreshHitStatus(input: {
@@ -471,12 +504,13 @@ async function deliverAssignment(input: {
     criterionIds: task.criterionIds,
     providerId: config.providerId,
     providerTaskId: hitId,
+    taskTemplate: task.taskTemplate,
     workerId: assignment.WorkerId
   });
 
   const delivery = await deliverProviderCallback({
     brokerCallbackUrl: config.brokerCallbackUrl,
-    expectedAssignmentCount: config.maxAssignments,
+    expectedAssignmentCount: task.maxAssignments ?? config.maxAssignments,
     maxCallbackAttempts: config.maxCallbackAttempts,
     payload: callbackPayload,
     responseId: assignment.AssignmentId,
