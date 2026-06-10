@@ -133,9 +133,11 @@ describe("US2 provider simulation", () => {
     });
     await inspectionApp.close();
 
+    // The worker auto-advances a unanimous simulated response all the way to a
+    // final verdict, so `npm run review --wait` is never left polling forever.
     expect(inspectionResponse.json<{ job: { state: string } }>()).toMatchObject({
       job: {
-        state: "human_responses_received"
+        state: "final_pass"
       }
     });
   });
