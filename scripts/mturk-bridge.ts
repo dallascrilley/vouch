@@ -14,6 +14,7 @@ import {
   normalizeMturkTimestamp,
   parseAssignmentApprovalPolicy,
   parseQualificationRequirements,
+  QUESTION_XML_MAX_CHARS,
   resolveDispatchPricing,
   saveBridgeState,
   summarizeBridgeState,
@@ -145,6 +146,11 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
     taskTemplate: request.body.task_template,
     visualEvidence: request.body.visual_evidence
   });
+  if (htmlQuestion.length > QUESTION_XML_MAX_CHARS) {
+    return reply.code(400).send({
+      message: `QuestionXML is ${htmlQuestion.length} chars, over MTurk's ${QUESTION_XML_MAX_CHARS}-char limit; compress embedded screenshots (JPEG, ~80KB or less)`
+    });
+  }
 
   const tempDir = mkdtempSync(join(tmpdir(), "mturk-bridge-"));
   const questionPath = join(tempDir, "question.xml");
@@ -386,7 +392,9 @@ async function pollAssignments() {
 }
 
 function isThrottlingError(message: string) {
-  return /throttl|rate exceeded|toomanyrequests|slow ?down|requestlimitexceeded/i.test(message);
+  return /throttl|rate exceeded|toomanyrequests|slow ?down|requestlimitexceeded/i.test(
+    message
+  );
 }
 
 async function refreshHitStatus(input: {

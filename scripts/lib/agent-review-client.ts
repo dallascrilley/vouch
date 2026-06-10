@@ -10,6 +10,7 @@ import { extname } from "node:path";
 import {
   buildStructuredTaskTemplate,
   estimateTemplateCost,
+  MAX_VISUAL_DATA_URL_CHARS,
   recommendedPricing,
   type RiskTier,
   type StructuredTaskTemplate,
@@ -101,6 +102,14 @@ export function screenshotToVisualEvidence(screenshot: ReviewScreenshot): {
     );
   }
   const bytes = readFileSync(screenshot.path);
+  // MTurk caps QuestionXML at 131,072 chars and the inline data URL dominates
+  // it; base64 inflates bytes by 4/3, so fail fast with actionable guidance.
+  const dataUrlChars = Math.ceil((bytes.length * 4) / 3) + 30;
+  if (dataUrlChars > MAX_VISUAL_DATA_URL_CHARS) {
+    throw new Error(
+      `Screenshot ${screenshot.path} is ${bytes.length} bytes (~${dataUrlChars} chars as a data URL), over the ${MAX_VISUAL_DATA_URL_CHARS}-char MTurk QuestionXML budget; re-encode as JPEG under ~80KB`
+    );
+  }
   const contentHash = createHash("sha256").update(bytes).digest("hex");
   return {
     artifact_id: `artifact-${contentHash.slice(0, 16)}`,

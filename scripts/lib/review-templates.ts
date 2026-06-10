@@ -98,6 +98,11 @@ export const REVIEW_TEMPLATE_IDS: ReviewTemplateId[] = [
 
 const SEVERITIES: ReviewSeverity[] = ["S0", "S1", "S2", "S3", "S4"];
 
+// MTurk rejects CreateHIT when QuestionXML exceeds 131,072 characters. Inline
+// data URLs dominate that budget; keep them under this cap so the page shell,
+// instructions, and form fit in the remainder (~20K observed overhead ceiling).
+export const MAX_VISUAL_DATA_URL_CHARS = 110_000;
+
 const ANSWER_OPTIONS: Record<
   ReviewTemplateId,
   Array<{ label: string; value: string }>
@@ -355,6 +360,7 @@ function collectParamsErrors(
     if (params.candidate !== "a" && params.candidate !== "b") {
       errors.push('params.candidate must be "a" or "b"');
     }
+    let combinedDataUrlChars = 0;
     for (const key of ["variant_a", "variant_b"] as const) {
       const variant = params[key];
       if (!variant || typeof variant !== "object" || Array.isArray(variant)) {
@@ -367,6 +373,14 @@ function collectParamsErrors(
           errors.push(`params.${key}.${field} must be a non-empty string`);
         }
       }
+      if (typeof record.data_url === "string") {
+        combinedDataUrlChars += record.data_url.length;
+      }
+    }
+    if (combinedDataUrlChars > MAX_VISUAL_DATA_URL_CHARS) {
+      errors.push(
+        `combined variant data_url length ${combinedDataUrlChars} exceeds ${MAX_VISUAL_DATA_URL_CHARS} (MTurk QuestionXML limit); compress screenshots to JPEG (~40KB each)`
+      );
     }
   }
 
