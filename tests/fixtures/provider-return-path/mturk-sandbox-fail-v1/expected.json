@@ -1,0 +1,27 @@
+{
+  "callback": {
+    "status_code": 202,
+    "auto_advanced": true,
+    "deduplicated": false
+  },
+  "feedback": {
+    "final_verdict": "fail",
+    "retry_allowed": true,
+    "retry_reason": "provider_unanimous_fail",
+    "failed_criteria": ["hero-cta-no-overlap"],
+    "severity": "S2",
+    "defect_category": "layout",
+    "human_annotations": ["SIM-FAIL-ASSIGNMENT-0001"],
+    "policy_constraints": ["provider_auto_resolved"]
+  },
+  "verdict": {
+    "final_verdict": "fail",
+    "max_severity": "S2",
+    "release_gate_effect": "block"
+  },
+  "ledger": {
+    "contains_event_types": ["verification.provider.auto_resolved"],
+    "contains_states": ["human_responses_received", "final_fail"],
+    "min_event_count": 3
+  }
+}

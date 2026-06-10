@@ -40,6 +40,7 @@ import { ProviderConfigService } from "../domain/human-review/provider-config-se
 import { ProviderOperationsService } from "../domain/human-review/provider-operations-service.js";
 import { ProviderResponseService } from "../domain/human-review/provider-response-service.js";
 import { ProviderTaskMappingService } from "../domain/human-review/provider-task-mapping-service.js";
+import { ProviderWorkflowService } from "../domain/human-review/provider-workflow-service.js";
 import { ResponseValidationService } from "../domain/human-review/response-validation-service.js";
 import { AcceptanceCriteriaService } from "../domain/jobs/acceptance-criteria-service.js";
 import { JobService } from "../domain/jobs/job-service.js";
@@ -57,7 +58,9 @@ import { ProviderDispatchWorker } from "../workers/provider-dispatch-worker.js";
 import { registerEvidenceRoutes } from "./routes/evidence.js";
 import { registerHumanReviewRoutes } from "./routes/human-review.js";
 import { registerProviderCallbackRoutes } from "./routes/provider-callback.js";
+import { registerReleaseArtifactRoutes } from "./routes/release-artifact.js";
 import { registerRuntimeOperationsRoutes } from "./routes/runtime-operations.js";
+import { registerStuckStateRoutes } from "./routes/stuck-state.js";
 import { registerVerificationJobRoutes } from "./routes/verification-jobs.js";
 import { registerVerdictFeedbackRoutes } from "./routes/verdict-feedback.js";
 
@@ -129,6 +132,7 @@ export type AppServices = {
   providerMappingService: ProviderTaskMappingService;
   providerOperationsService: ProviderOperationsService;
   providerResponseService: ProviderResponseService;
+  providerWorkflowService: ProviderWorkflowService;
   queueStore: SQLiteLocalQueueStore;
   responseValidationService: ResponseValidationService;
   runtimeConfig: RuntimeConfig;
@@ -251,7 +255,8 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     ledgerService,
     verdictService,
     feedbackService,
-    transactionManager
+    transactionManager,
+    humanReviewTaskService
   );
 
   const providerConfig = loadDefaultProviderConfig(env);
@@ -284,6 +289,16 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     providerMappingService,
     responseValidationService
   );
+  const providerWorkflowService = new ProviderWorkflowService(
+    jobService,
+    ledgerService,
+    verdictService,
+    feedbackService,
+    repositories.humanReviewTaskRepository,
+    transactionManager,
+    repositories.humanResponseRepository,
+    humanReviewTaskService
+  );
   const providerDispatchWorker = providerConfig.enabled
     ? new ProviderDispatchWorker(
         new RealProviderAdapter(providerConfig, fetchImpl),
@@ -307,6 +322,7 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     providerMappingService,
     providerOperationsService,
     providerResponseService,
+    providerWorkflowService,
     queueStore,
     responseValidationService,
     runtimeConfig: config,
@@ -335,6 +351,8 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
   void registerVerdictFeedbackRoutes(app);
   void registerRuntimeOperationsRoutes(app);
   void registerProviderCallbackRoutes(app);
+  void registerStuckStateRoutes(app);
+  void registerReleaseArtifactRoutes(app);
 
   return app;
 }

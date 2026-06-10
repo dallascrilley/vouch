@@ -1,6 +1,8 @@
 import type { FastifyInstance } from "fastify";
 
 import type { ArtifactManifest, ArtifactQuality, ArtifactType } from "../../domain/artifacts/models.js";
+import { shouldFallbackProvider } from "../../domain/human-review/provider-routing-policy.js";
+import { dispatchLocalProviderTask } from "../../workers/provider-dispatch-worker.js";
 import type {
   DataClass,
   ExternalizationDecision,
@@ -140,7 +142,7 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
     "/verification-jobs/:jobId/self-verification-results",
     async (request, reply) => {
       try {
-        await app.services.selfVerificationService.record({
+        const outcome = await app.services.selfVerificationService.record({
           resultId: request.body.result_id,
           jobId: request.params.jobId,
           checks: {
@@ -163,7 +165,66 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
           createdAt: new Date()
         });
 
-        return reply.code(202).send({ result_id: request.body.result_id });
+        let providerTaskId: string | null = null;
+        if (outcome.reviewTask) {
+          const task = outcome.reviewTask;
+          if (
+            app.services.providerConfig?.enabled &&
+            task.providerAdapter === app.services.providerConfig.providerId &&
+            app.services.providerDispatchWorker
+          ) {
+            // Dispatch failures (privacy block, provider outage) leave the
+            // task queued; the job stays observable via stuck-state instead of
+            // failing the already-recorded self-verification result.
+            try {
+              await app.services.privacyGate.assertProviderDispatchAllowed(
+                task.jobId,
+                task.reviewerPool
+              );
+
+              const fallbackDecision = shouldFallbackProvider({
+                health: app.services.providerOperationsService.getHealthSnapshot(),
+                preferredProviderId: app.services.providerConfig.providerId
+              });
+
+              if (!fallbackDecision.fallback) {
+                const dispatchResult = await app.services.providerDispatchWorker.dispatch(task);
+                task.providerTaskRef = dispatchResult.providerTaskId;
+                task.state = "dispatched";
+                await app.services.humanReviewTaskService.save(task);
+                providerTaskId = dispatchResult.providerTaskId;
+              }
+            } catch (dispatchError) {
+              request.log.error(
+                { err: dispatchError, jobId: task.jobId, reviewTaskId: task.reviewTaskId },
+                "self-verification escalation dispatch failed; task left queued"
+              );
+            }
+          } else if (
+            app.services.runtimeConfig.localProviderMode === "simulated" &&
+            task.reviewerPool !== "internal"
+          ) {
+            // Local dev dogfood path: deliver a deterministic simulated
+            // response synchronously and let the provider workflow close the
+            // loop, so the verify gate is never left hanging without a worker.
+            const simulated = await dispatchLocalProviderTask(
+              app.services.responseValidationService,
+              task
+            );
+            await app.services.providerWorkflowService.maybeAutoAdvanceAfterIngest({
+              deduplicated: false,
+              response: simulated,
+              reviewTaskId: task.reviewTaskId
+            });
+          }
+        }
+
+        return reply.code(202).send({
+          escalated: outcome.escalated,
+          provider_task_id: providerTaskId,
+          result_id: request.body.result_id,
+          review_task_id: outcome.reviewTask?.reviewTaskId ?? null
+        });
       } catch (error) {
         return reply.code(400).send({
           message: error instanceof Error ? error.message : "Invalid self-verification result"

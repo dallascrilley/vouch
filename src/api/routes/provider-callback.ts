@@ -1,95 +1,89 @@
+import { createHash, timingSafeEqual } from "node:crypto";
+
 import type { FastifyInstance } from "fastify";
 
-import type { AdjudicationDecision, ConsensusOutcome } from "../../domain/consensus/models.js";
 import type { ProviderCallbackPayload } from "../../domain/human-review/provider-response-service.js";
-import type { Severity } from "../../domain/human-review/models.js";
+import { shouldFallbackProvider } from "../../domain/human-review/provider-routing-policy.js";
 
 type ProviderCallbackBody = ProviderCallbackPayload & {
   shared_secret?: string;
 };
 
-function toConsensusOutcome(verdict: ProviderCallbackPayload["overall_verdict"]): ConsensusOutcome {
-  switch (verdict) {
-    case "pass":
-      return "pass";
-    case "fail":
-      return "fail";
-    case "artifact_insufficient":
-      return "recapture";
-    case "unclear":
-      return "retry";
+function secretsMatch(provided: string | undefined, expected: string): boolean {
+  if (!provided) {
+    return false;
   }
-}
-
-function toAdjudicationDecision(verdict: ProviderCallbackPayload["overall_verdict"]): AdjudicationDecision {
-  switch (verdict) {
-    case "pass":
-      return "pass";
-    case "fail":
-      return "fail";
-    case "artifact_insufficient":
-      return "recapture";
-    case "unclear":
-      return "retry";
-  }
-}
-
-function toSeveritySummary(payload: ProviderCallbackPayload): Severity | "none" {
-  return payload.overall_verdict === "pass" ? "none" : payload.severity;
+  // Hash to a fixed length so timingSafeEqual never throws on length mismatch
+  // and the comparison time does not leak the secret length.
+  const a = createHash("sha256").update(provided).digest();
+  const b = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(a, b);
 }
 
 export function registerProviderCallbackRoutes(app: FastifyInstance) {
   app.post<{ Body: ProviderCallbackBody }>("/provider-callback", async (request, reply) => {
     try {
       const expectedSecret = app.services.providerConfig?.sharedSecret;
-      if (expectedSecret && request.body.shared_secret !== expectedSecret) {
-        return reply.code(401).send({
-          message: "Invalid provider callback secret"
-        });
+      // When a shared secret is configured the callback MUST present a matching
+      // one. Omitting the field no longer skips the check (auth-bypass fix).
+      if (expectedSecret) {
+        if (!secretsMatch(request.body?.shared_secret, expectedSecret)) {
+          return reply.code(401).send({
+            message: "Invalid provider callback secret"
+          });
+        }
       }
 
       const ingested = await app.services.providerResponseService.ingest(request.body);
-      const reviewTask = await app.services.runtimeRepositories.humanReviewTaskRepository.findById(
-        ingested.response.reviewTaskId
-      );
-      if (!reviewTask) {
-        throw new Error(`Human review task not found: ${ingested.response.reviewTaskId}`);
-      }
-      const consensusId = `consensus_${crypto.randomUUID()}`;
-      const artifactInsufficient = request.body.overall_verdict === "artifact_insufficient";
-      await app.services.consensusService.record({
-        consensusId,
-        jobId: reviewTask.jobId,
-        reviewTaskId: ingested.response.reviewTaskId,
-        validResponseCount: 1,
-        quorumState: "met",
-        criterionProbabilities: {},
-        severitySummary: toSeveritySummary(request.body),
-        artifactSufficiency: artifactInsufficient ? "insufficient" : "sufficient",
-        disagreementLevel: request.body.overall_verdict === "pass" ? "none" : "low",
-        recommendedOutcome: toConsensusOutcome(request.body.overall_verdict),
-        adjudicationTrigger: "provider_callback_auto_resolution",
-        createdAt: new Date()
+      const advanced = await app.services.providerWorkflowService.maybeAutoAdvanceAfterIngest({
+        deduplicated: ingested.deduplicated,
+        response: ingested.response,
+        reviewTaskId: ingested.reviewTaskId
       });
 
-      const adjudicationId = `adjudication_${crypto.randomUUID()}`;
-      await app.services.adjudicationService.record({
-        adjudicationId,
-        jobId: reviewTask.jobId,
-        triggerReason: "provider_callback_auto_resolution",
-        assignedPool: reviewTask.reviewerPool,
-        normalizedEvidenceRefs: [request.body.provider_response_id],
-        decision: toAdjudicationDecision(request.body.overall_verdict),
-        decisionNotes: request.body.evidence_note,
-        createdAt: new Date(),
-        decidedAt: new Date()
-      });
+      let pairwiseReviewTaskId: string | null = null;
+      let pairwiseProviderTaskId: string | null = null;
+      if (!advanced.advanced) {
+        const pairwise = await app.services.providerWorkflowService.maybeQueuePairwiseTieBreak({
+          deduplicated: ingested.deduplicated,
+          response: ingested.response,
+          reviewTaskId: ingested.reviewTaskId
+        });
+
+        if (pairwise.reviewTask) {
+          pairwiseReviewTaskId = pairwise.reviewTask.reviewTaskId;
+          const task = pairwise.reviewTask;
+          if (
+            app.services.providerConfig?.enabled &&
+            task.providerAdapter === app.services.providerConfig.providerId &&
+            app.services.providerDispatchWorker
+          ) {
+            await app.services.privacyGate.assertProviderDispatchAllowed(task.jobId, task.reviewerPool);
+
+            const fallbackDecision = shouldFallbackProvider({
+              health: app.services.providerOperationsService.getHealthSnapshot(),
+              preferredProviderId: app.services.providerConfig.providerId
+            });
+
+            if (!fallbackDecision.fallback) {
+              const dispatchResult = await app.services.providerDispatchWorker.dispatch(task);
+              task.providerTaskRef = dispatchResult.providerTaskId;
+              task.state = "dispatched";
+              await app.services.humanReviewTaskService.save(task);
+              pairwiseProviderTaskId = dispatchResult.providerTaskId;
+            }
+          }
+        }
+      }
 
       return reply.code(202).send({
-        adjudication_id: adjudicationId,
-        consensus_id: consensusId,
+        auto_advanced: advanced.advanced,
+        deduplicated: ingested.deduplicated,
+        pairwise_provider_task_id: pairwiseProviderTaskId,
+        pairwise_queued: pairwiseReviewTaskId !== null,
+        pairwise_review_task_id: pairwiseReviewTaskId,
         provider_response_id: ingested.receipt.providerResponseId,
-        review_task_id: ingested.response.reviewTaskId
+        review_task_id: ingested.reviewTaskId
       });
     } catch (error) {
       return reply.code(422).send({

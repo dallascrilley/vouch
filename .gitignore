@@ -2,10 +2,7 @@ node_modules/
 dist/
 build/
 coverage/
-.runtime/visual-qa/
-.runtime/*.sqlite
-.runtime/*.sqlite-*
-.runtime/mturk-bridge-state.json
+.runtime/
 *.log
 .env*
 .DS_Store
@@ -14,3 +11,8 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+.todos/
+.warp/
+.warp.json
+/goalplan.md
+.compound-engineering/*.local.yaml

@@ -6,6 +6,7 @@ type MetricEntry = {
   value: number;
 };
 
+// Local runtime metrics sink. Production OTel export is a planned adapter — see docs/architecture/runtime-target.md.
 export class InMemoryMetricsRecorder implements Metrics {
   private readonly increments: MetricEntry[] = [];
   private readonly gauges: MetricEntry[] = [];

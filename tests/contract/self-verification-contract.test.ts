@@ -108,6 +108,11 @@ describe("POST /verification-jobs/{jobId}/self-verification-results", () => {
     });
 
     expect(response.statusCode).toBe(202);
-    expect(response.json()).toEqual({ result_id: "result-1" });
+    expect(response.json()).toEqual({
+      escalated: false,
+      provider_task_id: null,
+      result_id: "result-1",
+      review_task_id: null
+    });
   });
 });
