@@ -77,3 +77,22 @@ npm run -s review -- --resume job_6c7917d6-7a3e-455f-8467-dbaa375241d7 \
 Exit `0` + `"agent_next_action": "pass"` completes the structured-template
 phase of the loop (verdict math itself is already covered by the phase-6 pass
 proof in `mturk-sandbox-e2e-proof.md`).
+
+## Loop completed — 2026-06-10 (round-trip verified)
+
+Both sandbox HITs were submitted by worker `ASBEMCXX9AKTR` via an unattended
+`agent-browser` session (persistent session name `mturk-worker`; login path
+documented in `mturk-access.md`). The bridge delivered both callbacks
+(`callbackAttemptTotal: 1` each, `deadLetters: []`) and both resume
+verifications completed on Bux:
+
+| Job | Review task | HIT | Assignment | Verdict | Exit |
+|---|---|---|---|---|---|
+| `job_6c7917d6-7a3e-455f-8467-dbaa375241d7` | `review_563e9258` | `3CMIQF80GORTZMGWF24P7EIOFH06QV` | `3J2UYBXQQMD7YD9RO6FCHSNLHQN60M` | `pass` (`agent_next_action: pass`, no failed criteria) | 0 |
+| `job_f6115168-6155-4566-8850-c940dbc5dcd9` | `review_45122dda` | `3Y3CZJSZ9LUXSJVINYJKKYETF8R5RF` | `33LKR6A5KFLD705LG2R567Y96Q4T1N` | `fail` (`failed_criteria: ["hero-cta-is-green"]`, severity S2, `retry_reason: provider_unanimous_fail`) | 1 |
+
+Worker answers matched ground truth: Yes/High on "orange CTA below headline,
+no overlap" (pass case); No/High on "CTA is colored green" (fail case). Both
+verdicts carry `policy_constraints: ["provider_auto_resolved"]` and
+`provider_ids: ["real-provider"]`. Full JSON outputs: `/tmp/resume-job_*.json`
+on Bux.
