@@ -11,6 +11,9 @@
 7. Adjudication resolves severe or disputed cases.
 8. Final verdict and feedback are emitted for agents and release gates.
 
+`docs/architecture/agent-review-contract.md` defines the agent-facing
+commissioning and completion fields for autonomous self-verification loops.
+
 ## Main Modules
 
 - `src/domain/jobs`: job identity, acceptance criteria, and budget policy

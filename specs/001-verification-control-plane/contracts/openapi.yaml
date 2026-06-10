@@ -555,7 +555,7 @@ components:
           enum: [allow, block, needs_review, no_effect]
     AgentFeedbackSignal:
       type: object
-      required: [feedback_id, job_id, final_verdict, retry_allowed]
+      required: [feedback_id, job_id, final_verdict, agent_next_action, retry_allowed]
       properties:
         feedback_id:
           type: string
@@ -563,6 +563,10 @@ components:
           type: string
         final_verdict:
           type: string
+          enum: [pass, fail, unclear, retry, recapture, fail_closed]
+        agent_next_action:
+          type: string
+          enum: [pass, fail, retry, recapture, escalate]
         failed_criteria:
           type: array
           items:

@@ -15,6 +15,35 @@ describe("provider response normalization contract", () => {
     await app.close();
   });
 
+  it("rejects provider callbacks missing the configured shared secret", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/provider-callback",
+      payload: {
+        provider_id: "real-provider",
+        provider_task_id: "provider-task-without-secret",
+        provider_response_id: "provider-response-without-secret",
+        reviewer_pseudonymous_id: "provider-reviewer",
+        overall_verdict: "pass",
+        criterion_results: [
+          {
+            criterion_id: "managed-check",
+            status: "pass",
+            confidence: "high"
+          }
+        ],
+        defect_category: "none",
+        evidence_note: "Managed provider confirmed the criterion.",
+        severity: "S4"
+      }
+    });
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toMatchObject({
+      message: "Invalid provider callback secret"
+    });
+  });
+
   it("records the receipt before normalizing a provider callback into a human response", async () => {
     const jobId = await createProviderEligibleJob(app);
     const taskResponse = await app.inject({
