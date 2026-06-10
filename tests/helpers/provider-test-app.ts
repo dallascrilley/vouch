@@ -7,6 +7,7 @@ export type ProviderTestAppOptions = {
   dispatchMode?: "api" | "mock";
   fetchImpl?: typeof fetch;
   ingestionMode?: "callback" | "poll";
+  operatorToken?: string;
 };
 
 export function buildProviderTestApp(options: ProviderTestAppOptions = {}) {
@@ -19,7 +20,8 @@ export function buildProviderTestApp(options: ProviderTestAppOptions = {}) {
       PROVIDER_INGESTION_MODE: options.ingestionMode ?? "callback",
       PROVIDER_API_KEY: "local-test-key",
       PROVIDER_CALLBACK_BASE_URL: "http://localhost:3000",
-      PROVIDER_SHARED_SECRET: "top-secret"
+      PROVIDER_SHARED_SECRET: "top-secret",
+      RUNTIME_OPERATOR_TOKEN: options.operatorToken ?? process.env.RUNTIME_OPERATOR_TOKEN
     },
     fetchImpl: options.fetchImpl ?? vi.fn()
   });

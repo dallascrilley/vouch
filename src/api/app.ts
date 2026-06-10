@@ -287,9 +287,12 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     responseValidationService
   );
   const providerWorkflowService = new ProviderWorkflowService(
-    consensusService,
-    adjudicationService,
-    repositories.humanReviewTaskRepository
+    jobService,
+    ledgerService,
+    verdictService,
+    feedbackService,
+    repositories.humanReviewTaskRepository,
+    transactionManager
   );
   const providerDispatchWorker =
     providerConfig.enabled && providerConfig.providerId === "real-provider"

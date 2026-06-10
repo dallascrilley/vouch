@@ -15,3 +15,4 @@ Thumbs.db
 .warp/
 .warp.json
 /goalplan.md
+.compound-engineering/*.local.yaml

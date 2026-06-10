@@ -1,0 +1,9 @@
+{
+  "hit_id": "3EGKVCRQFXT8E0OD232RVG7ISQDBY7",
+  "hit_status": "Reviewable",
+  "delivered_assignment_ids": ["39DD6S19JQC8DD8WYIB2ZFIKGVUEZ7"],
+  "callback_attempts": 1,
+  "last_poll_at": "2026-06-08T22:10:10.269Z",
+  "last_delivery_at": "2026-06-08T22:08:16.947Z",
+  "dead_letter_assignments": []
+}

@@ -1,13 +1,19 @@
-import type { ConsensusService } from "../consensus/consensus-service.js";
-import type { AdjudicationService } from "../adjudication/adjudication-service.js";
+import type { FeedbackService } from "../feedback/feedback-service.js";
+import type { VerdictService } from "../feedback/verdict-service.js";
+import type { JobService } from "../jobs/job-service.js";
+import type { LedgerService } from "../ledger/ledger-service.js";
 import type { HumanResponse } from "./models.js";
 import type { HumanReviewTaskRepository } from "../../adapters/storage/repositories.js";
+import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
 
 export class ProviderWorkflowService {
   constructor(
-    private readonly consensusService: ConsensusService,
-    private readonly adjudicationService: AdjudicationService,
-    private readonly reviewTaskRepository: HumanReviewTaskRepository
+    private readonly jobService: JobService,
+    private readonly ledgerService: LedgerService,
+    private readonly verdictService: VerdictService,
+    private readonly feedbackService: FeedbackService,
+    private readonly reviewTaskRepository: HumanReviewTaskRepository,
+    private readonly transactionManager: TransactionManager
   ) {}
 
   async maybeAutoAdvanceAfterIngest(input: {
@@ -24,43 +30,57 @@ export class ProviderWorkflowService {
       return { advanced: false };
     }
 
-    const jobId = reviewTask.jobId;
+    const response = input.response;
 
-    if (input.response.overallVerdict !== "pass") {
+    if (response.overallVerdict !== "pass") {
       return { advanced: false };
     }
 
-    if (!input.response.criterionResults.every((criterion) => criterion.status === "pass")) {
+    if (!response.criterionResults.every((criterion) => criterion.status === "pass")) {
       return { advanced: false };
     }
 
-    const consensusId = `consensus_${crypto.randomUUID()}`;
-    await this.consensusService.record({
-      adjudicationTrigger: undefined,
-      artifactSufficiency: "sufficient",
-      consensusId,
-      createdAt: new Date(),
-      criterionProbabilities: {},
-      disagreementLevel: "low",
-      jobId,
-      quorumState: "met",
-      recommendedOutcome: "pass",
-      reviewTaskId: input.reviewTaskId,
-      severitySummary: input.response.severity === "S4" ? "none" : input.response.severity,
-      validResponseCount: 1
-    });
+    const job = await this.jobService.get(reviewTask.jobId);
+    if (!job) {
+      return { advanced: false };
+    }
 
-    const adjudicationId = `adjudication_${crypto.randomUUID()}`;
-    await this.adjudicationService.record({
-      adjudicationId,
-      assignedPool: reviewTask.reviewerPool,
-      createdAt: new Date(),
-      decidedAt: new Date(),
-      decision: "pass",
-      decisionNotes: "Auto-advanced after provider pass callback",
-      jobId,
-      normalizedEvidenceRefs: input.response.annotationRefs,
-      triggerReason: "provider_response_auto_advance"
+    const providerId = response.providerId;
+    const providerResponseId = response.providerResponseId;
+    if (!providerId || !providerResponseId) {
+      return { advanced: false };
+    }
+
+    await this.transactionManager.inTransaction(async () => {
+      await this.ledgerService.recordProviderAutoResolved({
+        correlationId: response.responseId,
+        jobId: job.jobId,
+        overallVerdict: response.overallVerdict,
+        payloadHash: response.responseId,
+        policyVersion: "v1",
+        providerId,
+        providerResponseId,
+        reviewTaskId: input.reviewTaskId,
+        validResponseCount: 1
+      });
+
+      const currentJob = await this.jobService.get(job.jobId);
+      if (!currentJob) {
+        throw new Error(`Verification job not found: ${job.jobId}`);
+      }
+
+      const verdict = await this.verdictService.finalize(currentJob, "pass", {
+        adjudicationSummary: "Auto-advanced after unanimous provider pass callback",
+        humanConsensusSummary: `Single provider response (${providerResponseId}); no human quorum`
+      });
+
+      await this.feedbackService.emit(currentJob, verdict, {
+        humanAnnotations: response.annotationRefs,
+        policyConstraints: ["provider_auto_resolved"],
+        providerIds: [providerId],
+        providerResponseIds: [providerResponseId],
+        retryAllowed: false
+      });
     });
 
     return { advanced: true };
