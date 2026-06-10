@@ -9,11 +9,12 @@ import {
 
 const SIGNING_KEY = "contract-test-signing-key";
 
-function buildSigningApp(signingKey?: string) {
+function buildSigningApp(signingKey?: string, operatorToken?: string) {
   return buildApp({
     env: {
       ...process.env,
-      RELEASE_GATE_SIGNING_KEY: signingKey
+      RELEASE_GATE_SIGNING_KEY: signingKey,
+      RUNTIME_OPERATOR_TOKEN: operatorToken
     }
   });
 }
@@ -144,6 +145,25 @@ describe("release-artifact contract", () => {
 
     expect(verifyReleaseArtifact(tampered, SIGNING_KEY)).toBe(false);
     expect(wrongKey).toBe(false);
+  });
+
+  it("requires the operator token when one is configured", async () => {
+    app = buildSigningApp(SIGNING_KEY, "release-artifact-operator");
+    await app.ready();
+    const jobId = await finalizeJob(app);
+
+    const unauthorized = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/release-artifact`
+    });
+    const authorized = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/release-artifact`,
+      headers: { "x-operator-token": "release-artifact-operator" }
+    });
+
+    expect(unauthorized.statusCode).toBe(401);
+    expect(authorized.statusCode).toBe(200);
   });
 
   it("returns 404 before a verdict exists and 503 without a signing key", async () => {

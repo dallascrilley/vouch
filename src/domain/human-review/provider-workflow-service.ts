@@ -76,7 +76,9 @@ export class ProviderWorkflowService {
 
     // Unanimity must hold across every response on the task, not just the
     // triggering one — a pass arriving after a disagreeing sibling is a split
-    // signal, not an auto-advance.
+    // signal, not an auto-advance. A single response IS unanimous by design:
+    // provider-managed tasks may run with maxAssignments=1 and there is no
+    // synthetic quorum to wait for.
     const siblingResponses = await this.responseRepository.findByReviewTaskId(input.reviewTaskId);
     if (!siblingResponses.every((sibling) => classifyUnanimousVerdict(sibling) === unanimousVerdict)) {
       return { advanced: false };
@@ -173,32 +175,38 @@ export class ProviderWorkflowService {
       return notQueued;
     }
 
-    const existingTasks = await this.reviewTaskRepository.findByJobId(job.jobId);
-    if (existingTasks.some((task) => task.taskTemplate === PAIRWISE_TASK_TEMPLATE)) {
-      return notQueued;
-    }
+    const triggeringResponse = input.response;
 
-    const pairwiseTask = await this.reviewTaskService.create({
-      criterionIds: reviewTask.criterionIds,
-      deadlineAt: reviewTask.deadlineAt,
-      jobId: job.jobId,
-      providerAdapter: reviewTask.providerAdapter,
-      qualityPolicy: reviewTask.qualityPolicy,
-      reviewerPool: reviewTask.reviewerPool,
-      sanitizedPackageId: reviewTask.sanitizedPackageId,
-      taskTemplate: PAIRWISE_TASK_TEMPLATE
+    // The one-per-job guard and the create must commit atomically so two
+    // concurrent disagreeing callbacks cannot both queue a tie-break.
+    return this.transactionManager.inTransaction(async () => {
+      const existingTasks = await this.reviewTaskRepository.findByJobId(job.jobId);
+      if (existingTasks.some((task) => task.taskTemplate === PAIRWISE_TASK_TEMPLATE)) {
+        return notQueued;
+      }
+
+      const pairwiseTask = await this.reviewTaskService.create({
+        criterionIds: reviewTask.criterionIds,
+        deadlineAt: reviewTask.deadlineAt,
+        jobId: job.jobId,
+        providerAdapter: reviewTask.providerAdapter,
+        qualityPolicy: reviewTask.qualityPolicy,
+        reviewerPool: reviewTask.reviewerPool,
+        sanitizedPackageId: reviewTask.sanitizedPackageId,
+        taskTemplate: PAIRWISE_TASK_TEMPLATE
+      });
+
+      await this.ledgerService.recordProviderPairwiseQueued({
+        correlationId: triggeringResponse.responseId,
+        disagreementVerdicts: distinctVerdicts,
+        jobId: job.jobId,
+        pairwiseReviewTaskId: pairwiseTask.reviewTaskId,
+        payloadHash: triggeringResponse.responseId,
+        policyVersion: "v1",
+        sourceReviewTaskId: input.reviewTaskId
+      });
+
+      return { queued: true, reviewTask: pairwiseTask };
     });
-
-    await this.ledgerService.recordProviderPairwiseQueued({
-      correlationId: input.response.responseId,
-      disagreementVerdicts: distinctVerdicts,
-      jobId: job.jobId,
-      pairwiseReviewTaskId: pairwiseTask.reviewTaskId,
-      payloadHash: input.response.responseId,
-      policyVersion: "v1",
-      sourceReviewTaskId: input.reviewTaskId
-    });
-
-    return { queued: true, reviewTask: pairwiseTask };
   }
 }
