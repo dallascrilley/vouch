@@ -59,6 +59,7 @@ import { registerEvidenceRoutes } from "./routes/evidence.js";
 import { registerHumanReviewRoutes } from "./routes/human-review.js";
 import { registerProviderCallbackRoutes } from "./routes/provider-callback.js";
 import { registerRuntimeOperationsRoutes } from "./routes/runtime-operations.js";
+import { registerStuckStateRoutes } from "./routes/stuck-state.js";
 import { registerVerificationJobRoutes } from "./routes/verification-jobs.js";
 import { registerVerdictFeedbackRoutes } from "./routes/verdict-feedback.js";
 
@@ -348,6 +349,7 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
   void registerVerdictFeedbackRoutes(app);
   void registerRuntimeOperationsRoutes(app);
   void registerProviderCallbackRoutes(app);
+  void registerStuckStateRoutes(app);
 
   return app;
 }

@@ -23,7 +23,11 @@ function tokensMatch(provided: string | undefined, expected: string): boolean {
  *
  * Returns true when the request may proceed.
  */
-function authorizeOperator(app: FastifyInstance, request: FastifyRequest, reply: FastifyReply): boolean {
+export function authorizeOperator(
+  app: FastifyInstance,
+  request: FastifyRequest,
+  reply: FastifyReply
+): boolean {
   const expected = app.services.runtimeConfig.operatorToken;
 
   if (!expected) {
