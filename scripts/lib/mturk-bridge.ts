@@ -6,6 +6,12 @@ export {
   summarizeBridgeState
 } from "./provider-bridge.js";
 import type { BridgeVisualEvidence } from "./provider-bridge.js";
+import {
+  normalizeStructuredAnswers,
+  parseTaskTemplate,
+  renderStructuredFormBody,
+  type TemplatePricing
+} from "./review-templates.js";
 export type {
   BridgeDeadLetterAssignment,
   BridgeDispatchBody,
@@ -280,6 +286,49 @@ export function validateBridgeSafety(config: BridgeSafetyConfig): string[] {
   return errors;
 }
 
+// Per-dispatch pricing from a structured task template overrides the
+// bridge-wide defaults but must stay inside the same safety rails.
+export function resolveDispatchPricing(input: {
+  config: Pick<
+    BridgeSafetyConfig,
+    | "maxAssignments"
+    | "maxAssignmentsPerHit"
+    | "maxRewardUsd"
+    | "maxSpendPerHitUsd"
+    | "reward"
+  >;
+  pricing?: TemplatePricing;
+}): { errors: string[]; maxAssignments: number; reward: string } {
+  const { config, pricing } = input;
+  const maxAssignments = pricing?.max_assignments ?? config.maxAssignments;
+  const reward = pricing?.reward ?? config.reward;
+
+  if (!pricing) {
+    return { errors: [], maxAssignments, reward };
+  }
+
+  const errors: string[] = [];
+  const rewardValue = Number(reward);
+  const spendPerHit = rewardValue * maxAssignments;
+  if (rewardValue > config.maxRewardUsd) {
+    errors.push(
+      `pricing.reward ${reward} exceeds MTURK_MAX_REWARD_USD ${config.maxRewardUsd}`
+    );
+  }
+  if (maxAssignments > config.maxAssignmentsPerHit) {
+    errors.push(
+      `pricing.max_assignments ${maxAssignments} exceeds MTURK_MAX_ASSIGNMENTS_PER_HIT ${config.maxAssignmentsPerHit}`
+    );
+  }
+  if (spendPerHit > config.maxSpendPerHitUsd) {
+    errors.push(
+      `Per-HIT spend ${spendPerHit.toFixed(2)} exceeds MTURK_MAX_SPEND_PER_HIT_USD ${config.maxSpendPerHitUsd}`
+    );
+  }
+
+  return { errors, maxAssignments, reward };
+}
+
 function isPositiveNumber(value: number) {
   return Number.isFinite(value) && value > 0;
 }
@@ -300,6 +349,80 @@ export function buildHtmlQuestion(input: {
   const submitBase = input.sandbox
     ? "https://workersandbox.mturk.com"
     : "https://www.mturk.com";
+  const parsedTemplate = parseTaskTemplate(input.taskTemplate);
+  const formBody =
+    parsedTemplate.kind === "structured"
+      ? renderStructuredFormBody({
+          criterionIds: input.criterionIds,
+          envelope: parsedTemplate.envelope,
+          reviewTaskId: input.reviewTaskId,
+          visualEvidence: input.visualEvidence
+            ? {
+                caption: input.visualEvidence.caption,
+                data_url: input.visualEvidence.data_url
+              }
+            : undefined
+        })
+      : legacyFormBody(input);
+
+  const preFormHtml =
+    parsedTemplate.kind === "structured"
+      ? ""
+      : `<p>${escapeHtml(input.taskTemplate)}</p>
+    ${renderVisualEvidence(input.visualEvidence)}`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Human Review Task</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 24px; line-height: 1.4; }
+      fieldset { margin-bottom: 16px; }
+      figure { border: 1px solid #ccc; margin: 16px 0; padding: 12px; }
+      figcaption { color: #444; font-size: 14px; margin-top: 8px; }
+      img.visual-evidence { display: block; height: auto; max-width: 100%; }
+      textarea { width: 100%; min-height: 120px; }
+      pre.content { background: #f6f6f6; border: 1px solid #ddd; padding: 12px; white-space: pre-wrap; }
+      .hint { color: #555; margin-bottom: 16px; }
+      .metadata { color: #555; font-size: 13px; }
+      .criterion label, .stack label { display: block; margin: 8px 0; }
+    </style>
+    <script type="text/javascript" src="https://s3.amazonaws.com/mturk-public/externalHIT_v1.js"></script>
+  </head>
+  <body>
+    <h1>Human Review</h1>
+    <p class="metadata">Review task ${escapeHtml(input.reviewTaskId)}. Evaluate only what you can observe in the evidence shown.</p>
+    ${preFormHtml}
+    <form name="mturk_form" method="post" id="mturk_form" action="${submitBase}/mturk/externalSubmit">
+      <input type="hidden" id="assignmentId" name="assignmentId" value="" />
+
+      ${formBody}
+
+      <button type="submit">Submit review</button>
+    </form>
+    <script>
+      const url = new URL(window.location.href);
+      const assignmentId = url.searchParams.get("assignmentId") || "";
+      const submitTo = url.searchParams.get("turkSubmitTo") || "${submitBase}";
+      document.getElementById("assignmentId").value = assignmentId;
+      document.getElementById("mturk_form").action = submitTo.replace(/\\/$/, "") + "/mturk/externalSubmit";
+      if (assignmentId === "ASSIGNMENT_ID_NOT_AVAILABLE") {
+        const button = document.querySelector("button");
+        if (button) button.disabled = true;
+      }
+    </script>
+  </body>
+</html>`;
+
+  return `
+<HTMLQuestion xmlns="http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd">
+  <HTMLContent><![CDATA[${html}]]></HTMLContent>
+  <FrameHeight>0</FrameHeight>
+</HTMLQuestion>`.trim();
+}
+
+function legacyFormBody(input: { criterionIds: string[] }) {
   const criteriaMarkup = input.criterionIds
     .map(
       (criterionId, index) => `
@@ -319,32 +442,7 @@ export function buildHtmlQuestion(input: {
     )
     .join("\n");
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Human Review Task</title>
-    <style>
-      body { font-family: Arial, sans-serif; margin: 24px; line-height: 1.4; }
-      fieldset { margin-bottom: 16px; }
-      figure { border: 1px solid #ccc; margin: 16px 0; padding: 12px; }
-      figcaption { color: #444; font-size: 14px; margin-top: 8px; }
-      img.visual-evidence { display: block; height: auto; max-width: 100%; }
-      textarea { width: 100%; min-height: 120px; }
-      .hint { color: #555; margin-bottom: 16px; }
-      .metadata { color: #555; font-size: 13px; }
-      .criterion label, .stack label { display: block; margin: 8px 0; }
-    </style>
-    <script type="text/javascript" src="https://s3.amazonaws.com/mturk-public/externalHIT_v1.js"></script>
-  </head>
-  <body>
-    <h1>Observable UI Verification Review</h1>
-    <p class="hint">Review task ${escapeHtml(input.reviewTaskId)}. Evaluate only observable UI evidence.</p>
-    <p>${escapeHtml(input.taskTemplate)}</p>
-    ${renderVisualEvidence(input.visualEvidence)}
-    <form name="mturk_form" method="post" id="mturk_form" action="${submitBase}/mturk/externalSubmit">
-      <input type="hidden" id="assignmentId" name="assignmentId" value="" />
-
+  return `
       <fieldset class="stack">
         <legend>Overall verdict</legend>
         ${radioGroup("overall_verdict", ["pass", "fail", "unclear", "artifact_insufficient"])}
@@ -371,28 +469,7 @@ export function buildHtmlQuestion(input: {
         Quality flags
         <input type="text" name="quality_flags" placeholder="comma,separated,optional" />
       </label>
-
-      <button type="submit">Submit review</button>
-    </form>
-    <script>
-      const url = new URL(window.location.href);
-      const assignmentId = url.searchParams.get("assignmentId") || "";
-      const submitTo = url.searchParams.get("turkSubmitTo") || "${submitBase}";
-      document.getElementById("assignmentId").value = assignmentId;
-      document.getElementById("mturk_form").action = submitTo.replace(/\\/$/, "") + "/mturk/externalSubmit";
-      if (assignmentId === "ASSIGNMENT_ID_NOT_AVAILABLE") {
-        const button = document.querySelector("button");
-        if (button) button.disabled = true;
-      }
-    </script>
-  </body>
-</html>`;
-
-  return `
-<HTMLQuestion xmlns="http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd">
-  <HTMLContent><![CDATA[${html}]]></HTMLContent>
-  <FrameHeight>0</FrameHeight>
-</HTMLQuestion>`.trim();
+  `;
 }
 
 function renderVisualEvidence(evidence: BridgeVisualEvidence | undefined) {
@@ -440,9 +517,31 @@ export function normalizeAssignment(input: {
   criterionIds: string[];
   providerId: string;
   providerTaskId: string;
+  taskTemplate?: string;
   workerId: string;
 }) {
   const fields = parseAnswerXml(input.answerXml);
+  const parsedTemplate =
+    input.taskTemplate === undefined
+      ? undefined
+      : parseTaskTemplate(input.taskTemplate);
+
+  if (parsedTemplate?.kind === "structured") {
+    const normalized = normalizeStructuredAnswers({
+      criterionIds: input.criterionIds,
+      envelope: parsedTemplate.envelope,
+      fields
+    });
+    return {
+      ...normalized,
+      delivery_mode: "polling" as const,
+      provider_assignment_ref: input.assignmentId,
+      provider_id: input.providerId,
+      provider_response_id: input.assignmentId,
+      provider_task_id: input.providerTaskId,
+      reviewer_pseudonymous_id: input.workerId
+    };
+  }
 
   return {
     criterion_results: input.criterionIds.map((criterionId, index) => ({

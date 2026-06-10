@@ -44,6 +44,7 @@ export type BridgeTaskRecord = {
   lastHitStatusAt?: string;
   lastHitStatusError?: BridgeTaskError;
   lastPollAt?: string;
+  maxAssignments?: number;
   qualificationRequirements?: unknown[];
   reviewTaskId: string;
   reviewerPool: string;
