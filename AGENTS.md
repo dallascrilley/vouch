@@ -1,3 +1,24 @@
+---
+ijfw_version: 1.3.2
+ijfw_schema: 1
+type: software
+primary_type: software
+secondary_types: []
+confidence: 0.907
+detected_at: 2026-06-10T13:52:31.361Z
+signals:
+  - kind: manifest
+    weight: 0.9
+    manifests: [package.json]
+  - kind: dir_business
+    weight: 0.4
+    name: ops
+  - kind: file_extension_ratio
+    weight: 0.7
+    domain: software
+    ratio: 1
+    count: 173
+---
 # docs-spec-constitution-initial Development Guidelines
 
 Auto-generated from all feature plans. Last updated: 2026-06-09
@@ -34,3 +55,11 @@ TypeScript 5.x on Node.js 24+: Follow standard conventions
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->
+
+<!-- IJFW-MEMORY-START -->
+Project memory at .ijfw/memory/. Call `ijfw_memory_prelude` for full context.
+<!-- IJFW-MEMORY-END -->
+
+<!-- IJFW-AGENTS-START -->
+No project agents yet. Run `ijfw team` to set them up.
+<!-- IJFW-AGENTS-END -->
