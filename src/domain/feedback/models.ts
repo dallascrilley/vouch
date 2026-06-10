@@ -4,6 +4,7 @@ import type { Severity } from "../human-review/models.js";
 
 export type FinalVerdictState = "pass" | "fail" | "unclear" | "retry" | "recapture" | "fail_closed";
 export type ReleaseGateEffect = "allow" | "block" | "needs_review" | "no_effect";
+export type AgentNextAction = "pass" | "fail" | "retry" | "recapture" | "escalate";
 
 export type FinalVerdict = {
   verdictId: Identifier;
@@ -26,6 +27,7 @@ export type AgentFeedbackSignal = {
   feedbackId: Identifier;
   jobId: Identifier;
   finalVerdict: FinalVerdictState;
+  agentNextAction: AgentNextAction;
   failedCriteria: Identifier[];
   severity?: Severity;
   defectCategory?: string;

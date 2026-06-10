@@ -90,6 +90,7 @@ describe("US3 feedback regression contract", () => {
       adjudication_summary: null
     });
     expect(feedback.json()).toMatchObject({
+      agent_next_action: "retry",
       final_verdict: "retry",
       severity: null,
       defect_category: null,

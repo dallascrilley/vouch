@@ -1,0 +1,644 @@
+import { execFile } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
+
+import Fastify from "fastify";
+
+import {
+  buildHtmlQuestion,
+  loadBridgeState,
+  mergeSaveBridgeState,
+  normalizeAssignment,
+  normalizeMturkTimestamp,
+  parseAssignmentApprovalPolicy,
+  parseQualificationRequirements,
+  QUESTION_XML_MAX_CHARS,
+  resolveDispatchPricing,
+  saveBridgeState,
+  summarizeBridgeState,
+  validateBridgeSafety,
+  type BridgeDispatchBody
+} from "./lib/mturk-bridge.js";
+import { parseTaskTemplate } from "./lib/review-templates.js";
+import { deliverProviderCallback } from "./lib/provider-bridge.js";
+
+const execFileAsync = promisify(execFile);
+const sandboxEndpoint =
+  "https://mturk-requester-sandbox.us-east-1.amazonaws.com";
+
+function requireEnv(name: string) {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+const config = {
+  awsEndpointUrl: process.env.MTURK_AWS_ENDPOINT_URL ?? sandboxEndpoint,
+  awsRegion: process.env.MTURK_AWS_REGION ?? "us-east-1",
+  assignmentApprovalPolicy: parseAssignmentApprovalPolicy(
+    process.env.MTURK_ASSIGNMENT_APPROVAL_POLICY
+  ),
+  autoApprovalDelaySeconds: Number(
+    process.env.MTURK_AUTO_APPROVAL_DELAY_SECONDS ?? 259200
+  ),
+  brokerCallbackUrl:
+    process.env.MTURK_BROKER_CALLBACK_URL ??
+    "http://127.0.0.1:3000/provider-callback",
+  bridgeApiKey: requireEnv("MTURK_BRIDGE_API_KEY"),
+  expirationSeconds: Number(process.env.MTURK_EXPIRATION_SECONDS ?? 86400),
+  maxCallbackAttempts: Number(process.env.MTURK_MAX_CALLBACK_ATTEMPTS ?? 3),
+  maxPollBackoffMs: Number(process.env.MTURK_MAX_POLL_BACKOFF_MS ?? 300000),
+  maxAssignments: Number(process.env.MTURK_MAX_ASSIGNMENTS ?? 1),
+  maxAssignmentsPerHit: Number(process.env.MTURK_MAX_ASSIGNMENTS_PER_HIT ?? 3),
+  maxRewardUsd: Number(process.env.MTURK_MAX_REWARD_USD ?? 1),
+  maxSpendPerHitUsd: Number(process.env.MTURK_MAX_SPEND_PER_HIT_USD ?? 3),
+  minAutoApprovalDelaySeconds: Number(
+    process.env.MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS ?? 86400
+  ),
+  minExpirationSeconds: Number(process.env.MTURK_MIN_EXPIRATION_SECONDS ?? 300),
+  minTaskDurationSeconds: Number(
+    process.env.MTURK_MIN_TASK_DURATION_SECONDS ?? 60
+  ),
+  pollIntervalMs: Number(process.env.MTURK_POLL_INTERVAL_MS ?? 15000),
+  port: Number(process.env.MTURK_BRIDGE_PORT ?? 3100),
+  providerId: process.env.MTURK_PROVIDER_ID ?? "real-provider",
+  repollCompletedTasks: process.env.MTURK_REPOLL_COMPLETED === "true",
+  qualificationRequirements: parseQualificationRequirements(
+    process.env.MTURK_QUALIFICATION_REQUIREMENTS_JSON
+  ),
+  reward: process.env.MTURK_REWARD ?? "0.05",
+  sharedSecret: requireEnv("PROVIDER_SHARED_SECRET"),
+  statePath:
+    process.env.MTURK_BRIDGE_STATE_PATH ?? ".runtime/mturk-bridge-state.json",
+  taskDurationSeconds: Number(process.env.MTURK_TASK_DURATION_SECONDS ?? 900),
+  titlePrefix: process.env.MTURK_TITLE_PREFIX ?? "AI Broker UI Verification"
+};
+
+const safetyErrors = validateBridgeSafety(config);
+if (safetyErrors.length > 0) {
+  throw new Error(
+    `Unsafe MTurk bridge configuration: ${safetyErrors.join("; ")}`
+  );
+}
+
+function isAuthorized(authorization: string | undefined) {
+  return authorization === `Bearer ${config.bridgeApiKey}`;
+}
+
+const app = Fastify({ logger: true });
+
+app.get("/health", () => ({ ok: true, provider_id: config.providerId }));
+
+app.get("/state", (request, reply) => {
+  if (!isAuthorized(request.headers.authorization)) {
+    return reply.code(401).send({ message: "Invalid bridge authorization" });
+  }
+
+  return summarizeBridgeState(loadBridgeState(config.statePath));
+});
+
+app.get("/dead-letters", (request, reply) => {
+  if (!isAuthorized(request.headers.authorization)) {
+    return reply.code(401).send({ message: "Invalid bridge authorization" });
+  }
+
+  return {
+    dead_letters: summarizeBridgeState(loadBridgeState(config.statePath))
+      .deadLetters
+  };
+});
+
+app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
+  if (!isAuthorized(request.headers.authorization)) {
+    return reply.code(401).send({ message: "Invalid bridge authorization" });
+  }
+
+  let parsedTemplate;
+  try {
+    parsedTemplate = parseTaskTemplate(request.body.task_template);
+  } catch (error) {
+    return reply.code(400).send({
+      message: error instanceof Error ? error.message : String(error)
+    });
+  }
+
+  const pricing = resolveDispatchPricing({
+    config,
+    pricing:
+      parsedTemplate.kind === "structured"
+        ? parsedTemplate.envelope.pricing
+        : undefined
+  });
+  if (pricing.errors.length > 0) {
+    return reply.code(400).send({
+      message: `Unsafe task template pricing: ${pricing.errors.join("; ")}`
+    });
+  }
+
+  const htmlQuestion = buildHtmlQuestion({
+    criterionIds: request.body.criterion_ids,
+    reviewTaskId: request.body.review_task_id,
+    sandbox: config.awsEndpointUrl === sandboxEndpoint,
+    taskTemplate: request.body.task_template,
+    visualEvidence: request.body.visual_evidence
+  });
+  if (htmlQuestion.length > QUESTION_XML_MAX_CHARS) {
+    return reply.code(400).send({
+      message: `QuestionXML is ${htmlQuestion.length} chars, over MTurk's ${QUESTION_XML_MAX_CHARS}-char limit; compress embedded screenshots (JPEG, ~80KB or less)`
+    });
+  }
+
+  const tempDir = mkdtempSync(join(tmpdir(), "mturk-bridge-"));
+  const questionPath = join(tempDir, "question.xml");
+  writeFileSync(questionPath, htmlQuestion);
+
+  try {
+    const args = [
+      "mturk",
+      "create-hit",
+      "--endpoint-url",
+      config.awsEndpointUrl,
+      "--region",
+      config.awsRegion,
+      "--title",
+      `${config.titlePrefix}: ${request.body.review_task_id}`,
+      "--description",
+      `Observable UI verification for ${request.body.review_task_id}`,
+      "--reward",
+      pricing.reward,
+      "--max-assignments",
+      String(pricing.maxAssignments),
+      "--assignment-duration-in-seconds",
+      String(config.taskDurationSeconds),
+      "--lifetime-in-seconds",
+      String(config.expirationSeconds),
+      "--auto-approval-delay-in-seconds",
+      String(config.autoApprovalDelaySeconds),
+      "--question",
+      `file://${questionPath}`,
+      "--requester-annotation",
+      JSON.stringify({
+        review_task_id: request.body.review_task_id,
+        reviewer_pool: request.body.reviewer_pool
+      }),
+      "--output",
+      "json"
+    ];
+    if (config.qualificationRequirements.length > 0) {
+      args.push(
+        "--qualification-requirements",
+        JSON.stringify(config.qualificationRequirements)
+      );
+    }
+    const { stdout } = await execFileAsync("aws", args, {
+      env: process.env
+    });
+    const payload = JSON.parse(stdout) as { HIT?: { HITId?: string } };
+    const hitId = payload.HIT?.HITId;
+    if (!hitId) {
+      throw new Error("MTurk create-hit did not return a HIT ID");
+    }
+
+    const state = loadBridgeState(config.statePath);
+    state.tasks[hitId] = {
+      approvedAssignmentIds: [],
+      createdAt: new Date().toISOString(),
+      criterionIds: request.body.criterion_ids,
+      callbackAttempts: {},
+      deadLetterAssignments: [],
+      deliveredAssignmentIds: [],
+      hitId,
+      lastHitStatusAt: new Date().toISOString(),
+      maxAssignments: pricing.maxAssignments,
+      qualificationRequirements: config.qualificationRequirements,
+      reviewTaskId: request.body.review_task_id,
+      reviewerPool: request.body.reviewer_pool,
+      sanitizedPackageId: request.body.sanitized_package_id,
+      taskTemplate: request.body.task_template,
+      visualEvidence: request.body.visual_evidence
+    };
+    mergeSaveBridgeState(config.statePath, state);
+    app.log.info(
+      {
+        hitId,
+        qualificationRequirementCount: config.qualificationRequirements.length,
+        reviewTaskId: request.body.review_task_id,
+        reviewerPool: request.body.reviewer_pool
+      },
+      "mturk bridge created hit"
+    );
+
+    return reply.code(202).send({
+      provider_assignment_scope: request.body.reviewer_pool,
+      provider_task_id: hitId
+    });
+  } finally {
+    rmSync(tempDir, { force: true, recursive: true });
+  }
+});
+
+async function pollAssignments() {
+  const state = loadBridgeState(config.statePath);
+  const hitIds = Object.keys(state.tasks);
+
+  for (const hitId of hitIds) {
+    const task = state.tasks[hitId];
+    task.approvedAssignmentIds ??= [];
+    task.callbackAttempts ??= {};
+    task.deadLetterAssignments ??= [];
+
+    // Once every expected assignment is delivered the HIT stops being polled,
+    // so late assignments (e.g. extended HITs) are only picked up when
+    // MTURK_REPOLL_COMPLETED=true. See docs/ops/bridge-health-contract.md.
+    if (task.deliveryComplete && !config.repollCompletedTasks) {
+      app.log.info(
+        { hitId, reviewTaskId: task.reviewTaskId },
+        "mturk bridge skipped delivery-complete hit"
+      );
+      continue;
+    }
+
+    if (task.nextPollAt && new Date(task.nextPollAt) > new Date()) {
+      app.log.info(
+        { hitId, nextPollAt: task.nextPollAt, reviewTaskId: task.reviewTaskId },
+        "mturk bridge backing off throttled hit"
+      );
+      continue;
+    }
+
+    task.lastPollAt = new Date().toISOString();
+    saveBridgeState(config.statePath, state);
+
+    try {
+      await refreshHitStatus({ hitId, state, task });
+
+      const { stdout } = await execFileAsync(
+        "aws",
+        [
+          "mturk",
+          "list-assignments-for-hit",
+          "--endpoint-url",
+          config.awsEndpointUrl,
+          "--region",
+          config.awsRegion,
+          "--hit-id",
+          hitId,
+          "--assignment-statuses",
+          "Submitted",
+          "Approved",
+          "Rejected",
+          "--output",
+          "json"
+        ],
+        { env: process.env }
+      );
+
+      const payload = JSON.parse(stdout) as {
+        Assignments?: Array<{
+          Answer?: string;
+          AssignmentId: string;
+          SubmitTime?: number | string;
+          WorkerId: string;
+        }>;
+      };
+      const assignments = payload.Assignments ?? [];
+
+      app.log.info(
+        {
+          assignmentCount: assignments.length,
+          hitId,
+          reviewTaskId: task.reviewTaskId
+        },
+        "mturk bridge polled assignments"
+      );
+
+      for (const assignment of assignments) {
+        if (task.deliveredAssignmentIds.includes(assignment.AssignmentId)) {
+          if (
+            config.assignmentApprovalPolicy === "approve_on_callback_success" &&
+            !task.approvedAssignmentIds.includes(assignment.AssignmentId)
+          ) {
+            await approveAssignmentAfterCallback({
+              assignment,
+              hitId,
+              state,
+              task
+            });
+          }
+
+          app.log.info(
+            {
+              assignmentId: assignment.AssignmentId,
+              approvalPolicy: config.assignmentApprovalPolicy,
+              hitId,
+              reviewTaskId: task.reviewTaskId,
+              workerId: assignment.WorkerId
+            },
+            "mturk bridge skipped duplicate assignment"
+          );
+          continue;
+        }
+
+        if (
+          task.deadLetterAssignments.some(
+            (deadLetter) => deadLetter.assignmentId === assignment.AssignmentId
+          )
+        ) {
+          continue;
+        }
+
+        if (!assignment.Answer) {
+          continue;
+        }
+
+        await deliverAssignment({ assignment, hitId, state, task });
+      }
+
+      if (task.pollBackoffMs || task.nextPollAt) {
+        delete task.pollBackoffMs;
+        delete task.nextPollAt;
+        saveBridgeState(config.statePath, state);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const recordedAt = new Date().toISOString();
+
+      if (isThrottlingError(message)) {
+        const backoffMs = Math.min(
+          (task.pollBackoffMs ?? config.pollIntervalMs) * 2,
+          config.maxPollBackoffMs
+        );
+        const nextPollAt = new Date(Date.now() + backoffMs).toISOString();
+        task.pollBackoffMs = backoffMs;
+        task.nextPollAt = nextPollAt;
+        task.throttleEvents = [
+          ...(task.throttleEvents ?? []),
+          { message: message.slice(0, 200), nextPollAt, recordedAt }
+        ].slice(-10);
+      }
+
+      task.lastError = { message, recordedAt };
+      saveBridgeState(config.statePath, state);
+      app.log.error(
+        { err: error, hitId, reviewTaskId: task.reviewTaskId },
+        "mturk bridge hit polling failed"
+      );
+    }
+  }
+}
+
+function isThrottlingError(message: string) {
+  return /throttl|rate exceeded|toomanyrequests|slow ?down|requestlimitexceeded/i.test(
+    message
+  );
+}
+
+async function refreshHitStatus(input: {
+  hitId: string;
+  state: ReturnType<typeof loadBridgeState>;
+  task: ReturnType<typeof loadBridgeState>["tasks"][string];
+}) {
+  const { hitId, state, task } = input;
+  try {
+    const { stdout } = await execFileAsync(
+      "aws",
+      [
+        "mturk",
+        "get-hit",
+        "--endpoint-url",
+        config.awsEndpointUrl,
+        "--region",
+        config.awsRegion,
+        "--hit-id",
+        hitId,
+        "--output",
+        "json"
+      ],
+      { env: process.env }
+    );
+
+    const payload = JSON.parse(stdout) as {
+      HIT?: {
+        Expiration?: number | string;
+        HITReviewStatus?: string;
+        HITStatus?: string;
+      };
+    };
+    const hit = payload.HIT;
+    const now = new Date();
+    const expiration = normalizeMturkTimestamp(hit?.Expiration);
+
+    task.hitStatus = hit?.HITStatus;
+    task.hitExpirationAt = expiration?.toISOString();
+    task.hitReviewStatus = hit?.HITReviewStatus;
+    task.lastHitStatusAt = now.toISOString();
+    delete task.lastHitStatusError;
+
+    if (expiration && Number.isFinite(expiration.getTime())) {
+      if (expiration <= now && !task.expiredAt) {
+        task.expiredAt = now.toISOString();
+      }
+      if (expiration > now) {
+        delete task.expiredAt;
+      }
+    }
+
+    saveBridgeState(config.statePath, state);
+    app.log.info(
+      {
+        expiredAt: task.expiredAt,
+        hitExpirationAt: task.hitExpirationAt,
+        hitId,
+        hitReviewStatus: task.hitReviewStatus,
+        hitStatus: task.hitStatus,
+        reviewTaskId: task.reviewTaskId
+      },
+      "mturk bridge refreshed hit status"
+    );
+  } catch (error) {
+    task.lastHitStatusError = {
+      message: error instanceof Error ? error.message : String(error),
+      recordedAt: new Date().toISOString()
+    };
+    saveBridgeState(config.statePath, state);
+    app.log.error(
+      { err: error, hitId, reviewTaskId: task.reviewTaskId },
+      "mturk bridge hit status refresh failed"
+    );
+  }
+}
+
+async function deliverAssignment(input: {
+  assignment: {
+    Answer?: string;
+    AssignmentId: string;
+    SubmitTime?: number | string;
+    WorkerId: string;
+  };
+  hitId: string;
+  state: ReturnType<typeof loadBridgeState>;
+  task: ReturnType<typeof loadBridgeState>["tasks"][string];
+}) {
+  const { assignment, hitId, state, task } = input;
+  const nextAttempt =
+    (task.callbackAttempts?.[assignment.AssignmentId] ?? 0) + 1;
+
+  app.log.info(
+    {
+      assignmentId: assignment.AssignmentId,
+      attempt: nextAttempt,
+      hitId,
+      reviewTaskId: task.reviewTaskId,
+      workerId: assignment.WorkerId
+    },
+    "mturk bridge delivering assignment callback"
+  );
+
+  const callbackPayload = normalizeAssignment({
+    answerXml: assignment.Answer ?? "",
+    assignmentId: assignment.AssignmentId,
+    criterionIds: task.criterionIds,
+    providerId: config.providerId,
+    providerTaskId: hitId,
+    taskTemplate: task.taskTemplate,
+    workerId: assignment.WorkerId
+  });
+
+  const delivery = await deliverProviderCallback({
+    brokerCallbackUrl: config.brokerCallbackUrl,
+    expectedAssignmentCount: task.maxAssignments ?? config.maxAssignments,
+    maxCallbackAttempts: config.maxCallbackAttempts,
+    payload: callbackPayload,
+    responseId: assignment.AssignmentId,
+    save: () => saveBridgeState(config.statePath, state),
+    sharedSecret: config.sharedSecret,
+    submittedAt: normalizeMturkTimestamp(assignment.SubmitTime),
+    task,
+    workerId: assignment.WorkerId
+  });
+
+  if (!delivery.delivered) {
+    const logContext = {
+      assignmentId: assignment.AssignmentId,
+      attempts: delivery.attempts,
+      hitId,
+      reviewTaskId: task.reviewTaskId,
+      workerId: assignment.WorkerId
+    };
+    if (delivery.deadLettered) {
+      app.log.error(
+        logContext,
+        "mturk bridge dead-lettered assignment callback"
+      );
+    } else {
+      app.log.warn(logContext, "mturk bridge callback delivery failed");
+    }
+    return;
+  }
+
+  if (config.assignmentApprovalPolicy === "approve_on_callback_success") {
+    await approveAssignmentAfterCallback({ assignment, hitId, state, task });
+  }
+
+  app.log.info(
+    {
+      assignmentId: assignment.AssignmentId,
+      approvalPolicy: config.assignmentApprovalPolicy,
+      attempts: delivery.attempts,
+      hitId,
+      reviewTaskId: task.reviewTaskId,
+      workerId: assignment.WorkerId
+    },
+    "mturk bridge delivered assignment callback"
+  );
+}
+
+async function approveAssignmentAfterCallback(input: {
+  assignment: { AssignmentId: string; WorkerId: string };
+  hitId: string;
+  state: ReturnType<typeof loadBridgeState>;
+  task: ReturnType<typeof loadBridgeState>["tasks"][string];
+}) {
+  const { assignment, hitId, state, task } = input;
+  task.approvedAssignmentIds ??= [];
+
+  if (task.approvedAssignmentIds.includes(assignment.AssignmentId)) {
+    app.log.info(
+      {
+        assignmentId: assignment.AssignmentId,
+        hitId,
+        reviewTaskId: task.reviewTaskId,
+        workerId: assignment.WorkerId
+      },
+      "mturk bridge skipped duplicate assignment approval"
+    );
+    return;
+  }
+
+  try {
+    await execFileAsync(
+      "aws",
+      [
+        "mturk",
+        "approve-assignment",
+        "--endpoint-url",
+        config.awsEndpointUrl,
+        "--region",
+        config.awsRegion,
+        "--assignment-id",
+        assignment.AssignmentId,
+        "--requester-feedback",
+        `Broker callback accepted for ${task.reviewTaskId}`
+      ],
+      { env: process.env }
+    );
+
+    task.approvedAssignmentIds.push(assignment.AssignmentId);
+    task.lastApprovalAt = new Date().toISOString();
+    delete task.lastApprovalError;
+    saveBridgeState(config.statePath, state);
+    app.log.info(
+      {
+        assignmentId: assignment.AssignmentId,
+        hitId,
+        reviewTaskId: task.reviewTaskId,
+        workerId: assignment.WorkerId
+      },
+      "mturk bridge approved assignment"
+    );
+  } catch (error) {
+    task.lastApprovalError = {
+      assignmentId: assignment.AssignmentId,
+      message: error instanceof Error ? error.message : String(error),
+      recordedAt: new Date().toISOString()
+    };
+    saveBridgeState(config.statePath, state);
+    app.log.error(
+      {
+        err: error,
+        assignmentId: assignment.AssignmentId,
+        hitId,
+        reviewTaskId: task.reviewTaskId,
+        workerId: assignment.WorkerId
+      },
+      "mturk bridge assignment approval failed"
+    );
+  }
+}
+
+async function main() {
+  await app.listen({ host: "0.0.0.0", port: config.port });
+  app.log.info({ port: config.port }, "mturk bridge listening");
+
+  setInterval(() => {
+    void pollAssignments().catch((error) => {
+      app.log.error({ err: error }, "mturk bridge polling failed");
+    });
+  }, config.pollIntervalMs);
+}
+
+void main();

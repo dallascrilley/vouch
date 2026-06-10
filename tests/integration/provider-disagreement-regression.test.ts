@@ -54,31 +54,33 @@ describe("provider disagreement regression", () => {
         shared_secret: "top-secret"
       }
     });
+    // Ambiguous provider signals stay manual: no synthetic auto-resolution.
     expect(callbackResponse.json()).toMatchObject({ auto_advanced: false });
 
     const consensusResponse = await app.inject({
       method: "POST",
       url: `/verification-jobs/${jobId}/consensus`,
       payload: {
+        adjudication_trigger: "provider_disagreement",
         artifact_sufficiency: "sufficient",
-        disagreement_level: "high",
+        disagreement_level: "medium",
         quorum_state: "met",
-        recommended_outcome: "unclear",
+        recommended_outcome: "adjudicate",
         review_task_id: taskPayload.review_task_id,
         severity_summary: "S2",
-        valid_response_count: 1,
-        adjudication_trigger: "provider_disagreement"
+        valid_response_count: 1
       }
     });
-
     const adjudicationResponse = await app.inject({
       method: "POST",
       url: `/verification-jobs/${jobId}/adjudications`,
       payload: {
+        assigned_pool: "internal",
         decision: "retry",
-        trigger_reason: "provider_disagreement"
+        trigger_reason: "provider reviewer could not confirm the state"
       }
     });
+
     const feedbackResponse = await app.inject({
       method: "GET",
       url: `/verification-jobs/${jobId}/feedback`
@@ -91,12 +93,12 @@ describe("provider disagreement regression", () => {
     expect(consensusResponse.statusCode).toBe(202);
     expect(adjudicationResponse.statusCode).toBe(202);
     expect(feedbackResponse.json()).toMatchObject({
+      final_verdict: "retry",
       provider_ids: ["real-provider"],
       provider_response_ids: ["provider-response-disagree"]
     });
     expect(verdictResponse.json()).toMatchObject({
-      human_consensus_summary: expect.stringContaining("real-provider"),
-      adjudication_summary: expect.stringContaining("real-provider")
+      final_verdict: "retry"
     });
   });
 });

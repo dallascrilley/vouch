@@ -1,4 +1,4 @@
-import type { HumanReviewTask } from "./models.js";
+import type { HumanReviewTask, VisualEvidence } from "./models.js";
 import type { HumanReviewTaskRepository } from "../../adapters/storage/repositories.js";
 import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
 import type { JobService } from "../jobs/job-service.js";
@@ -15,6 +15,7 @@ type CreateHumanReviewTaskInput = {
   reviewerPool: ReviewerPoolType;
   sanitizedPackageId: string;
   taskTemplate: string;
+  visualEvidence?: VisualEvidence;
 };
 
 export class HumanReviewTaskService {
@@ -32,9 +33,13 @@ export class HumanReviewTaskService {
       throw new Error(`Verification job not found: ${input.jobId}`);
     }
 
-    const providerCapability = this.capabilityRegistry.findForPool(input.reviewerPool);
+    const providerCapability = this.capabilityRegistry.findForPool(
+      input.reviewerPool
+    );
     if (!providerCapability) {
-      throw new Error(`No provider capability available for reviewer pool: ${input.reviewerPool}`);
+      throw new Error(
+        `No provider capability available for reviewer pool: ${input.reviewerPool}`
+      );
     }
 
     if (input.sanitizedPackageId.trim().length === 0) {
@@ -42,7 +47,9 @@ export class HumanReviewTaskService {
     }
 
     const queueState =
-      input.reviewerPool === "internal" ? "internal_review_queued" : "external_review_queued";
+      input.reviewerPool === "internal"
+        ? "internal_review_queued"
+        : "external_review_queued";
 
     return this.transactionManager.inTransaction(async () => {
       await this.ledgerService.recordStateTransition(job.state, queueState, {
@@ -67,7 +74,8 @@ export class HumanReviewTaskService {
         deadlineAt: input.deadlineAt,
         providerAdapter: input.providerAdapter ?? providerCapability.providerId,
         providerTaskRef: undefined,
-        state: "queued"
+        state: "queued",
+        visualEvidence: input.visualEvidence
       };
 
       await this.reviewTaskRepository.save(reviewTask);
