@@ -3,9 +3,17 @@ import type { VerdictService } from "../feedback/verdict-service.js";
 import type { JobService } from "../jobs/job-service.js";
 import { resolveBudgetPolicy } from "../jobs/budget-policy.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
-import type { HumanResponse } from "./models.js";
-import type { HumanReviewTaskRepository } from "../../adapters/storage/repositories.js";
+import type { HumanReviewTaskService } from "./human-review-task-service.js";
+import type { HumanResponse, HumanReviewTask } from "./models.js";
+import type {
+  HumanResponseRepository,
+  HumanReviewTaskRepository
+} from "../../adapters/storage/repositories.js";
 import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
+
+export const PAIRWISE_TASK_TEMPLATE = "pairwise-tie-break";
+
+const SEVERE_SEVERITIES: ReadonlySet<HumanResponse["severity"]> = new Set(["S0", "S1"]);
 
 type UnanimousVerdict = "pass" | "fail";
 
@@ -40,7 +48,9 @@ export class ProviderWorkflowService {
     private readonly verdictService: VerdictService,
     private readonly feedbackService: FeedbackService,
     private readonly reviewTaskRepository: HumanReviewTaskRepository,
-    private readonly transactionManager: TransactionManager
+    private readonly transactionManager: TransactionManager,
+    private readonly responseRepository: HumanResponseRepository,
+    private readonly reviewTaskService: HumanReviewTaskService
   ) {}
 
   async maybeAutoAdvanceAfterIngest(input: {
@@ -61,6 +71,14 @@ export class ProviderWorkflowService {
 
     const unanimousVerdict = classifyUnanimousVerdict(response);
     if (!unanimousVerdict) {
+      return { advanced: false };
+    }
+
+    // Unanimity must hold across every response on the task, not just the
+    // triggering one — a pass arriving after a disagreeing sibling is a split
+    // signal, not an auto-advance.
+    const siblingResponses = await this.responseRepository.findByReviewTaskId(input.reviewTaskId);
+    if (!siblingResponses.every((sibling) => classifyUnanimousVerdict(sibling) === unanimousVerdict)) {
       return { advanced: false };
     }
 
@@ -115,5 +133,72 @@ export class ProviderWorkflowService {
     });
 
     return { advanced: true };
+  }
+
+  async maybeQueuePairwiseTieBreak(input: {
+    deduplicated: boolean;
+    response: HumanResponse | null;
+    reviewTaskId: string;
+  }): Promise<{ queued: boolean; reviewTask: HumanReviewTask | null }> {
+    const notQueued = { queued: false, reviewTask: null };
+
+    if (input.deduplicated || !input.response) {
+      return notQueued;
+    }
+
+    const reviewTask = await this.reviewTaskRepository.findById(input.reviewTaskId);
+    if (!reviewTask?.providerAdapter) {
+      return notQueued;
+    }
+
+    // A tie-break task never spawns another tie-break; its split resolves
+    // through the manual consensus/adjudication path.
+    if (reviewTask.taskTemplate === PAIRWISE_TASK_TEMPLATE) {
+      return notQueued;
+    }
+
+    const responses = await this.responseRepository.findByReviewTaskId(input.reviewTaskId);
+    const distinctVerdicts = [...new Set(responses.map((response) => response.overallVerdict))];
+    if (responses.length < 2 || distinctVerdicts.length < 2) {
+      return notQueued;
+    }
+
+    // A severe minority is an adjudication trigger, not a tie to break cheaply.
+    if (responses.some((response) => SEVERE_SEVERITIES.has(response.severity))) {
+      return notQueued;
+    }
+
+    const job = await this.jobService.get(reviewTask.jobId);
+    if (!job || job.state !== "human_responses_received") {
+      return notQueued;
+    }
+
+    const existingTasks = await this.reviewTaskRepository.findByJobId(job.jobId);
+    if (existingTasks.some((task) => task.taskTemplate === PAIRWISE_TASK_TEMPLATE)) {
+      return notQueued;
+    }
+
+    const pairwiseTask = await this.reviewTaskService.create({
+      criterionIds: reviewTask.criterionIds,
+      deadlineAt: reviewTask.deadlineAt,
+      jobId: job.jobId,
+      providerAdapter: reviewTask.providerAdapter,
+      qualityPolicy: reviewTask.qualityPolicy,
+      reviewerPool: reviewTask.reviewerPool,
+      sanitizedPackageId: reviewTask.sanitizedPackageId,
+      taskTemplate: PAIRWISE_TASK_TEMPLATE
+    });
+
+    await this.ledgerService.recordProviderPairwiseQueued({
+      correlationId: input.response.responseId,
+      disagreementVerdicts: distinctVerdicts,
+      jobId: job.jobId,
+      pairwiseReviewTaskId: pairwiseTask.reviewTaskId,
+      payloadHash: input.response.responseId,
+      policyVersion: "v1",
+      sourceReviewTaskId: input.reviewTaskId
+    });
+
+    return { queued: true, reviewTask: pairwiseTask };
   }
 }

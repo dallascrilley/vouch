@@ -33,15 +33,20 @@ export class ResponseValidationService {
     }
 
     await this.transactionManager.inTransaction(async () => {
-      await this.ledgerService.recordStateTransition(job.state, "human_responses_received", {
-        correlationId: response.responseId,
-        jobId: job.jobId,
-        payloadHash: response.responseId,
-        policyVersion: "v1"
-      });
+      // Additional responses for a task that already moved the job into
+      // human_responses_received are appended without a self-transition.
+      if (job.state !== "human_responses_received") {
+        await this.ledgerService.recordStateTransition(job.state, "human_responses_received", {
+          correlationId: response.responseId,
+          jobId: job.jobId,
+          payloadHash: response.responseId,
+          policyVersion: "v1"
+        });
 
-      job.state = "human_responses_received";
-      await this.jobService.save(job);
+        job.state = "human_responses_received";
+        await this.jobService.save(job);
+      }
+
       await this.responseRepository.save(response);
     });
   }

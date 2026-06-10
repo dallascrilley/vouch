@@ -179,3 +179,27 @@ Emitted when the system blocks progress due to privacy, missing evidence, budget
 - `policy_version`
 - `blocked_routes`
 - `required_next_action`
+
+## `verification.provider.auto_resolved`
+
+Emitted when a unanimous provider callback auto-advances a job to its final verdict without manual consensus or adjudication rows.
+
+**Payload**
+
+- `job_id`
+- `review_task_id`
+- `provider_id`
+- `provider_response_id`
+- `overall_verdict`
+- `valid_response_count`
+
+## `verification.provider.pairwise_queued`
+
+Emitted when disagreeing provider responses trigger a pairwise tie-break micro-task instead of a terminal verdict.
+
+**Payload**
+
+- `job_id`
+- `source_review_task_id`
+- `pairwise_review_task_id`
+- `disagreement_verdicts`
