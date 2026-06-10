@@ -48,6 +48,7 @@ const config = {
   bridgeApiKey: requireEnv("MTURK_BRIDGE_API_KEY"),
   expirationSeconds: Number(process.env.MTURK_EXPIRATION_SECONDS ?? 86400),
   maxCallbackAttempts: Number(process.env.MTURK_MAX_CALLBACK_ATTEMPTS ?? 3),
+  maxPollBackoffMs: Number(process.env.MTURK_MAX_POLL_BACKOFF_MS ?? 300000),
   maxAssignments: Number(process.env.MTURK_MAX_ASSIGNMENTS ?? 1),
   maxAssignmentsPerHit: Number(process.env.MTURK_MAX_ASSIGNMENTS_PER_HIT ?? 3),
   maxRewardUsd: Number(process.env.MTURK_MAX_REWARD_USD ?? 1),
@@ -62,6 +63,7 @@ const config = {
   pollIntervalMs: Number(process.env.MTURK_POLL_INTERVAL_MS ?? 15000),
   port: Number(process.env.MTURK_BRIDGE_PORT ?? 3100),
   providerId: process.env.MTURK_PROVIDER_ID ?? "real-provider",
+  repollCompletedTasks: process.env.MTURK_REPOLL_COMPLETED === "true",
   qualificationRequirements: parseQualificationRequirements(
     process.env.MTURK_QUALIFICATION_REQUIREMENTS_JSON
   ),
@@ -217,6 +219,26 @@ async function pollAssignments() {
     task.approvedAssignmentIds ??= [];
     task.callbackAttempts ??= {};
     task.deadLetterAssignments ??= [];
+
+    // Once every expected assignment is delivered the HIT stops being polled,
+    // so late assignments (e.g. extended HITs) are only picked up when
+    // MTURK_REPOLL_COMPLETED=true. See docs/ops/bridge-health-contract.md.
+    if (task.deliveryComplete && !config.repollCompletedTasks) {
+      app.log.info(
+        { hitId, reviewTaskId: task.reviewTaskId },
+        "mturk bridge skipped delivery-complete hit"
+      );
+      continue;
+    }
+
+    if (task.nextPollAt && new Date(task.nextPollAt) > new Date()) {
+      app.log.info(
+        { hitId, nextPollAt: task.nextPollAt, reviewTaskId: task.reviewTaskId },
+        "mturk bridge backing off throttled hit"
+      );
+      continue;
+    }
+
     task.lastPollAt = new Date().toISOString();
     saveBridgeState(config.statePath, state);
 
@@ -248,6 +270,7 @@ async function pollAssignments() {
         Assignments?: Array<{
           Answer?: string;
           AssignmentId: string;
+          SubmitTime?: number | string;
           WorkerId: string;
         }>;
       };
@@ -303,11 +326,31 @@ async function pollAssignments() {
 
         await deliverAssignment({ assignment, hitId, state, task });
       }
+
+      if (task.pollBackoffMs || task.nextPollAt) {
+        delete task.pollBackoffMs;
+        delete task.nextPollAt;
+        saveBridgeState(config.statePath, state);
+      }
     } catch (error) {
-      task.lastError = {
-        message: error instanceof Error ? error.message : String(error),
-        recordedAt: new Date().toISOString()
-      };
+      const message = error instanceof Error ? error.message : String(error);
+      const recordedAt = new Date().toISOString();
+
+      if (isThrottlingError(message)) {
+        const backoffMs = Math.min(
+          (task.pollBackoffMs ?? config.pollIntervalMs) * 2,
+          config.maxPollBackoffMs
+        );
+        const nextPollAt = new Date(Date.now() + backoffMs).toISOString();
+        task.pollBackoffMs = backoffMs;
+        task.nextPollAt = nextPollAt;
+        task.throttleEvents = [
+          ...(task.throttleEvents ?? []),
+          { message: message.slice(0, 200), nextPollAt, recordedAt }
+        ].slice(-10);
+      }
+
+      task.lastError = { message, recordedAt };
       saveBridgeState(config.statePath, state);
       app.log.error(
         { err: error, hitId, reviewTaskId: task.reviewTaskId },
@@ -315,6 +358,10 @@ async function pollAssignments() {
       );
     }
   }
+}
+
+function isThrottlingError(message: string) {
+  return /throttl|rate exceeded|toomanyrequests|slow ?down|requestlimitexceeded/i.test(message);
 }
 
 async function refreshHitStatus(input: {
@@ -393,7 +440,12 @@ async function refreshHitStatus(input: {
 }
 
 async function deliverAssignment(input: {
-  assignment: { Answer?: string; AssignmentId: string; WorkerId: string };
+  assignment: {
+    Answer?: string;
+    AssignmentId: string;
+    SubmitTime?: number | string;
+    WorkerId: string;
+  };
   hitId: string;
   state: ReturnType<typeof loadBridgeState>;
   task: ReturnType<typeof loadBridgeState>["tasks"][string];
@@ -424,11 +476,13 @@ async function deliverAssignment(input: {
 
   const delivery = await deliverProviderCallback({
     brokerCallbackUrl: config.brokerCallbackUrl,
+    expectedAssignmentCount: config.maxAssignments,
     maxCallbackAttempts: config.maxCallbackAttempts,
     payload: callbackPayload,
     responseId: assignment.AssignmentId,
     save: () => saveBridgeState(config.statePath, state),
     sharedSecret: config.sharedSecret,
+    submittedAt: normalizeMturkTimestamp(assignment.SubmitTime),
     task,
     workerId: assignment.WorkerId
   });

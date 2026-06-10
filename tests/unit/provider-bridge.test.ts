@@ -63,6 +63,57 @@ describe("provider bridge common helpers", () => {
     });
   });
 
+  it("marks delivery complete and records delivery lag once all expected assignments are delivered", async () => {
+    const task = makeTask();
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response(JSON.stringify({ accepted: true }), { status: 202 }))
+    );
+
+    const result = await deliverProviderCallback({
+      brokerCallbackUrl: "http://broker.test/provider-callback",
+      expectedAssignmentCount: 1,
+      fetchImpl,
+      maxCallbackAttempts: 3,
+      now: () => new Date("2026-06-08T05:00:10.000Z"),
+      payload: mockCallbackPayload(),
+      responseId: "mock_response_123",
+      save: vi.fn(),
+      sharedSecret: "shared-secret",
+      submittedAt: new Date("2026-06-08T05:00:00.000Z"),
+      task,
+      workerId: "mock_worker_123"
+    });
+
+    expect(result).toEqual({ attempts: 1, delivered: true });
+    expect(task.deliveryComplete).toBe(true);
+    expect(task.deliveryCompletedAt).toBe("2026-06-08T05:00:10.000Z");
+    expect(task.lastDeliveryLagMs).toBe(10_000);
+  });
+
+  it("leaves delivery incomplete while assignments are still expected", async () => {
+    const task = makeTask();
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response(JSON.stringify({ accepted: true }), { status: 202 }))
+    );
+
+    await deliverProviderCallback({
+      brokerCallbackUrl: "http://broker.test/provider-callback",
+      expectedAssignmentCount: 2,
+      fetchImpl,
+      maxCallbackAttempts: 3,
+      now: () => new Date("2026-06-08T05:00:10.000Z"),
+      payload: mockCallbackPayload(),
+      responseId: "mock_response_123",
+      save: vi.fn(),
+      sharedSecret: "shared-secret",
+      task,
+      workerId: "mock_worker_123"
+    });
+
+    expect(task.deliveryComplete).toBeUndefined();
+    expect(task.deliveryCompletedAt).toBeUndefined();
+  });
+
   it("dead-letters a provider response when broker callback retries are exhausted", async () => {
     const task = makeTask();
     const fetchImpl = vi.fn<typeof fetch>(() => Promise.resolve(new Response("unavailable", { status: 503 })));
