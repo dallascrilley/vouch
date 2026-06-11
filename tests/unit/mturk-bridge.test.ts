@@ -376,6 +376,66 @@ describe("mturk bridge helpers", () => {
     ).toThrow("LocaleValues[0] must include Country or Subdivision");
   });
 
+  it("refuses a production endpoint without MTURK_ALLOW_PRODUCTION", () => {
+    const errors = validateBridgeSafety({
+      awsEndpointUrl: "https://mturk-requester.us-east-1.amazonaws.com",
+      autoApprovalDelaySeconds: 259200,
+      expirationSeconds: 86400,
+      maxAssignments: 1,
+      maxAssignmentsPerHit: 3,
+      maxRewardUsd: 1,
+      maxSpendPerHitUsd: 3,
+      minAutoApprovalDelaySeconds: 86400,
+      minExpirationSeconds: 300,
+      minTaskDurationSeconds: 60,
+      reward: "0.05",
+      taskDurationSeconds: 900
+    });
+
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain("MTURK_ALLOW_PRODUCTION=true");
+  });
+
+  it("accepts a production endpoint with the explicit opt-in", () => {
+    expect(
+      validateBridgeSafety({
+        allowProduction: true,
+        awsEndpointUrl: "https://mturk-requester.us-east-1.amazonaws.com",
+        autoApprovalDelaySeconds: 259200,
+        expirationSeconds: 86400,
+        maxAssignments: 1,
+        maxAssignmentsPerHit: 3,
+        maxRewardUsd: 1,
+        maxSpendPerHitUsd: 3,
+        minAutoApprovalDelaySeconds: 86400,
+        minExpirationSeconds: 300,
+        minTaskDurationSeconds: 60,
+        reward: "0.05",
+        taskDurationSeconds: 900
+      })
+    ).toEqual([]);
+  });
+
+  it("accepts the sandbox endpoint without the opt-in flag", () => {
+    expect(
+      validateBridgeSafety({
+        awsEndpointUrl:
+          "https://mturk-requester-sandbox.us-east-1.amazonaws.com",
+        autoApprovalDelaySeconds: 259200,
+        expirationSeconds: 86400,
+        maxAssignments: 1,
+        maxAssignmentsPerHit: 3,
+        maxRewardUsd: 1,
+        maxSpendPerHitUsd: 3,
+        minAutoApprovalDelaySeconds: 86400,
+        minExpirationSeconds: 300,
+        minTaskDurationSeconds: 60,
+        reward: "0.05",
+        taskDurationSeconds: 900
+      })
+    ).toEqual([]);
+  });
+
   it("accepts bounded MTurk safety settings", () => {
     expect(
       validateBridgeSafety({

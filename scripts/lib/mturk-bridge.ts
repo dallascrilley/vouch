@@ -40,7 +40,14 @@ export type MturkQualificationRequirement = {
   RequiredToPreview?: boolean;
 };
 
+export const MTURK_SANDBOX_ENDPOINT =
+  "https://mturk-requester-sandbox.us-east-1.amazonaws.com";
+
 export type BridgeSafetyConfig = {
+  // Production (non-sandbox) endpoints spend real money and publish to the
+  // public crowd, so they require the explicit MTURK_ALLOW_PRODUCTION opt-in.
+  allowProduction?: boolean;
+  awsEndpointUrl?: string;
   maxAssignments: number;
   maxAssignmentsPerHit: number;
   maxRewardUsd: number;
@@ -189,6 +196,16 @@ function parseLocaleValues(values: unknown[], requirementIndex: number) {
 
 export function validateBridgeSafety(config: BridgeSafetyConfig): string[] {
   const errors: string[] = [];
+
+  if (
+    config.awsEndpointUrl !== undefined &&
+    config.awsEndpointUrl !== MTURK_SANDBOX_ENDPOINT &&
+    config.allowProduction !== true
+  ) {
+    errors.push(
+      `MTURK_AWS_ENDPOINT_URL ${config.awsEndpointUrl} is a production endpoint; paid HITs require MTURK_ALLOW_PRODUCTION=true`
+    );
+  }
   const reward = Number(config.reward);
   const spendPerHit = reward * config.maxAssignments;
   const hasValidMaxAssignmentsPerHit = isPositiveNumber(
