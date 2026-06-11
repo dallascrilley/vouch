@@ -15,8 +15,8 @@ IAM API keys.
 | AWS account | `181596276354` |
 | IAM credential | Access key `AKIASUR73I2B…` — 1Password item **"AWS - DallasCrilley - AI-Agents User"** (Private vault) |
 | Where it lives | `.env` (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) of the bridge checkouts on **Bux** (`bux-cmd`, 178.156.212.16): `~/Code/ai-human-review-broker-agent-loop/.env` (live stack :3200 broker / :3300 bridge) and `~/Code/ai-human-review-broker-mturk-staging/.env` (old :3000/:3100 stack, stopped) |
-| Endpoint | `MTURK_AWS_ENDPOINT_URL=https://mturk-requester-sandbox.us-east-1.amazonaws.com` (sandbox), region `us-east-1` |
-| Requester portal (browser, rarely needed) | requestersandbox.mturk.com — signs in with the Amazon account that owns AWS `181596276354` (root email `dallas@dallascrilley.com`; passkey in 1Password) |
+| Endpoint | `MTURK_AWS_ENDPOINT_URL=https://mturk-requester-sandbox.us-east-1.amazonaws.com` (sandbox, default), region `us-east-1`. Production: `https://mturk-requester.us-east-1.amazonaws.com` — the bridge refuses it unless `MTURK_ALLOW_PRODUCTION=true` (paid HITs; see `bux-mturk-runbook.md` "Paid production run") |
+| Requester portal (browser, rarely needed) | requestersandbox.mturk.com (sandbox) / requester.mturk.com (production — funding prepaid HIT balance happens here) — signs in with the Amazon account that owns AWS `181596276354` (root email `dallas@dallascrilley.com`; passkey in 1Password) |
 
 **Important: this Mac cannot provision.** The local `~/.aws` default profile is
 a *different* AWS account (`221909913867`, `project-unify-admin-services`),
