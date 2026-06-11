@@ -19,14 +19,14 @@ import {
   saveBridgeState,
   summarizeBridgeState,
   validateBridgeSafety,
+  MTURK_SANDBOX_ENDPOINT,
   type BridgeDispatchBody
 } from "./lib/mturk-bridge.js";
 import { parseTaskTemplate } from "./lib/review-templates.js";
 import { deliverProviderCallback } from "./lib/provider-bridge.js";
 
 const execFileAsync = promisify(execFile);
-const sandboxEndpoint =
-  "https://mturk-requester-sandbox.us-east-1.amazonaws.com";
+const sandboxEndpoint = MTURK_SANDBOX_ENDPOINT;
 
 function requireEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -37,6 +37,7 @@ function requireEnv(name: string) {
 }
 
 const config = {
+  allowProduction: process.env.MTURK_ALLOW_PRODUCTION === "true",
   awsEndpointUrl: process.env.MTURK_AWS_ENDPOINT_URL ?? sandboxEndpoint,
   awsRegion: process.env.MTURK_AWS_REGION ?? "us-east-1",
   assignmentApprovalPolicy: parseAssignmentApprovalPolicy(
