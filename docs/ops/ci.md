@@ -46,6 +46,7 @@ Or use **Actions → ci → Run workflow** in GitHub.
 - **Queued with Actions enabled:** private repos need GitHub-hosted runner minutes or a self-hosted runner. Local `npm run verify` is the interim gate.
 - **Engine errors:** CI uses Node 24; match locally with `.mise.toml`.
 - **Link check failures:** fix broken `docs/**/*.md` or `README.md` links before merge.
+- **`gh` HTTP 401** (e.g. `gh run watch` mid-session): refresh auth from 1Password — `bash scripts/ops/gh-auth-from-1p.sh` (requires `op` + `gh`; unsets inherited `GITHUB_TOKEN` that shadows keyring login).
 
 ## Signed release-gate artifact
 
