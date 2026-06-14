@@ -12,7 +12,7 @@ ledgering, and machine-readable agent feedback. Agents commission reviews via
 ## Stack & architecture
 
 - **Stack:** TypeScript 5.x, Node.js 24+, Fastify, Ajv, OpenAPI 3.1, Pino, Vitest, ESLint + Prettier
-- **Runtime (today):** SQLite (`node:sqlite`), filesystem artifact store, in-process queue — see `docs/architecture/runtime-target.md`
+- **Runtime (today):** SQLite (`node:sqlite`), `SQLiteLocalQueueStore`, filesystem artifact store — see `docs/architecture/runtime-target.md`
 - **Production target (not in `src/` yet):** PostgreSQL, pg-boss, S3-compatible storage, OpenTelemetry
 - **Entrypoints:** `src/api/server.ts` (HTTP), `src/workers/index.ts` (dispatch worker), `scripts/request-review.ts` (agent CLI)
 - **Domain modules:** `src/domain/{jobs,artifacts,privacy,self-verification,human-review,consensus,adjudication,feedback,ledger}`

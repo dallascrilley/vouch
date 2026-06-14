@@ -36,7 +36,8 @@ tests/
 
 ## Commands
 
-npm test && npm run lint
+Release gate: `script/cibuild` or `just cibuild` (`npm ci`, `build:js`, `npm run verify`).
+Quick checks: `script/test`, `npm run lint`.
 
 Requires Node.js 24+ (`engines` in package.json). With mise: `mise install && mise trust`.
 

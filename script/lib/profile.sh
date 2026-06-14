@@ -15,11 +15,12 @@ run_bootstrap() {
 }
 
 run_setup()  { run_bootstrap; npm ci; }
-run_update() { npm ci; }
-run_server() { npm run dev; }
-run_test()   { npm test "$@"; }
+run_update() { run_bootstrap; npm ci; }
+run_server() { run_bootstrap; npm run dev; }
+run_test()   { run_bootstrap; npm test "$@"; }
 
 run_cibuild() {
+  run_bootstrap
   npm ci
   npm run build:js
   npm run verify

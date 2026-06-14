@@ -24,8 +24,7 @@ Thumbs.db
 !.env.example
 .cache/
 tmp/
-# Editors
-.vscode/*
+# Editors (allow committed VS Code extension recommendations)
 !.vscode/extensions.json
 # --- Node / TypeScript ---
 .next/
