@@ -25,6 +25,7 @@ describe("provider proof-bundle replay", () => {
     const bundles = listProviderProofBundles();
     expect(bundles).toContain("mturk-sandbox-pass-v1");
     expect(bundles).toContain("mturk-sandbox-fail-v1");
+    expect(bundles).toContain("mturk-sandbox-ambiguous-v1");
   });
 
   it("replays mturk-sandbox-pass-v1 offline through callback → auto-advance → pass", async () => {
@@ -54,6 +55,22 @@ describe("provider proof-bundle replay", () => {
       policy_constraints: ["provider_auto_resolved"]
     });
     expect(result.verdictBody).toMatchObject({ final_verdict: "fail" });
+  });
+
+  it("replays mturk-sandbox-ambiguous-v1 offline through callback → manual adjudication → retry", async () => {
+    const bundle = loadProviderProofBundle("mturk-sandbox-ambiguous-v1");
+    const result = await replayProviderProofBundle(app, bundle, {
+      operatorToken: "proof-bundle-operator"
+    });
+
+    expect(() => assertProviderProofReplay(bundle, result)).not.toThrow();
+    expect(result.callbackBody).toMatchObject({ auto_advanced: false });
+    expect(result.feedbackBody).toMatchObject({
+      final_verdict: "retry",
+      provider_ids: ["real-provider"],
+      provider_response_ids: ["SIM-AMBIGUOUS-ASSIGNMENT-0001"]
+    });
+    expect(result.verdictBody).toMatchObject({ final_verdict: "retry" });
   });
 
   it("replays with inspection ledger assertions when operator token is set", async () => {

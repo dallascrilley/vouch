@@ -20,6 +20,7 @@ export type ProviderProofBundleManifest = {
     callback: string;
     bridge_state: string;
     expected: string;
+    adjudication_flow?: string;
   };
 };
 
@@ -47,11 +48,19 @@ export type ProviderProofCallbackTemplate = {
 
 export type ProviderProofBridgeState = Record<string, unknown>;
 
+export type ProviderProofAdjudicationFlow = {
+  consensus: Record<string, unknown>;
+  adjudication: Record<string, unknown>;
+};
+
 export type ProviderProofExpected = {
   callback: {
     status_code: number;
     auto_advanced: boolean;
     deduplicated?: boolean;
+  };
+  feedback_before_adjudication?: {
+    status_code: number;
   };
   feedback: Record<string, unknown>;
   verdict?: Record<string, unknown>;
@@ -68,6 +77,7 @@ export type ProviderProofBundle = {
   callbackTemplate: ProviderProofCallbackTemplate;
   bridgeState: ProviderProofBridgeState;
   expected: ProviderProofExpected;
+  adjudicationFlow: ProviderProofAdjudicationFlow | null;
 };
 
 export type ProviderProofReplayResult = {
@@ -101,12 +111,16 @@ export function loadProviderProofBundle(bundleId: string): ProviderProofBundle {
     throw new Error(`Bundle id mismatch: directory ${bundleId} vs manifest ${manifest.bundle_id}`);
   }
 
+  const adjudicationFlowFile = manifest.files.adjudication_flow;
   return {
     manifest,
     jobSetup: readJson<ProviderProofJobSetup>(join(bundleDir, manifest.files.job_setup)),
     callbackTemplate: readJson<ProviderProofCallbackTemplate>(join(bundleDir, manifest.files.callback)),
     bridgeState: readJson<ProviderProofBridgeState>(join(bundleDir, manifest.files.bridge_state)),
-    expected: readJson<ProviderProofExpected>(join(bundleDir, manifest.files.expected))
+    expected: readJson<ProviderProofExpected>(join(bundleDir, manifest.files.expected)),
+    adjudicationFlow: adjudicationFlowFile
+      ? readJson<ProviderProofAdjudicationFlow>(join(bundleDir, adjudicationFlowFile))
+      : null
   };
 }
 
@@ -198,6 +212,41 @@ export async function replayProviderProofBundle(
       shared_secret: options.sharedSecret ?? "top-secret"
     }
   });
+
+  if (bundle.expected.feedback_before_adjudication) {
+    const pendingFeedbackResponse = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${seeded.jobId}/feedback`
+    });
+    if (pendingFeedbackResponse.statusCode !== bundle.expected.feedback_before_adjudication.status_code) {
+      throw new Error(
+        `feedback before adjudication status ${pendingFeedbackResponse.statusCode} !== ${bundle.expected.feedback_before_adjudication.status_code}`
+      );
+    }
+  }
+
+  if (bundle.adjudicationFlow) {
+    const consensusResponse = await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${seeded.jobId}/consensus`,
+      payload: {
+        ...bundle.adjudicationFlow.consensus,
+        review_task_id: seeded.reviewTaskId
+      }
+    });
+    if (consensusResponse.statusCode >= 400) {
+      throw new Error(`consensus failed: ${consensusResponse.body}`);
+    }
+
+    const adjudicationResponse = await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${seeded.jobId}/adjudications`,
+      payload: bundle.adjudicationFlow.adjudication
+    });
+    if (adjudicationResponse.statusCode >= 400) {
+      throw new Error(`adjudication failed: ${adjudicationResponse.body}`);
+    }
+  }
 
   const feedbackResponse = await app.inject({
     method: "GET",

@@ -1,0 +1,55 @@
+{
+  "verification_job": {
+    "acceptance_criteria": [
+      {
+        "criterion_id": "hero-cta-no-overlap",
+        "criticality": "critical",
+        "evidence_requirements": ["screenshot"],
+        "human_visible_text": "Hero CTA does not overlap primary navigation"
+      }
+    ],
+    "budget_policy": {
+      "maxJobCost": 25,
+      "maxAssignments": 3,
+      "maxRetries": 2
+    },
+    "deadline_at": "2026-06-01T00:00:00.000Z",
+    "risk_tier": "medium",
+    "source": {
+      "repository": "review-qa-broker",
+      "commit": "ambiguous-sim",
+      "environment": "staging",
+      "route": "/mturk-visual-hero-cta"
+    }
+  },
+  "artifacts": {
+    "manifest_id": "manifest-mturk-sandbox-ambiguous-v1",
+    "artifact_quality": "sufficient",
+    "raw_artifacts": [
+      {
+        "artifact_id": "artifact-hero-cta",
+        "artifact_type": "screenshot",
+        "content_hash": "hash-hero-cta-ambiguous-sim",
+        "provenance": "playwright"
+      }
+    ]
+  },
+  "privacy_classification": {
+    "classification_id": "classification-mturk-sandbox-ambiguous-v1",
+    "data_class": "internal_low",
+    "redaction_status": "completed",
+    "allowed_reviewer_routes": ["managed"],
+    "policy_version": "v1",
+    "externalization_decision": "allowed",
+    "audit_record_id": "audit-mturk-sandbox-ambiguous-v1"
+  },
+  "human_review_task": {
+    "criterion_ids": ["hero-cta-no-overlap"],
+    "deadline_at": "2026-06-01T00:00:00.000Z",
+    "provider_adapter": "real-provider",
+    "quality_policy": "provider-managed",
+    "reviewer_pool": "managed",
+    "sanitized_package_id": "mturk-visual-hero-cta-ambiguous-sim-package",
+    "task_template": "mturk-visual-hero-cta-template"
+  }
+}

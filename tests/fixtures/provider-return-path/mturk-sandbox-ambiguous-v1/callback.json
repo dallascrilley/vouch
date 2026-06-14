@@ -1,0 +1,16 @@
+{
+  "provider_id": "real-provider",
+  "provider_response_id": "SIM-AMBIGUOUS-ASSIGNMENT-0001",
+  "reviewer_pseudonymous_id": "SIM-WORKER-UNCLEAR",
+  "overall_verdict": "unclear",
+  "criterion_results": [
+    {
+      "criterion_id": "hero-cta-no-overlap",
+      "status": "unclear",
+      "confidence": "medium"
+    }
+  ],
+  "defect_category": "layout",
+  "evidence_note": "Worker could not confirm overlap at captured viewport; image quality marginal.",
+  "severity": "S2"
+}
