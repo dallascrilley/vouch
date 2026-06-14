@@ -78,6 +78,8 @@ Qualification IDs in the example file: `000…L0` = Worker_PercentAssignmentsApp
 npm run review -- --estimate --template binary_screenshot_check --risk low ...
 
 # dispatch (exit immediately with job_id)
+# On new accounts with only $0.02 signup credit, use --reward 0.01 (not the
+# template default $0.10) so create-hit fits available balance + fee.
 npm run review -- --template binary_screenshot_check \
   --question "<criterion-id>:<assertion>" \
   --screenshot <jpeg ≤80KB> --risk low --no-wait \
