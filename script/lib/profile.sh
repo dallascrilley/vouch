@@ -21,6 +21,7 @@ run_test()   { run_bootstrap; npm test "$@"; }
 
 run_cibuild() {
   run_bootstrap
+  command -v ruby >/dev/null 2>&1 || die "ruby not found — required for OpenAPI version check in cibuild"
   npm ci
   npm run build:js
   npm run verify

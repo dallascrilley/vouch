@@ -36,7 +36,7 @@ tests/
 
 ## Commands
 
-Release gate: `script/cibuild` or `just cibuild` (`npm ci`, `build:js`, `npm run verify`).
+Release gate: `script/cibuild` or `just cibuild` (`npm ci`, `build:js`, `npm run verify`, OpenAPI version check).
 Quick checks: `script/test`, `npm run lint`.
 
 Requires Node.js 24+ (`engines` in package.json). With mise: `mise install && mise trust`.
@@ -81,7 +81,8 @@ Canonical commands — prefer these over raw `npm` when an agent needs a standar
 | What CI should mirror | `script/cibuild` | `just cibuild` |
 | REPL | `script/console` | `just console` |
 
-`script/cibuild` runs `npm ci`, `build:js`, and `npm run verify` (broker gate). Existing
+`script/cibuild` runs `npm ci`, `build:js`, `npm run verify` (broker gate), and the OpenAPI
+version check. CI also runs lychee link check (not in `script/cibuild`). Existing
 `npm run *` scripts remain valid for app-specific workflows (`review`, MTurk seeds, etc.).
 
 ## Recommended agents & skills

@@ -35,10 +35,11 @@ gate (`npm ci`, `build:js`, `verify`, OpenAPI version check).
 
 ## Dev Workflow Gate
 
-`npm run verify` routes this repo's own quality checks through the broker's
-self-verification lifecycle and exits non-zero unless the verdict allows the
-release gate. The same command runs in CI. Set `BROKER_URL` to record verdicts
-in a deployed broker. See `docs/ops/dev-workflow-integration.md`.
+`npm run verify` routes lint, typecheck, and tests through the broker's
+self-verification lifecycle. CI runs `./script/cibuild`, which includes `verify`
+plus an OpenAPI version check (lychee link check runs only in GitHub Actions).
+Set `BROKER_URL` to record verdicts in a deployed broker. See
+`docs/ops/dev-workflow-integration.md`.
 
 ## Deployment
 
