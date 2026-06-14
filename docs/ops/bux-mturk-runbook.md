@@ -42,8 +42,12 @@ money, real anonymous workers — every step below is deliberate.
 
 ### Preconditions (in order)
 
-1. **Funding (human step):** prepaid HIT balance ≥ $5 on requester.mturk.com
-   (Amazon account owning AWS `181596276354`, root `dallas@dallascrilley.com`).
+1. **Funding (human step):** prod requester linked to AWS `181596276354` (see
+   `mturk-access.md`). `create-hit` must succeed — typically balance ≥ HIT cost
+   + fee, or AWS Billing with a valid payment method and MTurk monthly quota
+   (new accounts often show `$0.02` signup credit and reject HITs until AWS
+   payment method + Service Quotas → Mechanical Turk monthly usage are set).
+   AWS-billing accounts cannot buy prepaid HITs on the portal.
 2. **Balance receipt:** from Bux, record the starting balance before any HIT:
    `aws mturk get-account-balance --endpoint-url https://mturk-requester.us-east-1.amazonaws.com`
    (use the bridge checkout's `.env` credentials/tooling — see `mturk-access.md`).
@@ -53,28 +57,19 @@ money, real anonymous workers — every step below is deliberate.
 
 ### Production env profile
 
-Overlay on the existing Bux bridge `.env` (sandbox values stay the default —
-keep this in a separate `env.production` you source explicitly, never in the
-checked-in default env):
+Overlay on the existing Bux bridge `.env` (sandbox values stay the default).
+Canonical copy: `docs/ops/env.production.example` → `env.production` in the
+agent-loop checkout (never commit `env.production`).
 
 ```bash
-MTURK_AWS_ENDPOINT_URL=https://mturk-requester.us-east-1.amazonaws.com
-MTURK_ALLOW_PRODUCTION=true
-MTURK_BRIDGE_STATE_PATH=.runtime/mturk-bridge-state-production.json  # never mix with sandbox state
-MTURK_REWARD=0.15
-MTURK_MAX_REWARD_USD=0.25
-MTURK_MAX_ASSIGNMENTS=1
-MTURK_MAX_ASSIGNMENTS_PER_HIT=1
-MTURK_MAX_SPEND_PER_HIT_USD=0.50
-MTURK_EXPIRATION_SECONDS=86400
-MTURK_TASK_DURATION_SECONDS=900
-MTURK_ASSIGNMENT_APPROVAL_POLICY=approve_on_callback_success
-MTURK_AUTO_APPROVAL_DELAY_SECONDS=259200
-MTURK_QUALIFICATION_REQUIREMENTS_JSON='[{"QualificationTypeId":"000000000000000000L0","Comparator":"GreaterThanOrEqualTo","IntegerValues":[95]},{"QualificationTypeId":"00000000000000000040","Comparator":"GreaterThanOrEqualTo","IntegerValues":[100]}]'
+cp docs/ops/env.production.example env.production
+# stop sandbox bridge on :3300 first, then:
+set -a && source .env && source env.production
+nohup npx tsx scripts/mturk-bridge.ts >> .runtime/mturk-bridge-prod.log 2>&1 &
 ```
 
-(`000…L0` = Worker_PercentAssignmentsApproved ≥ 95; `000…0040` =
-Worker_NumberHITsApproved ≥ 100.)
+Qualification IDs in the example file: `000…L0` = Worker_PercentAssignmentsApproved
+≥ 95; `000…0040` = Worker_NumberHITsApproved ≥ 100.
 
 ### Dispatch and resume
 
