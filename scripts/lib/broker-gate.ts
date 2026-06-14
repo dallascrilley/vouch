@@ -1,9 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 
-import { buildApp } from "../../src/api/app.js";
-import { loadRuntimeConfig } from "../../src/config/runtime.js";
+import {
+  connectBrokerTransport,
+  expectStatus,
+  type BrokerTransport
+} from "./broker-transport.js";
 
 /**
  * A thin client over the broker's verification lifecycle, plus a single
@@ -88,131 +90,59 @@ export type ReleaseArtifact = {
   signature: string;
 };
 
-type Response = { status: number; body: unknown };
-
-interface Transport {
-  post(path: string, payload: unknown): Promise<Response>;
-  get(path: string): Promise<Response>;
-  close(): Promise<void>;
-}
-
-class HttpTransport implements Transport {
-  constructor(
-    private readonly baseUrl: string,
-    private readonly operatorToken?: string
-  ) {}
-
-  private headers(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "content-type": "application/json"
-    };
-    if (this.operatorToken) {
-      headers["x-operator-token"] = this.operatorToken;
-    }
-    return headers;
-  }
-
-  async post(path: string, payload: unknown): Promise<Response> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      method: "POST",
-      headers: this.headers(),
-      body: JSON.stringify(payload)
-    });
-    return { status: res.status, body: await this.parse(res) };
-  }
-
-  async get(path: string): Promise<Response> {
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      headers: this.headers()
-    });
-    return { status: res.status, body: await this.parse(res) };
-  }
-
-  private async parse(res: globalThis.Response): Promise<unknown> {
-    const text = await res.text();
-    return text ? (JSON.parse(text) as unknown) : null;
-  }
-
-  close(): Promise<void> {
-    return Promise.resolve();
-  }
-}
-
-class InProcessTransport implements Transport {
-  private constructor(
-    private readonly app: ReturnType<typeof buildApp>,
-    private readonly cleanup: () => void
-  ) {}
-
-  static async create(): Promise<InProcessTransport> {
-    let cleanup = (): void => {};
-    const env = { ...process.env };
-    // Local runs sign release artifacts with a well-known dev key; set
-    // RELEASE_GATE_SIGNING_KEY for any artifact that leaves the machine.
-    env.RELEASE_GATE_SIGNING_KEY ??= "local-dev-release-gate-key";
-    if (!env.RUNTIME_SQLITE_PATH) {
-      const runtimeRoot = mkdtempSync(join(tmpdir(), "broker-gate-"));
-      env.RUNTIME_SQLITE_PATH = join(runtimeRoot, "runtime.sqlite");
-      env.RUNTIME_ARTIFACT_ROOT = join(runtimeRoot, "artifacts");
-      env.PROVIDER_SQLITE_PATH = join(runtimeRoot, "provider-state.sqlite");
-      cleanup = (): void =>
-        rmSync(runtimeRoot, { force: true, recursive: true });
-    }
-    const app = buildApp(loadRuntimeConfig(env));
-    await app.ready();
-    return new InProcessTransport(app, cleanup);
-  }
-
-  async post(path: string, payload: unknown): Promise<Response> {
-    const res = await this.app.inject({
-      method: "POST",
-      url: path,
-      payload: payload as object
-    });
-    return { status: res.statusCode, body: res.body ? res.json() : null };
-  }
-
-  async get(path: string): Promise<Response> {
-    const res = await this.app.inject({ method: "GET", url: path });
-    return { status: res.statusCode, body: res.body ? res.json() : null };
-  }
-
-  async close(): Promise<void> {
-    await this.app.close();
-    this.cleanup();
-  }
-}
-
 export class BrokerClient {
-  private constructor(private readonly transport: Transport) {}
+  private constructor(private readonly transport: BrokerTransport) {}
 
   /** In-process by default; HTTP when BROKER_URL is set. */
   static async connect(
     env: NodeJS.ProcessEnv = process.env
   ): Promise<BrokerClient> {
-    if (env.BROKER_URL) {
-      return new BrokerClient(
-        new HttpTransport(
-          env.BROKER_URL.replace(/\/$/, ""),
-          env.RUNTIME_OPERATOR_TOKEN
-        )
-      );
-    }
-    return new BrokerClient(await InProcessTransport.create());
+    return new BrokerClient(await connectBrokerTransport(env));
   }
 
   close(): Promise<void> {
     return this.transport.close();
   }
 
-  private expect(res: Response, allowed: number[], context: string): void {
-    if (!allowed.includes(res.status)) {
-      const detail =
-        res.body && typeof res.body === "object" && "message" in res.body
-          ? String(res.body.message)
-          : JSON.stringify(res.body);
-      throw new Error(`${context} failed (${res.status}): ${detail}`);
-    }
+  async getJob(jobId: string): Promise<unknown> {
+    const res = await this.transport.get(`/verification-jobs/${jobId}`);
+    return res.status === 200 ? res.body : null;
+  }
+
+  async getFeedback(jobId: string): Promise<Feedback | null> {
+    const res = await this.transport.get(`/verification-jobs/${jobId}/feedback`);
+    return res.status === 200 ? (res.body as Feedback) : null;
+  }
+
+  async getVerdict(jobId: string): Promise<Verdict | null> {
+    const res = await this.transport.get(`/verification-jobs/${jobId}/verdict`);
+    return res.status === 200 ? (res.body as Verdict) : null;
+  }
+
+  async getStuckState(jobId: string): Promise<unknown> {
+    const res = await this.transport.get(`/verification-jobs/${jobId}/stuck-state`);
+    return res.status === 200 ? res.body : null;
+  }
+
+  async getRuntimeInspection(): Promise<unknown> {
+    const res = await this.transport.get("/runtime/inspection");
+    return res.status === 200 ? res.body : null;
+  }
+
+  async getRuntimeJobInspection(jobId: string): Promise<unknown> {
+    const res = await this.transport.get(`/runtime/inspection/jobs/${jobId}`);
+    return res.status === 200 ? res.body : null;
+  }
+
+  async getRuntimeMetrics(): Promise<unknown> {
+    const res = await this.transport.get("/runtime/metrics");
+    return res.status === 200 ? res.body : null;
+  }
+
+  async post(path: string, payload: unknown): Promise<unknown> {
+    const res = await this.transport.post(path, payload);
+    expectStatus(res, [200, 202], `POST ${path}`);
+    return res.body;
   }
 
   /**
@@ -259,7 +189,7 @@ export class BrokerClient {
         route: source.route
       }
     });
-    this.expect(created, [202], "create job");
+    expectStatus(created, [202], "create job");
     const jobId = (created.body as { job_id: string }).job_id;
 
     const attached = await this.transport.post(
@@ -283,7 +213,7 @@ export class BrokerClient {
         }
       }
     );
-    this.expect(attached, [202], "attach artifacts");
+    expectStatus(attached, [202], "attach artifacts");
 
     const classified = await this.transport.post(
       `/verification-jobs/${jobId}/privacy-classification`,
@@ -298,7 +228,7 @@ export class BrokerClient {
         audit_record_id: `audit-${runId}`
       }
     );
-    this.expect(classified, [202], "privacy classification");
+    expectStatus(classified, [202], "privacy classification");
 
     // Definite machine failures stay machine-resolved (fail). Checks the
     // machine cannot resolve (unclear/not_visible/pending) escalate to a real
@@ -334,7 +264,7 @@ export class BrokerClient {
         failure_categories: failureCategories
       }
     );
-    this.expect(verified, [202], "self-verification");
+    expectStatus(verified, [202], "self-verification");
 
     // Escalated jobs have no verdict until the human callback lands. Block up
     // to VERIFY_HITL_TIMEOUT_MS (the simulated provider resolves synchronously,
@@ -357,7 +287,7 @@ export class BrokerClient {
           "Set VERIFY_HITL_TIMEOUT_MS to wait for the provider callback, or resolve via the stuck-state API."
       );
     }
-    this.expect(verdictRes, [200], "read verdict");
+    expectStatus(verdictRes, [200], "read verdict");
     const verdict = verdictRes.body as Verdict;
 
     const feedbackRes = await this.transport.get(

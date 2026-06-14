@@ -15,6 +15,7 @@ export type RiskTier = "low" | "medium" | "high";
 
 export type TemplateCriterion = {
   id: string;
+  question_template?: string;
   statement: string;
 };
 
@@ -61,7 +62,12 @@ export type StructuredTaskTemplate = StructuredTaskTemplateBase &
         template_id: "pairwise_screenshot_compare";
       }
     | {
-        params: { content: string; criteria: TemplateCriterion[] };
+        params: {
+          content: string;
+          criteria: TemplateCriterion[];
+          fail_max?: number;
+          pass_min?: number;
+        };
         template_id: "text_quality_rubric";
       }
     | {
@@ -543,23 +549,29 @@ function renderQuestionRows(
     });
   }
 
-  const statements = new Map(
-    envelope.params.criteria.map((criterion) => [
-      criterion.id,
-      criterion.statement
-    ])
+  const criteriaById = new Map(
+    envelope.params.criteria.map((criterion) => [criterion.id, criterion])
   );
-  return input.criterionIds.map((criterionId, index) =>
-    renderChoiceRow({
-      legend: questionForStatement(
-        envelope.template_id,
-        statements.get(criterionId) ?? criterionId
-      ),
+  return input.criterionIds.map((criterionId, index) => {
+    const criterion = criteriaById.get(criterionId);
+    const statement = criterion?.statement ?? criterionId;
+    return renderChoiceRow({
+      legend: questionForCriterion(envelope, criterion ?? { id: criterionId, statement }),
       name: `criterion_${index}_answer`,
       number: index + 1,
       options: pairwiseAwareOptions(envelope, input.reviewTaskId)
-    })
-  );
+    });
+  });
+}
+
+function questionForCriterion(
+  envelope: StructuredTaskTemplate,
+  criterion: TemplateCriterion
+): string {
+  if (criterion.question_template) {
+    return criterion.question_template.replaceAll("{statement}", criterion.statement);
+  }
+  return questionForStatement(envelope.template_id, criterion.statement);
 }
 
 function questionForStatement(
@@ -740,7 +752,13 @@ function mapAnswerToStatus(
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
         return "unclear";
       }
-      return rating >= 4 ? "pass" : rating <= 2 ? "fail" : "unclear";
+      const passMin =
+        envelope.params.pass_min ??
+        4;
+      const failMax =
+        envelope.params.fail_max ??
+        2;
+      return rating >= passMin ? "pass" : rating <= failMax ? "fail" : "unclear";
     }
   }
 }

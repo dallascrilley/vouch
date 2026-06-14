@@ -96,6 +96,7 @@ function serializeJob(job: Awaited<ReturnType<FastifyInstance["services"]["jobSe
 
 export function registerVerificationJobRoutes(app: FastifyInstance) {
   app.post<{ Body: CreateJobBody }>("/verification-jobs", async (request, reply) => {
+    app.services.metrics.increment("broker.job.create");
     const body = request.body;
 
     try {
