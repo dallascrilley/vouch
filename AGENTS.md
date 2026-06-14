@@ -55,6 +55,36 @@ TypeScript 5.x on Node.js 24+: Follow standard conventions
 - 001-verification-control-plane: Contract-first verification control plane with provider-neutral human review orchestration.
 
 <!-- MANUAL ADDITIONS START -->
+
+## Agent bootstrap (see also PROJECT_CONTEXT.md)
+
+Durable env/gotcha context agents need at session start:
+
+| Env | Purpose |
+|-----|---------|
+| `BROKER_URL` | Remote broker for `npm run verify` |
+| `RUNTIME_SQLITE_PATH` | Local SQLite path (default `.runtime/local-runtime.sqlite`) |
+| `RUNTIME_OPERATOR_TOKEN` | Operator routes: inspection, stuck-state, release-artifact, metrics |
+| `PROVIDER_SHARED_SECRET` | Provider callback auth |
+| `RUNTIME_ARTIFACT_ROOT` | Artifact store root |
+
+**Gotchas:** `script/` = bootstrap entrypoints; `scripts/` = app tooling. Run `npm run dev:worker` alongside `npm run dev` for HITL dispatch. OpenAPI: `specs/001-verification-control-plane/contracts/openapi.yaml`.
+
+## Agent capability map
+
+| Goal | Command / API |
+|------|----------------|
+| One-call human review | `npm run review -- --help` |
+| Release gate (dogfood) | `npm run verify` |
+| Job status mid-flight | `npm run review -- --status <job_id>` |
+| Unified TS client | `scripts/lib/broker-client.ts` |
+| MCP primitive tools | `npm run mcp:broker` |
+| Feedback loop | `GET /verification-jobs/:jobId/feedback` → `agent_next_action` |
+
+Exit codes for `npm run review`: 0 pass, 1 fail, 2 retry, 3 recapture, 4 escalate, 5 pending/timeout.
+
+Docs: `docs/architecture/agent-loop-integration.md`, `docs/architecture/agent-review-contract.md`.
+
 <!-- MANUAL ADDITIONS END -->
 
 <!-- IJFW-MEMORY-START -->

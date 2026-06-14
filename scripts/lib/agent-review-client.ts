@@ -54,6 +54,7 @@ export type RequestHumanReviewOptions = {
   deadlineAt?: string;
   fetchImpl?: typeof fetch;
   idempotencyKey?: string;
+  operatorToken?: string;
   pollIntervalMs?: number;
   pricing?: TemplatePricing;
   providerAdapter?: string;
@@ -77,6 +78,7 @@ export type HumanReviewRequestResult = {
   jobId: string;
   providerTaskId?: string;
   reviewTaskId: string;
+  stuckState?: unknown;
   timedOut: boolean;
 };
 
@@ -264,20 +266,33 @@ export async function requestHumanReview(
   const wait = await waitForFeedback({
     brokerBaseUrl: baseUrl,
     fetchImpl,
+    includeStuckStateOnTimeout: true,
     jobId,
+    operatorToken: options.operatorToken ?? process.env.RUNTIME_OPERATOR_TOKEN,
     pollIntervalMs: options.pollIntervalMs,
     timeoutMs: options.timeoutMs
   });
-  return { ...base, feedback: wait.feedback, timedOut: wait.timedOut };
+  return {
+    ...base,
+    feedback: wait.feedback,
+    stuckState: wait.stuckState,
+    timedOut: wait.timedOut
+  };
 }
 
 export async function waitForFeedback(options: {
   brokerBaseUrl: string;
   fetchImpl?: typeof fetch;
+  includeStuckStateOnTimeout?: boolean;
   jobId: string;
+  operatorToken?: string;
   pollIntervalMs?: number;
   timeoutMs?: number;
-}): Promise<{ feedback?: AgentFeedback; timedOut: boolean }> {
+}): Promise<{
+  feedback?: AgentFeedback;
+  stuckState?: unknown;
+  timedOut: boolean;
+}> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const baseUrl = options.brokerBaseUrl.replace(/\/$/, "");
   const deadline = Date.now() + (options.timeoutMs ?? 30 * 60_000);
@@ -289,7 +304,10 @@ export async function waitForFeedback(options: {
     );
     if (response.ok) {
       const feedback = (await response.json()) as AgentFeedback;
-      if (feedback.agent_next_action) {
+      if (
+        feedback.agent_next_action ||
+        (feedback.final_verdict && feedback.final_verdict !== "unclear")
+      ) {
         return { feedback, timedOut: false };
       }
     } else if (response.status !== 404) {
@@ -299,11 +317,38 @@ export async function waitForFeedback(options: {
     }
 
     if (Date.now() + interval > deadline) {
-      return { timedOut: true };
+      const stuckState = await maybeFetchStuckState({
+        baseUrl,
+        fetchImpl,
+        include: options.includeStuckStateOnTimeout,
+        jobId: options.jobId,
+        operatorToken: options.operatorToken
+      });
+      return { stuckState, timedOut: true };
     }
     await new Promise((resolveSleep) => setTimeout(resolveSleep, interval));
     interval = Math.min(Math.round(interval * 1.5), 60_000);
   }
+}
+
+async function maybeFetchStuckState(input: {
+  baseUrl: string;
+  fetchImpl: typeof fetch;
+  include?: boolean;
+  jobId: string;
+  operatorToken?: string;
+}): Promise<unknown> {
+  if (!input.include || !input.operatorToken) {
+    return undefined;
+  }
+  const response = await input.fetchImpl(
+    `${input.baseUrl}/verification-jobs/${input.jobId}/stuck-state`,
+    { headers: { "x-operator-token": input.operatorToken } }
+  );
+  if (!response.ok) {
+    return undefined;
+  }
+  return response.json();
 }
 
 async function postJson(

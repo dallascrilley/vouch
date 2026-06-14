@@ -14,6 +14,7 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "mock-provider:bridge": "tsx scripts/mock-provider-bridge.ts",
+    "mcp:broker": "tsx scripts/mcp-broker-server.ts",
     "mturk:bridge": "tsx scripts/mturk-bridge.ts",
     "capture:visual-fixture": "tsx scripts/capture-visual-fixture.ts",
     "review": "tsx scripts/request-review.ts",
@@ -31,6 +32,7 @@
     "verify": "tsx scripts/verify-change.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "ajv": "^8.17.1",
     "fastify": "^5.6.0",
     "pino": "^9.9.0"
