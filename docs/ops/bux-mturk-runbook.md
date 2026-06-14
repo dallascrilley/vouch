@@ -103,3 +103,25 @@ recorded). Still capture when worker completes:
 - Assignment ID + `Approved` status, pseudonymous worker ID
 - Full CLI feedback JSON
 - `validate:mturk-phase6` `"status": "verified"` with the new IDs
+
+### Restore sandbox after prod proof
+
+Default Bux posture is **sandbox** on `:3300` (`.env` only — no
+`env.production`). Switch back when prod proof is done or balance is zero so
+accidental paid dispatch cannot occur.
+
+```bash
+cd ~/Code/ai-human-review-broker-agent-loop
+# stop whatever is on :3300 (prod overlay uses env.production)
+pkill -f "tsx scripts/mturk-bridge.ts" || true
+sleep 2
+set -a && source .env
+nohup npx tsx scripts/mturk-bridge.ts >> .runtime/mturk-bridge.log 2>&1 &
+curl -sf http://127.0.0.1:3300/health
+# expect MTURK_AWS_ENDPOINT_URL=sandbox in bridge process env
+npm run -s validate:provider-e2e
+```
+
+Prod state stays in `.runtime/mturk-bridge-state-production.json`; sandbox uses
+`.runtime/mturk-bridge-state.json`. Re-enable prod later with `source
+env.production` per section above when funded.

@@ -131,6 +131,10 @@ Result: `"status": "verified"` (exit 0).
 Sandbox-profile bridge starts on alt port with sandbox endpoint (no
 `MTURK_ALLOW_PRODUCTION`).
 
+**Post-proof ops (2026-06-14):** Bux `:3300` restored to sandbox default
+(sandbox state file, `$0` prod balance). Prod overlay preserved in
+`env.production` for future funded runs.
+
 ## Checklist (U3–U6)
 
 - [x] Prod requester linked; micro-credit dispatch path
