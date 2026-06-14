@@ -22,7 +22,7 @@ run_test()   { run_bootstrap; npm test "$@"; }
 run_cibuild() {
   run_bootstrap
   command -v ruby >/dev/null 2>&1 || die "ruby not found — required for OpenAPI version check in cibuild"
-  npm ci
+  npm ci --no-audit --no-fund
   npm run build:js
   npm run verify
   ruby -ryaml -e 'data = YAML.load_file("specs/001-verification-control-plane/contracts/openapi.yaml"); abort("openapi version mismatch") unless data["openapi"] == "3.1.0"'
