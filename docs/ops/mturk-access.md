@@ -28,7 +28,8 @@ must run on Bux, where the linked account's keys are in the bridge `.env`.
 Note `aws` CLI is not installed on Bux's interactive shell; the bridge invokes
 it via its own runtime/PATH — source the checkout's `.env` + use its tooling.
 
-The requester display name workers see is **"Dallas Crilley QA Sandbox"**.
+The requester display name workers see is **"Dallas Crilley QA Sandbox"** on
+sandbox HITs; production HITs (2026-06-14 proof) showed **"Dallas Crilley"**.
 
 ## 2. Worker side (accepts and submits HITs in the Developer Sandbox)
 

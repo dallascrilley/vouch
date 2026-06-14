@@ -10,9 +10,14 @@ Run on Bux where the MTurk AWS account is linked. Mac hosts return `AWS.AccountN
 
 ## Pass job (existing proof)
 
-From `docs/ops/mturk-sandbox-e2e-proof.md`:
+Historical IDs from `docs/ops/mturk-sandbox-e2e-proof.md` (2026-06-10). Phase 6
+only returns `"status": "verified"` if the broker still holds that job's
+feedback — after broker DB reset or a new deployment, expect
+`pending_feedback` and use a fresh sandbox dispatch instead.
 
 ```bash
+export BROKER_BASE_URL=http://127.0.0.1:3200
+export MTURK_BRIDGE_BASE_URL=http://127.0.0.1:3300
 export PHASE6_HIT_ID=3EGKVCRQFXT8E0OD232RVG7ISQDBY7
 export PHASE6_JOB_ID=job_fa7b9778-cfe6-4e54-9374-d6d0140f67ee
 export PHASE6_REVIEW_TASK_ID=review_ffa5064f-d722-4e4e-848b-771d822ade23
@@ -22,9 +27,13 @@ export MTURK_BRIDGE_API_KEY="<from bridge env>"
 npm run validate:mturk-phase6
 ```
 
-Exit `0` + `"status": "verified"` means AWS assignments, bridge delivery, and broker feedback align.
+Exit `0` + `"status": "verified"` means AWS assignments, bridge delivery, and
+broker feedback align. For a live stack health check without historical IDs, run
+`npm run validate:provider-e2e` (sim path).
 
 ## Ambiguous / fail case (remaining)
+
+Tracked: `td-d3d492`. Steps:
 
 1. Dispatch a new human-review task (or reuse sandbox HIT tuned for ambiguous/fail).
 2. Submit worker assignment on Bux sandbox.
@@ -94,15 +103,12 @@ Abort path (before a worker accepts): expire the HIT —
 `aws mturk update-expiration-for-hit --hit-id <id> --expire-at 0`, then
 `delete-hit` once reviewable.
 
-### Evidence to capture (for `docs/ops/mturk-production-paid-proof.md`)
+### Evidence (production paid proof — completed)
 
-Live run: `docs/ops/mturk-production-paid-proof.md` (guard, estimate, dispatch IDs
-recorded). Still capture when worker completes:
-
-- Ending `get-account-balance` (delta = reward + 20% fee)
-- Assignment ID + `Approved` status, pseudonymous worker ID
-- Full CLI feedback JSON
-- `validate:mturk-phase6` `"status": "verified"` with the new IDs
+Captured in `docs/ops/mturk-production-paid-proof.md` (2026-06-14): guard,
+estimate, balance delta, correlation IDs, assignment approval, CLI feedback,
+`validate:mturk-phase6` verified. Re-run prod only after funding and switching
+to `env.production` per sections above.
 
 ### Restore sandbox after prod proof
 

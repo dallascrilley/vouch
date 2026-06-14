@@ -4,8 +4,9 @@ Real-money production HIT round-trip completed on Bux on 2026-06-14: dispatch,
 anonymous worker submit, bridge callback, auto-approve, broker `pass` verdict,
 `validate:mturk-phase6` verified.
 
-Stack: `~/Code/ai-human-review-broker-agent-loop`, broker `:3200`, prod bridge
-`:3300` with `env.production` overlay.
+Stack during proof: `~/Code/ai-human-review-broker-agent-loop`, broker
+`:3200`, prod bridge `:3300` with `env.production` overlay. **Current Bux
+default** (post-proof): sandbox bridge on `:3300` — see Post-proof ops below.
 
 ## Funding finding
 
