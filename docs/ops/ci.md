@@ -8,7 +8,9 @@ Workflow: `.github/workflows/ci.yml` (`ci`)
 2. `npm run build:js`
 3. `npm run verify` — lint, type-check, tests through broker gate
 4. OpenAPI 3.1 contract check
-5. Markdown link check (lychee)
+5. Markdown link check (lychee) — **only when doc paths change** (`**/*.md`, `docs/**`, `specs/**`) or on `workflow_dispatch`
+
+Workflow also uses shallow checkout (`fetch-depth: 2` — enough for paths-filter on push), npm cache, and `concurrency` with `cancel-in-progress` to drop superseded runs.
 
 ## Local parity
 

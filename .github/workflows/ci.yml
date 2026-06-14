@@ -5,17 +5,32 @@ on:
   pull_request:
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            docs:
+              - '**/*.md'
+              - 'docs/**'
+              - 'specs/**'
       - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
       - run: ./script/cibuild
       - name: Markdown link check
+        if: steps.changes.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --verbose README.md docs/**/*.md specs/**/*.md
+          args: README.md docs/**/*.md specs/**/*.md
