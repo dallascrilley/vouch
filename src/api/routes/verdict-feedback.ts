@@ -3,6 +3,7 @@ import { deriveAgentNextAction } from "../../domain/feedback/agent-action.js";
 
 export function registerVerdictFeedbackRoutes(app: FastifyInstance) {
   app.get<{ Params: { jobId: string } }>("/verification-jobs/:jobId/verdict", async (request, reply) => {
+    app.services.metrics.increment("broker.verdict.read");
     const verdict = await app.services.verdictRepository.findByJobId(request.params.jobId);
     if (!verdict) {
       return reply.code(404).send({ message: "Verdict not available" });
@@ -25,6 +26,7 @@ export function registerVerdictFeedbackRoutes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { jobId: string } }>("/verification-jobs/:jobId/feedback", async (request, reply) => {
+    app.services.metrics.increment("broker.feedback.read");
     const signal = await app.services.feedbackRepository.findByJobId(request.params.jobId);
     if (!signal) {
       return reply.code(404).send({ message: "Feedback not available" });

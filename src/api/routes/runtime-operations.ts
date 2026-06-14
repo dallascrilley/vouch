@@ -2,6 +2,8 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 
+import { InMemoryMetricsRecorder } from "../../adapters/observability/metrics.js";
+
 function tokensMatch(provided: string | undefined, expected: string): boolean {
   if (!provided) {
     return false;
@@ -53,6 +55,7 @@ export function registerRuntimeOperationsRoutes(app: FastifyInstance) {
     if (!authorizeOperator(app, request, reply)) {
       return reply;
     }
+    app.services.metrics.increment("broker.runtime.inspection.requests");
     return {
       artifact_root: app.services.runtimeConfig.artifactRoot,
       database_path: app.services.runtimeConfig.databasePath,
@@ -64,6 +67,8 @@ export function registerRuntimeOperationsRoutes(app: FastifyInstance) {
     if (!authorizeOperator(app, request, reply)) {
       return reply;
     }
+
+    app.services.metrics.increment("broker.runtime.inspection_job.requests");
 
     const { jobId } = request.params;
     const job = await app.services.jobService.get(jobId);
@@ -95,5 +100,16 @@ export function registerRuntimeOperationsRoutes(app: FastifyInstance) {
       self_verification: selfVerification,
       verdict
     };
+  });
+
+  app.get("/runtime/metrics", (request, reply) => {
+    if (!authorizeOperator(app, request, reply)) {
+      return reply;
+    }
+    const recorder = app.services.metrics;
+    if (!(recorder instanceof InMemoryMetricsRecorder)) {
+      return reply.code(503).send({ message: "Metrics snapshot unavailable" });
+    }
+    return recorder.snapshot();
   });
 }
