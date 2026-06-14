@@ -1,8 +1,8 @@
-# MTurk production paid proof (in progress)
+# MTurk production paid proof
 
-Real-money production HIT dispatched from Bux on 2026-06-14. Worker submission
-and broker verdict pending (qualifications require ≥95% approval and ≥100
-approved HITs — anonymous crowd only).
+Real-money production HIT round-trip completed on Bux on 2026-06-14: dispatch,
+anonymous worker submit, bridge callback, auto-approve, broker `pass` verdict,
+`validate:mturk-phase6` verified.
 
 Stack: `~/Code/ai-human-review-broker-agent-loop`, broker `:3200`, prod bridge
 `:3300` with `env.production` overlay.
@@ -35,15 +35,20 @@ Unsafe MTurk bridge configuration: MTURK_AWS_ENDPOINT_URL https://mturk-requeste
 | When | `AvailableBalance` |
 |------|---------------------|
 | Before dispatch | `$0.02` |
-| After dispatch | `$0.00` (reserved against live HIT; releases if HIT expires unassigned) |
+| After dispatch | `$0.00` (reserved against live HIT) |
+| After approval | `$0.00` (reward + fee charged from signup credit) |
 
-## Correlation IDs (dispatch)
+Net delta: `-$0.02` from pre-dispatch balance.
+
+## Correlation IDs
 
 | Field | Value |
 |-------|-------|
 | Job ID | `job_d041716d-d401-4072-893a-77a3e74c0c91` |
 | HIT ID | `39XCQ6V3KZ5460XYVAI2K0Z91LW56L` |
 | Review task ID | `review_64afcfa3-9ce3-4654-933d-5578d6bf81bb` |
+| Assignment ID | `336KAV9KYRTGD7MB9CGXU4DS6142YH` |
+| Worker ID | `A24MJRN4XC71CI` (anonymous crowd; not sandbox worker) |
 | Reward | `$0.01` |
 | Criterion | `hero-cta-no-overlap` |
 | Bridge state | `.runtime/mturk-bridge-state-production.json` |
@@ -60,20 +65,64 @@ npm run -s review -- \
   --broker-url http://127.0.0.1:3200
 ```
 
-## Resume (when worker submits)
+## Resume (worker submitted)
 
 ```bash
 npm run -s review -- --resume job_d041716d-d401-4072-893a-77a3e74c0c91 \
   --broker-url http://127.0.0.1:3200 --wait
 ```
 
-## HIT status (2026-06-14, polling)
+Exit **0**. CLI summary:
+
+```json
+{
+  "final_verdict": "pass",
+  "agent_next_action": "pass",
+  "provider_response_ids": ["336KAV9KYRTGD7MB9CGXU4DS6142YH"]
+}
+```
+
+## HIT / assignment (final)
 
 | Field | Value |
 |-------|-------|
-| HIT status | `Unassignable` (max assignments accepted) |
-| Pending assignments | `1` (worker accepted; not yet submitted) |
-| Submitted (API) | none yet — bridge `assignmentCount: 0` |
+| HIT status | `Reviewable` (`Completed: 1`) |
+| Assignment status | `Approved` |
+| Bridge delivery | `deliveryComplete: true` at `2026-06-14T06:48:53.346Z` |
+| Delivery lag | `7346` ms |
+| Worker answer | `criterion_0_answer: yes`, confidence `high` |
+
+Broker feedback (`GET /verification-jobs/.../feedback`):
+
+```json
+{
+  "final_verdict": "pass",
+  "agent_next_action": "pass",
+  "failed_criteria": [],
+  "provider_response_ids": ["336KAV9KYRTGD7MB9CGXU4DS6142YH"],
+  "human_annotations": ["336KAV9KYRTGD7MB9CGXU4DS6142YH"],
+  "retry_allowed": false,
+  "policy_constraints": ["provider_auto_resolved"]
+}
+```
+
+## Phase 6 verification
+
+On Bux with prod endpoint and IDs above:
+
+```bash
+export BROKER_BASE_URL=http://127.0.0.1:3200
+export MTURK_BRIDGE_BASE_URL=http://127.0.0.1:3300
+export MTURK_AWS_ENDPOINT_URL=https://mturk-requester.us-east-1.amazonaws.com
+export PHASE6_HIT_ID=39XCQ6V3KZ5460XYVAI2K0Z91LW56L
+export PHASE6_JOB_ID=job_d041716d-d401-4072-893a-77a3e74c0c91
+export PHASE6_REVIEW_TASK_ID=review_64afcfa3-9ce3-4654-933d-5578d6bf81bb
+export EXPECTED_AGENT_NEXT_ACTION=pass
+# MTURK_BRIDGE_API_KEY from .env
+npm run -s validate:mturk-phase6
+```
+
+Result: `"status": "verified"` (exit 0).
 
 ## U7 regression (Bux)
 
@@ -82,9 +131,13 @@ npm run -s review -- --resume job_d041716d-d401-4072-893a-77a3e74c0c91 \
 Sandbox-profile bridge starts on alt port with sandbox endpoint (no
 `MTURK_ALLOW_PRODUCTION`).
 
-## Still open
+## Checklist (U3–U6)
 
-- [ ] Anonymous worker assignment + bridge delivery
-- [ ] Broker verdict + CLI feedback JSON
-- [ ] Ending balance delta (reward + 20% fee)
-- [ ] `validate:mturk-phase6` with new IDs → `"status": "verified"`
+- [x] Prod requester linked; micro-credit dispatch path
+- [x] Production guard + cost estimate
+- [x] Paid HIT dispatched from Bux
+- [x] Anonymous worker submit + bridge delivery + approval
+- [x] Broker verdict + CLI feedback
+- [x] Ending balance recorded
+- [x] `validate:mturk-phase6` verified
+- [x] Simulated provider regression green

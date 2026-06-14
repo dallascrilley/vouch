@@ -1,6 +1,7 @@
 # MTurk Access: Accounts, Credentials, and Login Paths
 
-Last verified: 2026-06-10 (sandbox round-trip completed via these exact paths).
+Last verified: 2026-06-14 (production paid round-trip on Bux — see
+`mturk-production-paid-proof.md`; sandbox round-trip 2026-06-10).
 
 Two **different Amazon accounts** are involved. Provisioning (requester) and
 working (worker) never share credentials, and neither uses "account ID +
