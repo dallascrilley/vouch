@@ -186,6 +186,89 @@ paths:
                 $ref: '#/components/schemas/AgentFeedbackSignal'
         '404':
           description: Feedback not available
+  /health:
+    get:
+      summary: Liveness and runtime capability hints
+      operationId: getHealth
+      tags: [runtime]
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /runtime/inspection:
+    get:
+      summary: Runtime filesystem and database layout (operator)
+      operationId: getRuntimeInspection
+      tags: [operator]
+      parameters:
+        - $ref: '#/components/parameters/operatorToken'
+      responses:
+        '200':
+          description: Runtime inspection snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeInspection'
+        '401':
+          description: Invalid or missing operator token
+        '503':
+          description: Inspection disabled in production without operator token
+  /runtime/inspection/jobs/{jobId}:
+    get:
+      summary: Full job state for operators (operator)
+      operationId: getRuntimeJobInspection
+      tags: [operator]
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/operatorToken'
+      responses:
+        '200':
+          description: Aggregated job inspection payload
+        '404':
+          description: Job not found
+  /runtime/metrics:
+    get:
+      summary: In-memory metrics snapshot (operator)
+      operationId: getRuntimeMetrics
+      tags: [operator]
+      parameters:
+        - $ref: '#/components/parameters/operatorToken'
+      responses:
+        '200':
+          description: Metrics counters, gauges, and histograms
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MetricsSnapshot'
+  /verification-jobs/{jobId}/stuck-state:
+    get:
+      summary: Stuck-state diagnostics for blocked jobs (operator)
+      operationId: getStuckState
+      tags: [operator]
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/operatorToken'
+      responses:
+        '200':
+          description: Stuck-state diagnostic payload
+        '404':
+          description: Job not found
+  /verification-jobs/{jobId}/release-artifact:
+    get:
+      summary: Signed release artifact for a finalized job (operator)
+      operationId: getReleaseArtifact
+      tags: [operator]
+      parameters:
+        - $ref: '#/components/parameters/jobId'
+        - $ref: '#/components/parameters/operatorToken'
+      responses:
+        '200':
+          description: Signed release artifact
+        '404':
+          description: Artifact not available
 components:
   parameters:
     jobId:
@@ -200,6 +283,13 @@ components:
       required: true
       schema:
         type: string
+    operatorToken:
+      name: x-operator-token
+      in: header
+      required: false
+      schema:
+        type: string
+      description: Required when RUNTIME_OPERATOR_TOKEN is configured
   schemas:
     CreateVerificationJobRequest:
       type: object
@@ -553,6 +643,12 @@ components:
         release_gate_effect:
           type: string
           enum: [allow, block, needs_review, no_effect]
+        human_consensus_summary:
+          type: string
+          nullable: true
+        adjudication_summary:
+          type: string
+          nullable: true
     AgentFeedbackSignal:
       type: object
       required: [feedback_id, job_id, final_verdict, agent_next_action, retry_allowed]
@@ -591,3 +687,62 @@ components:
           type: array
           items:
             type: string
+        human_annotations:
+          type: array
+          items:
+            type: string
+        machine_check_failures:
+          type: array
+          items:
+            type: string
+        provider_ids:
+          type: array
+          items:
+            type: string
+        provider_response_ids:
+          type: array
+          items:
+            type: string
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+        database_path:
+          type: string
+        docs_url:
+          type: string
+        local_provider_mode:
+          type: boolean
+        provider_enabled:
+          type: boolean
+        provider_id:
+          type: string
+        required_companion:
+          type: string
+          nullable: true
+    RuntimeInspection:
+      type: object
+      properties:
+        artifact_root:
+          type: string
+        database_path:
+          type: string
+        queue_claim_ttl_seconds:
+          type: integer
+    MetricsSnapshot:
+      type: object
+      properties:
+        increments:
+          type: array
+          items:
+            type: object
+        gauges:
+          type: array
+          items:
+            type: object
+        histograms:
+          type: array
+          items:
+            type: object

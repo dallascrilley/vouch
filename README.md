@@ -33,6 +33,30 @@ gate (`npm ci`, `build:js`, `verify`, OpenAPI version check).
 - `npm run validate:provider-e2e` — simulated dispatch → callback → pass verdict
 - `npm run verify` — run lint + build + tests through the broker and gate on the verdict
 
+## Agent integration
+
+Agents commission human review with one command. Start the API **and** dispatch worker locally:
+
+```bash
+npm run dev          # terminal 1 — API
+npm run dev:worker   # terminal 2 — provider dispatch
+npm run review -- --help
+```
+
+Example visual QA:
+
+```bash
+npm run review -- \
+  --template binary_screenshot_check \
+  --question "hero-visible:The hero headline is visible." \
+  --screenshot path/to/screenshot.png \
+  --risk medium --wait
+```
+
+Exit codes map to `agent_next_action` (0 pass, 1 fail, 2 retry, 3 recapture, 4 escalate, 5 pending). stdout is JSON with `job_id`, `feedback`, and repair hints.
+
+Full integration guide: [docs/architecture/agent-loop-integration.md](docs/architecture/agent-loop-integration.md). Wire contract: [docs/architecture/agent-review-contract.md](docs/architecture/agent-review-contract.md). Project context for agents: [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
+
 ## Dev Workflow Gate
 
 `npm run verify` routes lint, typecheck, and tests through the broker's

@@ -1,5 +1,6 @@
 // One-shot human review for any agentic loop or CI step.
 //
+//   npm run review -- --help
 //   npm run review -- --template binary_screenshot_check \
 //     --question "hero-cta-no-overlap:The orange CTA does not overlap the hero headline." \
 //     --screenshot .runtime/shots/hero.png --risk medium --wait
@@ -15,6 +16,8 @@ import {
   waitForFeedback,
   type ReviewCriterion
 } from "./lib/agent-review-client.js";
+import { BrokerClient } from "./lib/broker-gate.js";
+import { printReviewCliHelp } from "./lib/review-cli-help.js";
 import {
   estimateTemplateCost,
   recommendedPricing,
@@ -50,6 +53,11 @@ function usageError(message: string): never {
 }
 
 async function main() {
+  if (process.argv.includes("--help") || process.argv.includes("-h")) {
+    printReviewCliHelp();
+    process.exit(0);
+  }
+
   const { values } = parseArgs({
     options: {
       "agent-run-id": { type: "string" },
@@ -66,6 +74,7 @@ async function main() {
       "data-class": { type: "string" },
       estimate: { type: "boolean" },
       field: { multiple: true, type: "string" },
+      help: { type: "boolean", short: "h" },
       instructions: { type: "string" },
       "no-wait": { type: "boolean" },
       "poll-seconds": { type: "string" },
@@ -78,6 +87,7 @@ async function main() {
       screenshot: { type: "string" },
       spec: { type: "string" },
       "spec-file": { type: "string" },
+      status: { type: "string" },
       template: { type: "string" },
       "timeout-seconds": { type: "string" },
       "variant-a": { type: "string" },
@@ -86,6 +96,11 @@ async function main() {
       wait: { type: "boolean" }
     }
   });
+
+  if (values.help) {
+    printReviewCliHelp();
+    process.exit(0);
+  }
 
   const brokerBaseUrl =
     values["broker-url"] ??
@@ -98,18 +113,53 @@ async function main() {
     ? Number(values["timeout-seconds"]) * 1000
     : undefined;
 
+  if (values.status) {
+    const client = process.env.BROKER_URL
+      ? await BrokerClient.connect(process.env)
+      : null;
+    const jobRes = client
+      ? await client.getJob(values.status)
+      : await fetchJson(`${brokerBaseUrl}/verification-jobs/${values.status}`);
+    if (!jobRes) {
+      usageError(`Job not found: ${values.status}`);
+    }
+    const feedbackRes = client
+      ? await client.getFeedback(values.status)
+      : await fetchJson(
+          `${brokerBaseUrl}/verification-jobs/${values.status}/feedback`,
+          true
+        );
+    emit({
+      feedback: feedbackRes ?? undefined,
+      job: jobRes,
+      job_id: values.status
+    });
+    if (client) {
+      await client.close();
+    }
+    process.exit(0);
+  }
+
   if (values.resume) {
     const wait = await waitForFeedback({
       brokerBaseUrl,
+      includeStuckStateOnTimeout: true,
       jobId: values.resume,
+      operatorToken: process.env.RUNTIME_OPERATOR_TOKEN,
       pollIntervalMs,
       timeoutMs
     });
     emit({
       feedback: wait.feedback,
       job_id: values.resume,
+      stuck_state: wait.stuckState,
       timed_out: wait.timedOut
     });
+    if (wait.timedOut && wait.stuckState) {
+      process.stderr.write(
+        `${JSON.stringify({ stuck_state: wait.stuckState }, null, 2)}\n`
+      );
+    }
     process.exit(
       wait.feedback ? (EXIT_BY_ACTION[wait.feedback.agent_next_action] ?? 5) : 5
     );
@@ -184,8 +234,14 @@ async function main() {
     provider_task_id: result.providerTaskId,
     repair_hint: result.feedback?.repair_hint,
     review_task_id: result.reviewTaskId,
+    stuck_state: result.stuckState,
     timed_out: result.timedOut
   });
+  if (result.timedOut && result.stuckState) {
+    process.stderr.write(
+      `${JSON.stringify({ stuck_state: result.stuckState }, null, 2)}\n`
+    );
+  }
   process.exit(
     result.feedback
       ? (EXIT_BY_ACTION[result.feedback.agent_next_action] ?? 5)
@@ -375,6 +431,17 @@ function fileToDataUrl(path: string): string {
 
 function emit(payload: unknown) {
   process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+}
+
+async function fetchJson(url: string, allow404 = false): Promise<unknown> {
+  const response = await fetch(url);
+  if (response.status === 404 && allow404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`${url} failed: ${response.status} ${await response.text()}`);
+  }
+  return response.json();
 }
 
 main().catch((error) => {

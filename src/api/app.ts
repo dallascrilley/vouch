@@ -54,6 +54,8 @@ import {
 import { validateProviderConfig } from "../config/provider-config.js";
 import { loadRuntimeConfig, type RuntimeConfig } from "../config/runtime.js";
 import { validateRuntimeConfig } from "../config/runtime-validation.js";
+import { InMemoryMetricsRecorder } from "../adapters/observability/metrics.js";
+import type { Metrics } from "../adapters/observability/observability.js";
 import { ProviderDispatchWorker } from "../workers/provider-dispatch-worker.js";
 import { registerEvidenceRoutes } from "./routes/evidence.js";
 import { registerHumanReviewRoutes } from "./routes/human-review.js";
@@ -125,6 +127,7 @@ export type AppServices = {
   feedbackRepository: AgentFeedbackRepository;
   humanReviewTaskService: HumanReviewTaskService;
   jobService: JobService;
+  metrics: Metrics;
   privacyGate: PrivacyGate;
   providerConfig?: ProviderAdapterConfig;
   providerConfigService: ProviderConfigService;
@@ -183,6 +186,7 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
   const queueStore = new SQLiteLocalQueueStore(repositories.store);
   const transactionManager = repositories.store;
 
+  const metrics = new InMemoryMetricsRecorder();
   const acceptanceCriteriaService = new AcceptanceCriteriaService();
   const jobService = new JobService(
     repositories.jobRepository,
@@ -315,6 +319,8 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     feedbackRepository: repositories.feedbackRepository,
     humanReviewTaskService,
     jobService,
+    ledgerService,
+    metrics,
     privacyGate,
     providerConfig,
     providerConfigService,
@@ -337,13 +343,18 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
     repositories.store.close();
   });
 
-  app.get("/health", () => ({
-    database_path: config.databasePath,
-    local_provider_mode: config.localProviderMode,
-    provider_enabled: providerConfig.enabled,
-    provider_id: providerConfig.providerId,
-    status: "ok"
-  }));
+  app.get("/health", () => {
+    app.services.metrics.increment("broker.health.requests");
+    return {
+      database_path: config.databasePath,
+      docs_url: "docs/architecture/agent-loop-integration.md",
+      local_provider_mode: config.localProviderMode,
+      provider_enabled: providerConfig.enabled,
+      provider_id: providerConfig.providerId,
+      required_companion: providerConfig.enabled ? "dispatch worker (npm run dev:worker)" : null,
+      status: "ok"
+    };
+  });
 
   void registerVerificationJobRoutes(app);
   void registerEvidenceRoutes(app);
