@@ -17,6 +17,10 @@ Without mise, use any Node 24 install and ensure `node -v` reports v24+ before `
 
 ## Commands
 
+Canonical entrypoints (bootstrap): `script/setup`, `script/test`, `script/cibuild`
+(or `just setup`, `just test`, `just cibuild`). `script/cibuild` mirrors CI's broker
+gate (`npm ci`, `build:js`, `verify`, OpenAPI version check).
+
 - `npm run lint`
 - `npm run build`
 - `npm run build:js` — emit runnable JS to `dist/`
@@ -81,3 +85,9 @@ Sandbox E2E proof steps (worker submit through verdict) are in
 
 - Keep `.env*`, provider callback secrets, and local validation logs out of the repository.
 - Treat `provider-integration-proof.md` as evidence-only; never paste raw tokens or live callback payload secrets into docs.
+
+## Agent / project context
+
+- `PROJECT_CONTEXT.md` — durable facts for agents (stack, envs, constraints).
+- `AGENTS.md` — commands, conventions, hub skill references.
+- `pre-commit install` — optional local hook (eslint + file hygiene); not required for CI.

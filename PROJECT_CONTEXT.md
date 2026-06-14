@@ -24,7 +24,7 @@ ledgering, and machine-readable agent feedback. Agents commission reviews via
 |-----|-------|-------|
 | local | `npm run dev` / `just server` | API on default port; SQLite under `RUNTIME_SQLITE_PATH` |
 | local worker | `npm run dev:worker` | Provider dispatch worker |
-| ci | `.github/workflows/ci.yml` | `npm ci`, `build:js`, `npm run verify` (broker gate) |
+| ci | `./script/cibuild` (`.github/workflows/ci.yml`) | broker gate + OpenAPI check; lychee link check in CI only |
 | docker | `Dockerfile` | Node 24 image; state under `/data` |
 | mturk sandbox | Bux + `docs/ops/` runbooks | Staging seeds and bridge scripts |
 
