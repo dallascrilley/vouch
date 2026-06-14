@@ -150,5 +150,5 @@ Phase 2 largely satisfied for this pass job (verdict + feedback exist). Remainin
 
 1. ~~Re-run live inspection/verdict/feedback curls after restart~~ **Done** — 2026-06-09 on Mac (see above).
 2. Run `validate:mturk-phase6` on Bux (AWS assignment list step).
-3. Submit a second sandbox case (ambiguous/fail) to exercise retry/adjudication semantics.
-4. Phase 3 — add regression tests pinning post-ingestion auto-orchestration (pass case already advanced within ~4ms of callback).
+3. ~~Submit ambiguous/fail sandbox case~~ **Done offline (2026-06-14)** — `docs/ops/mturk-sandbox-ambiguous-proof.md` + `mturk-sandbox-ambiguous-v1` proof bundle (`auto_advanced: false` → adjudication → retry). Live Bux IDs optional follow-up.
+4. ~~Phase 3 — regression tests for post-ingestion auto-orchestration~~ **Done** — `provider-proof-bundle-replay.test.ts`, `provider-auto-advance*.test.ts`.

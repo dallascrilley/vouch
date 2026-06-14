@@ -188,4 +188,5 @@
   What I would do next
 
   1. Org admin: enable GitHub Actions for `DallasCrilleyMarTech` (repo currently `enabled: false`).
-  2. On Bux: run `npm run validate:mturk-phase6` for pass proof job; submit ambiguous/fail sandbox HIT per `docs/ops/bux-mturk-runbook.md`.
+  2. Optional Bux live regression: re-run `validate:mturk-phase6` for pass proof job; replace simulated IDs in `mturk-sandbox-ambiguous-v1` after a live unclear/fail HIT (`docs/ops/bux-mturk-runbook.md`).
+  3. Offline return-path coverage is complete: pass, unanimous-fail auto-advance, and ambiguous/manual-adjudication bundles under `tests/fixtures/provider-return-path/` (see `docs/ops/mturk-sandbox-ambiguous-proof.md`).
