@@ -42,12 +42,13 @@ money, real anonymous workers — every step below is deliberate.
 
 ### Preconditions (in order)
 
-1. **Funding (human step):** prod requester linked to AWS `181596276354` (see
-   `mturk-access.md`). `create-hit` must succeed — typically balance ≥ HIT cost
-   + fee, or AWS Billing with a valid payment method and MTurk monthly quota
-   (new accounts often show `$0.02` signup credit and reject HITs until AWS
-   payment method + Service Quotas → Mechanical Turk monthly usage are set).
-   AWS-billing accounts cannot buy prepaid HITs on the portal.
+1. **Funding:** prod requester linked to AWS `181596276354` (see
+   `mturk-access.md`). `create-hit` must succeed — available balance must cover
+   reward + fee. New accounts often have only `$0.02` signup credit: use
+   `--reward 0.01` on dispatch (template default `$0.10` fails with
+   insufficient funds). Monthly quota on `181596276354` was already `$2500`
+   (`crowdscale-usagelimitservice` / `L-EC45676A`); AWS-billing accounts cannot
+   buy prepaid HITs on the portal.
 2. **Balance receipt:** from Bux, record the starting balance before any HIT:
    `aws mturk get-account-balance --endpoint-url https://mturk-requester.us-east-1.amazonaws.com`
    (use the bridge checkout's `.env` credentials/tooling — see `mturk-access.md`).
@@ -75,14 +76,14 @@ Qualification IDs in the example file: `000…L0` = Worker_PercentAssignmentsApp
 
 ```bash
 # cost preview first — no dispatch
-npm run review -- --estimate --template binary_screenshot_check --risk low ...
+npm run review -- --estimate --template binary_screenshot_check --risk low --reward 0.01 ...
 
 # dispatch (exit immediately with job_id)
 # On new accounts with only $0.02 signup credit, use --reward 0.01 (not the
 # template default $0.10) so create-hit fits available balance + fee.
 npm run review -- --template binary_screenshot_check \
   --question "<criterion-id>:<assertion>" \
-  --screenshot <jpeg ≤80KB> --risk low --no-wait \
+  --screenshot <jpeg ≤80KB> --risk low --reward 0.01 --no-wait \
   --broker-url http://127.0.0.1:3200
 
 # later (real workers take minutes-to-hours)
@@ -95,7 +96,10 @@ Abort path (before a worker accepts): expire the HIT —
 
 ### Evidence to capture (for `docs/ops/mturk-production-paid-proof.md`)
 
-- Guard-refusal log line, `--estimate` JSON, starting/ending
-  `get-account-balance` (delta = reward + 20% fee), HIT ID, assignment ID +
-  `Approved` status, pseudonymous worker ID, full CLI feedback JSON, and a
-  `validate:mturk-phase6` `"status": "verified"` run with the new IDs.
+Live run: `docs/ops/mturk-production-paid-proof.md` (guard, estimate, dispatch IDs
+recorded). Still capture when worker completes:
+
+- Ending `get-account-balance` (delta = reward + 20% fee)
+- Assignment ID + `Approved` status, pseudonymous worker ID
+- Full CLI feedback JSON
+- `validate:mturk-phase6` `"status": "verified"` with the new IDs

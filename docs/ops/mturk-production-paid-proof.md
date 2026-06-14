@@ -35,7 +35,7 @@ Unsafe MTurk bridge configuration: MTURK_AWS_ENDPOINT_URL https://mturk-requeste
 | When | `AvailableBalance` |
 |------|---------------------|
 | Before dispatch | `$0.02` |
-| After dispatch | `$0.02` (reserved against live HIT) |
+| After dispatch | `$0.00` (reserved against live HIT; releases if HIT expires unassigned) |
 
 ## Correlation IDs (dispatch)
 
