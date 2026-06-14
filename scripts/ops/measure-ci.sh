@@ -38,8 +38,6 @@ if [[ ! -f "$WORKFLOW" ]]; then
   exit 1
 fi
 
-job_count="$(grep -Ec '^[[:space:]]{2}[A-Za-z0-9_.-]+:[[:space:]]*$' "$WORKFLOW" | awk '{print $1}' || true)"
-# Count top-level jobs under `jobs:` (lines with exactly 2-space indent + key + colon)
 job_count="$(awk '
   /^jobs:/ { in_jobs=1; next }
   in_jobs && /^  [A-Za-z0-9_.-]+:/ { count++ }
@@ -85,7 +83,11 @@ if command -v lychee >/dev/null 2>&1; then
     ci_passed=0
   fi
 else
-  # Fall back to the same action container command shape when CLI is absent.
+  # Fall back to docker when the CLI is absent; fail clearly if neither is available.
+  if ! command -v docker >/dev/null 2>&1; then
+    echo '{"error":"lychee CLI and docker unavailable","ci_passed":0}' >&2
+    exit 1
+  fi
   if docker run --rm -v "$ROOT:/workdir" -w /workdir lycheeverse/lychee:latest \
     --verbose README.md docs/**/*.md specs/**/*.md >/tmp/measure-ci-lychee.log 2>&1; then
     lychee_passed=1
@@ -125,10 +127,9 @@ PY
 
 # Single-job ubuntu-latest: billable minutes ~= wall seconds / 60
 billable_minutes_estimate="$(python3 - "$ci_wall_seconds" "$job_count" <<'PY'
-import math, sys
+import sys
 seconds = float(sys.argv[1])
 jobs = max(int(sys.argv[2]), 1)
-# Parallel jobs bill independently; serial jobs sum. Current workflow is 1 job.
 print(round((seconds / 60.0) * jobs, 3))
 PY
 )"
