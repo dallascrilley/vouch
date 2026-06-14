@@ -31,9 +31,17 @@ Exit `0` + `"status": "verified"` means AWS assignments, bridge delivery, and
 broker feedback align. For a live stack health check without historical IDs, run
 `npm run validate:provider-e2e` (sim path).
 
-## Ambiguous / fail case (remaining)
+## Ambiguous / fail case
 
-Tracked: `td-d3d492`. Steps:
+**Offline proof (2026-06-14):** `docs/ops/mturk-sandbox-ambiguous-proof.md` +
+`tests/fixtures/provider-return-path/mturk-sandbox-ambiguous-v1/`. Validates
+`auto_advanced: false`, feedback 404 until adjudication, consensus → retry.
+
+```bash
+npm run validate:provider-proof-bundle -- mturk-sandbox-ambiguous-v1
+```
+
+Optional live Bux regression (replace simulated IDs in the proof bundle):
 
 1. Dispatch a new human-review task (or reuse sandbox HIT tuned for ambiguous/fail).
 2. Submit worker assignment on Bux sandbox.
@@ -41,8 +49,6 @@ Tracked: `td-d3d492`. Steps:
 4. Confirm `auto_advanced: false` on callback response (unclear/fail must stay manual).
 5. POST consensus/adjudication per `provider-disagreement-regression` pattern.
 6. Re-run `validate:mturk-phase6` with updated IDs and `EXPECTED_AGENT_NEXT_ACTION` matching outcome.
-
-Capture proof in `docs/ops/` same format as `mturk-sandbox-e2e-proof.md`.
 
 ## Paid production run
 

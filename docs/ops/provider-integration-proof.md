@@ -41,7 +41,12 @@ Phase 1 pass receipt captured in mturk-staging worktree — see
 
 **Bux verified (2026-06-10):** `npm run validate:mturk-phase6` exit 0 — AWS sandbox assignment + broker `agent_next_action: pass`.
 
-**Remaining:** ambiguous/fail sandbox HIT on Bux.
+**Offline ambiguous path (2026-06-14):** `docs/ops/mturk-sandbox-ambiguous-proof.md` +
+`npm run validate:provider-proof-bundle -- mturk-sandbox-ambiguous-v1` — callback
+`auto_advanced: false`, consensus/adjudication → retry.
+
+**Optional Bux live regression:** replace simulated IDs in the ambiguous proof bundle
+after a real sandbox unclear/fail HIT (see `docs/ops/bux-mturk-runbook.md`).
 
 ## Historical run (2026-05-31)
 

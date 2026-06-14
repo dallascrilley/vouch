@@ -1,0 +1,23 @@
+{
+  "bundle_id": "mturk-sandbox-ambiguous-v1",
+  "bundle_version": "1.0.0",
+  "source": {
+    "proof_doc": "docs/ops/mturk-sandbox-ambiguous-proof.md",
+    "captured_at": "2026-06-14",
+    "description": "Ambiguous sandbox worker signal: callback ingested with auto_advanced false, consensus + adjudication to retry. Offline replay gate; live Bux capture optional."
+  },
+  "reference_correlation_ids": {
+    "hit_id": "SIM-AMBIGUOUS-HIT-0001",
+    "assignment_id": "SIM-AMBIGUOUS-ASSIGNMENT-0001",
+    "worker_pseudonym": "SIM-WORKER-UNCLEAR",
+    "sanitized_package_id": "mturk-visual-hero-cta-ambiguous-sim-package",
+    "criterion_id": "hero-cta-no-overlap"
+  },
+  "files": {
+    "job_setup": "job-setup.json",
+    "callback": "callback.json",
+    "bridge_state": "bridge-state.json",
+    "expected": "expected.json",
+    "adjudication_flow": "adjudication-flow.json"
+  }
+}

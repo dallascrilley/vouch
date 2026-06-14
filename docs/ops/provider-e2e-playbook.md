@@ -85,6 +85,8 @@ Covers Phase 3 automation for **pass** callbacks. Unclear/fail responses still n
 
 **Pass case (done):** `docs/ops/mturk-sandbox-e2e-proof.md` — real sandbox assignment → bridge → verdict pass.
 
-**Remaining:** ambiguous/fail sandbox HIT on Bux — see `docs/ops/bux-mturk-runbook.md`.
+**Ambiguous / manual adjudication (offline, 2026-06-14):** `docs/ops/mturk-sandbox-ambiguous-proof.md` — `auto_advanced: false` → consensus → retry (`mturk-sandbox-ambiguous-v1` bundle).
+
+**Optional Bux live regression:** real sandbox unclear/fail HIT — see `docs/ops/bux-mturk-runbook.md`.
 
 Summary: `docs/ops/provider-integration-proof.md`, `docs/planning/goalplan.md`.

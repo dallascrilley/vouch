@@ -8,11 +8,12 @@ so `provider-test-app` can replay the return path without Bux, AWS, or a live br
 
 ```text
 <bundle-id>/
-  manifest.json      # metadata + reference correlation IDs from source proof
-  job-setup.json     # verification job, artifacts, privacy, human-review task
-  callback.json      # provider callback payload (provider_task_id filled at replay)
-  bridge-state.json  # bridge delivery excerpt for cross-check scripts
-  expected.json      # assertions after callback replay
+  manifest.json           # metadata + reference correlation IDs from source proof
+  job-setup.json          # verification job, artifacts, privacy, human-review task
+  callback.json           # provider callback payload (provider_task_id filled at replay)
+  bridge-state.json       # bridge delivery excerpt for cross-check scripts
+  expected.json           # assertions after callback replay (and adjudication if applicable)
+  adjudication-flow.json  # optional — consensus + adjudication when auto_advanced is false
 ```
 
 ## Adding a bundle from sandbox proof
