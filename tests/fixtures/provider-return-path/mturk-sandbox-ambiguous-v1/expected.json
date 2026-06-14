@@ -1,0 +1,23 @@
+{
+  "callback": {
+    "status_code": 202,
+    "auto_advanced": false,
+    "deduplicated": false
+  },
+  "feedback_before_adjudication": {
+    "status_code": 404
+  },
+  "feedback": {
+    "final_verdict": "retry",
+    "provider_ids": ["real-provider"],
+    "provider_response_ids": ["SIM-AMBIGUOUS-ASSIGNMENT-0001"]
+  },
+  "verdict": {
+    "final_verdict": "retry"
+  },
+  "ledger": {
+    "contains_event_types": [],
+    "contains_states": ["human_responses_received", "consensus_running", "adjudication_required", "agent_retry_requested"],
+    "min_event_count": 3
+  }
+}

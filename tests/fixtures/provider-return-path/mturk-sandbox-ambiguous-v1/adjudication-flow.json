@@ -1,0 +1,16 @@
+{
+  "consensus": {
+    "adjudication_trigger": "provider_disagreement",
+    "artifact_sufficiency": "sufficient",
+    "disagreement_level": "medium",
+    "quorum_state": "met",
+    "recommended_outcome": "adjudicate",
+    "severity_summary": "S2",
+    "valid_response_count": 1
+  },
+  "adjudication": {
+    "assigned_pool": "internal",
+    "decision": "retry",
+    "trigger_reason": "sandbox worker could not confirm hero CTA overlap"
+  }
+}
