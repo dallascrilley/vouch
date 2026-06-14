@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+#
+# Language profile: Node.js / TypeScript (npm).
+# Sourced by script/lib/common.sh. Define each run_* command here; the universal
+# script/* entrypoints call them. This is the ONLY file that varies by language.
+#
+# Lockfile is law: package-lock.json → npm ci. CI runs build:js + verify.
+
+run_bootstrap() {
+  command -v node >/dev/null 2>&1 || die "node not found — install Node 24+ (mise install)"
+  case "$(node -p "process.versions.node.split('.')[0]")" in
+    24|25|26) ;;
+    *) die "Node 24+ required (engines in package.json); got $(node -v)";;
+  esac
+}
+
+run_setup()  { run_bootstrap; npm ci; }
+run_update() { npm ci; }
+run_server() { npm run dev; }
+run_test()   { npm test "$@"; }
+
+run_cibuild() {
+  npm ci
+  npm run build:js
+  npm run verify
+}
+
+run_console() { node; }

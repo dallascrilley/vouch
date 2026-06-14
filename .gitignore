@@ -16,3 +16,20 @@ Thumbs.db
 .warp.json
 /goalplan.md
 .compound-engineering/*.local.yaml
+
+# --- added by project-bootstrap ---
+# Assembled to .gitignore (core + language profile appended).
+.env
+.env.*
+!.env.example
+.cache/
+tmp/
+# Editors
+.vscode/*
+!.vscode/extensions.json
+# --- Node / TypeScript ---
+.next/
+*.tsbuildinfo
+.pnpm-store/
+npm-debug.log*
+pnpm-debug.log*
