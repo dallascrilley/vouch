@@ -67,6 +67,21 @@ npm run -s review -- --resume job_d041716d-d401-4072-893a-77a3e74c0c91 \
   --broker-url http://127.0.0.1:3200 --wait
 ```
 
+## HIT status (2026-06-14, polling)
+
+| Field | Value |
+|-------|-------|
+| HIT status | `Unassignable` (max assignments accepted) |
+| Pending assignments | `1` (worker accepted; not yet submitted) |
+| Submitted (API) | none yet — bridge `assignmentCount: 0` |
+
+## U7 regression (Bux)
+
+`npm run validate:provider-e2e` → exit 0, `status: simulated provider e2e passed`.
+
+Sandbox-profile bridge starts on alt port with sandbox endpoint (no
+`MTURK_ALLOW_PRODUCTION`).
+
 ## Still open
 
 - [ ] Anonymous worker assignment + bridge delivery
