@@ -81,10 +81,12 @@ Run: `bash scripts/ops/measure-ci.sh`
 
 ### ce-optimize spec snapshot
 
-- Spec: `.context/compound-engineering/ce-optimize/ci-speed-cost/spec.yaml`
-- Log: `.context/compound-engineering/ce-optimize/ci-speed-cost/experiment-log.yaml`
+Local ce-optimize artifacts live under `.context/` (gitignored). Campaign
+settings for reference:
+
 - Primary metric: `ci_wall_seconds` minimize
 - Gates: `ci_passed`, `required_checks_present`, `job_count <= 2`
+- Harness: `bash scripts/ops/measure-ci.sh`
 
 Baseline harness ~56s (cold npm) → final combined ~22s (warm cache). Treat
 absolute seconds as directional; validate on GHA after merge.

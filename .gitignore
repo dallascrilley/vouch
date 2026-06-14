@@ -12,6 +12,7 @@ Thumbs.db
 .vscode/
 .idea/
 .todos/
+.context/
 .warp/
 .warp.json
 /goalplan.md
