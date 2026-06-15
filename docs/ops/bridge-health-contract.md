@@ -52,3 +52,5 @@ that exhausted `MTURK_MAX_CALLBACK_ATTEMPTS`.
   reports `bridge_task_missing_or_stale_using_aws_and_feedback`.
 - The JSON result includes a `bridge_health` block echoing the fields above for
   proof-doc capture.
+
+Restart and recovery evidence: `docs/ops/mturk-bridge-restart-proof.md`.

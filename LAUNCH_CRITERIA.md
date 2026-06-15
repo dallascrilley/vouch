@@ -19,7 +19,7 @@ Last updated: 2026-06-14 (plan: `docs/plans/2026-06-14-feat-whats-next-finish-pl
 | P0-4 | Real paid MTurk production round-trip with bounded spend | A/B | **validated** | `docs/ops/mturk-production-paid-proof.md` |
 | P0-5 | Ambiguous/unclear worker path does not auto-advance; adjudication yields retry | B | **partial** | Offline: `npm run validate:provider-proof-bundle -- mturk-sandbox-ambiguous-v1`; live Bux IDs **missing** — see `docs/ops/mturk-sandbox-ambiguous-proof.md` |
 | P0-6 | Release gate dogfoods broker (`lint` + `build` + tests through verify lifecycle) | B | **validated** | `script/cibuild`; `npm run verify` with `BROKER_URL` when remote |
-| P0-7 | MTurk bridge operational contract: backoff, dead-letter visibility, delivery-complete short circuit | B/C | **partial** | Code + `docs/ops/bridge-health-contract.md`; restart proof: `docs/ops/mturk-bridge-restart-proof.md` |
+| P0-7 | MTurk bridge operational contract: backoff, dead-letter visibility, delivery-complete short circuit | B/C | **validated** | `docs/ops/bridge-health-contract.md`, `docs/ops/mturk-bridge-restart-proof.md`; unit tests |
 | P0-8 | Docker cold-start smoke: health + simulated review verdict | B | **partial** | `script/validate-docker-smoke` (local; not in CI) |
 
 ## P1 — Post-launch / deferred
