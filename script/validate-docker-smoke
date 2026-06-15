@@ -39,15 +39,7 @@ docker run -d --name "$API_NAME" \
   -e LOG_LEVEL=error \
   "$IMAGE" >/dev/null
 
-log "validate-docker-smoke: starting worker"
-docker run -d --name "$WORKER_NAME" \
-  -v "${VOLUME}:/data" \
-  -e LOCAL_PROVIDER_MODE=simulated \
-  -e LOG_LEVEL=error \
-  --entrypoint node \
-  "$IMAGE" dist/workers/index.js >/dev/null
-
-log "validate-docker-smoke: waiting for /health"
+log "validate-docker-smoke: waiting for /health before worker (SQLite migrations)"
 deadline=$((SECONDS + 60))
 until curl -sf "${BASE_URL}/health" >/dev/null; do
   if [ "$SECONDS" -ge "$deadline" ]; then
@@ -56,6 +48,14 @@ until curl -sf "${BASE_URL}/health" >/dev/null; do
   fi
   sleep 1
 done
+
+log "validate-docker-smoke: starting worker"
+docker run -d --name "$WORKER_NAME" \
+  -v "${VOLUME}:/data" \
+  -e LOCAL_PROVIDER_MODE=simulated \
+  -e LOG_LEVEL=error \
+  --entrypoint node \
+  "$IMAGE" dist/workers/index.js >/dev/null
 
 JOB_KEY="docker-smoke-$(date +%s)"
 JOB_ID="$(
