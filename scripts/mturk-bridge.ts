@@ -23,7 +23,7 @@ import {
   type BridgeDispatchBody
 } from "./lib/mturk-bridge.js";
 import { parseTaskTemplate } from "./lib/review-templates.js";
-import { deliverProviderCallback } from "./lib/provider-bridge.js";
+import { deliverProviderCallback, isThrottlingErrorMessage, nextPollBackoffMs } from "./lib/provider-bridge.js";
 
 const execFileAsync = promisify(execFile);
 const sandboxEndpoint = MTURK_SANDBOX_ENDPOINT;
@@ -368,11 +368,12 @@ async function pollAssignments() {
       const message = error instanceof Error ? error.message : String(error);
       const recordedAt = new Date().toISOString();
 
-      if (isThrottlingError(message)) {
-        const backoffMs = Math.min(
-          (task.pollBackoffMs ?? config.pollIntervalMs) * 2,
-          config.maxPollBackoffMs
-        );
+      if (isThrottlingErrorMessage(message)) {
+        const backoffMs = nextPollBackoffMs({
+          currentBackoffMs: task.pollBackoffMs,
+          maxPollBackoffMs: config.maxPollBackoffMs,
+          pollIntervalMs: config.pollIntervalMs
+        });
         const nextPollAt = new Date(Date.now() + backoffMs).toISOString();
         task.pollBackoffMs = backoffMs;
         task.nextPollAt = nextPollAt;
@@ -390,12 +391,6 @@ async function pollAssignments() {
       );
     }
   }
-}
-
-function isThrottlingError(message: string) {
-  return /throttl|rate exceeded|toomanyrequests|slow ?down|requestlimitexceeded/i.test(
-    message
-  );
 }
 
 async function refreshHitStatus(input: {

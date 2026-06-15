@@ -323,3 +323,20 @@ export async function deliverProviderCallback(input: {
 
   return { attempts, delivered: true };
 }
+
+export function isThrottlingErrorMessage(message: string) {
+  return /throttl|rate exceeded|toomanyrequests|slow ?down|requestlimitexceeded/i.test(
+    message
+  );
+}
+
+export function nextPollBackoffMs(input: {
+  currentBackoffMs?: number;
+  maxPollBackoffMs: number;
+  pollIntervalMs: number;
+}) {
+  return Math.min(
+    (input.currentBackoffMs ?? input.pollIntervalMs) * 2,
+    input.maxPollBackoffMs
+  );
+}
