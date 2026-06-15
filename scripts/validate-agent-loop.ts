@@ -87,6 +87,16 @@ async function killProcess(child: ChildProcess | undefined, label: string) {
   }
 }
 
+function appendChunk(buffer: string, chunk: unknown): string {
+  if (typeof chunk === "string") {
+    return buffer + chunk;
+  }
+  if (chunk instanceof Buffer) {
+    return buffer + chunk.toString("utf8");
+  }
+  return buffer + String(chunk);
+}
+
 async function runReviewCli(input: {
   baseUrl: string;
   screenshotPath: string;
@@ -118,11 +128,11 @@ async function runReviewCli(input: {
 
     let stdout = "";
     let stderr = "";
-    child.stdout?.on("data", (chunk) => {
-      stdout += chunk.toString();
+    child.stdout?.on("data", (chunk: Buffer | string) => {
+      stdout = appendChunk(stdout, chunk);
     });
-    child.stderr?.on("data", (chunk) => {
-      stderr += chunk.toString();
+    child.stderr?.on("data", (chunk: Buffer | string) => {
+      stderr = appendChunk(stderr, chunk);
     });
     child.on("close", (code) => {
       resolve({ exitCode: code ?? 1, stdout, stderr });
@@ -173,8 +183,8 @@ async function main() {
   try {
     api = spawnProcess("npx", ["tsx", "src/api/server.ts"], runtimeEnv);
 
-    api.stderr?.on("data", (chunk) => {
-      const line = chunk.toString();
+    api.stderr?.on("data", (chunk: Buffer | string) => {
+      const line = appendChunk("", chunk);
       if (/error|fatal/i.test(line)) {
         process.stderr.write(`[api] ${line}`);
       }
@@ -184,8 +194,8 @@ async function main() {
     await sleep(500);
     worker = spawnProcess("npx", ["tsx", "src/workers/index.ts"], runtimeEnv);
 
-    worker.stderr?.on("data", (chunk) => {
-      const line = chunk.toString();
+    worker.stderr?.on("data", (chunk: Buffer | string) => {
+      const line = appendChunk("", chunk);
       if (/error|fatal/i.test(line)) {
         process.stderr.write(`[worker] ${line}`);
       }

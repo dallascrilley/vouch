@@ -57,10 +57,11 @@ until curl -sf "${BASE_URL}/health" >/dev/null; do
   sleep 1
 done
 
+JOB_KEY="docker-smoke-$(date +%s)"
 JOB_ID="$(
   curl -sf -X POST "${BASE_URL}/verification-jobs" \
     -H 'content-type: application/json' \
-    -d @- <<'EOF' | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).job_id))"
+    -d "$(cat <<EOF
 {
   "acceptance_criteria": [{
     "criterion_id": "docker-smoke",
@@ -70,11 +71,12 @@ JOB_ID="$(
   }],
   "budget_policy": { "maxAssignments": 1, "maxJobCost": 5, "maxRetries": 1 },
   "deadline_at": "2026-12-31T00:00:00.000Z",
-  "idempotency_key": "docker-smoke-check",
+  "idempotency_key": "${JOB_KEY}",
   "risk_tier": "medium",
   "source": { "repository": "smoke", "commit": "local", "environment": "docker", "route": "/smoke" }
 }
 EOF
+)" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).job_id))"
 )"
 
 post_step() {

@@ -31,6 +31,7 @@ gate (`npm ci`, `build:js`, `verify`, OpenAPI version check).
 - `npm run validate:local-runtime`
 - `npm run validate:provider`
 - `npm run validate:provider-e2e` — simulated dispatch → callback → pass verdict
+- `npm run validate:agent-loop` — full CLI + worker simulated review loop
 - `npm run verify` — run lint + build + tests through the broker and gate on the verdict
 
 ## Agent integration
