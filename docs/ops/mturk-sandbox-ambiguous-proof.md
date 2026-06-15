@@ -9,6 +9,29 @@ Live Bux sandbox with real AWS assignment IDs remains optional regression; the
 default gate is offline replay (same pattern as `mturk-sandbox-pass-v1` /
 `mturk-sandbox-fail-v1`).
 
+**Live capture status (2026-06-15):** **validated on Bux** — correlation IDs below.
+Offline bundle remains the CI gate.
+
+## Live Bux capture (2026-06-15)
+
+| Field | Value |
+|-------|-------|
+| Job ID | `job_34aab617-c78c-49a7-a9b2-18b5892c4416` |
+| HIT ID | `37SQU136V8PABWVIOH2TBHJZZV711E` |
+| Assignment ID | `3TY7ZAOG5GLEXSUGQA9DRBS3IL80KM` |
+| Review task ID | `review_be525811-9495-422c-ba9b-0b5935e78d64` |
+| Worker ID | `ASBEMCXX9AKTR` |
+| Criterion | `hero-ambiguous-live` |
+| Bridge delivery lag | ~24s |
+| Feedback before adjudication | **404** |
+| After adjudication | `final_verdict: retry`, `agent_next_action: retry` |
+| Consensus ID | `consensus_59d387bc-19ab-4dd8-971c-67c1485bd177` |
+| Adjudication ID | `adjudication_33fe2664-f900-424a-b7c7-f403272e916a` |
+
+Worker submitted **Can't tell** + confidence **Medium** via MTurk sandbox
+(`agent-browser select e29 "medium"` for iframe `<select>`). Bridge delivered
+callback; broker withheld agent feedback until manual consensus + adjudication.
+
 ## Summary
 
 | Check | Result |

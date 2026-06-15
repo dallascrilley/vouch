@@ -43,12 +43,31 @@ npm run validate:provider-proof-bundle -- mturk-sandbox-ambiguous-v1
 
 Optional live Bux regression (replace simulated IDs in the proof bundle):
 
-1. Dispatch a new human-review task (or reuse sandbox HIT tuned for ambiguous/fail).
-2. Submit worker assignment on Bux sandbox.
-3. Wait for bridge poll + broker callback.
-4. Confirm `auto_advanced: false` on callback response (unclear/fail must stay manual).
-5. POST consensus/adjudication per `provider-disagreement-regression` pattern.
-6. Re-run `validate:mturk-phase6` with updated IDs and `EXPECTED_AGENT_NEXT_ACTION` matching outcome.
+**Human gate:** sandbox worker submit on Bux requires operator MFA — agent prepares
+dispatch and captures inspection JSON only.
+
+```bash
+export BROKER_BASE_URL=http://127.0.0.1:3200
+export MTURK_BRIDGE_BASE_URL=http://127.0.0.1:3300
+export MTURK_BRIDGE_API_KEY="<from bridge env>"
+export EXPECTED_AGENT_NEXT_ACTION=retry
+# Set after dispatch + worker submit:
+export PHASE6_HIT_ID=<sandbox-hit-id>
+export PHASE6_JOB_ID=<broker-job-id>
+export PHASE6_REVIEW_TASK_ID=<review-task-id>
+```
+
+Steps:
+
+1. Dispatch ambiguous HIT: `npm run review -- --template binary_screenshot_check \
+   --question "hero-ambiguous:The hero CTA overlap is unclear from this crop." \
+   --screenshot .runtime/hero-embed.jpg --risk medium --no-wait \
+   --broker-url "$BROKER_BASE_URL"`
+2. Submit worker assignment on Bux sandbox (unclear verdict).
+3. Wait for bridge poll + broker callback; confirm `{ "auto_advanced": false }`.
+4. POST consensus/adjudication per `docs/ops/mturk-sandbox-ambiguous-proof.md`.
+5. `npm run validate:mturk-phase6` with env above; expect `"status": "verified"`.
+6. Update `docs/ops/mturk-sandbox-ambiguous-proof.md` correlation IDs (non-`SIM-*`).
 
 ## Paid production run
 

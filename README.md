@@ -31,6 +31,7 @@ gate (`npm ci`, `build:js`, `verify`, OpenAPI version check).
 - `npm run validate:local-runtime`
 - `npm run validate:provider`
 - `npm run validate:provider-e2e` — simulated dispatch → callback → pass verdict
+- `npm run validate:agent-loop` — full CLI + worker simulated review loop
 - `npm run verify` — run lint + build + tests through the broker and gate on the verdict
 
 ## Agent integration
@@ -98,6 +99,8 @@ dispatch worker and security-relevant configuration
 
 The SQLite local-runtime proof is documented in
 `docs/ops/sqlite-local-runtime-validation.md`.
+
+Launch criteria (P0/P1 proof status): [`LAUNCH_CRITERIA.md`](LAUNCH_CRITERIA.md).
 
 Provider integration validation is documented in
 `docs/ops/provider-integration-validation.md`, with local setup guidance in

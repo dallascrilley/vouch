@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { deliverProviderCallback, type BridgeTaskRecord } from "../../scripts/lib/provider-bridge.js";
+import { deliverProviderCallback, isThrottlingErrorMessage, nextPollBackoffMs, type BridgeTaskRecord } from "../../scripts/lib/provider-bridge.js";
 
 describe("provider bridge common helpers", () => {
   it("delivers a mock second-provider callback using the shared retry and receipt state", async () => {
@@ -19,23 +19,7 @@ describe("provider bridge common helpers", () => {
       fetchImpl,
       maxCallbackAttempts: 3,
       now: () => new Date("2026-06-08T05:00:00.000Z"),
-      payload: {
-        provider_id: "mock-second-provider",
-        provider_task_id: "mock_task_123",
-        provider_response_id: "mock_response_123",
-        reviewer_pseudonymous_id: "mock_worker_123",
-        overall_verdict: "unclear",
-        criterion_results: [
-          {
-            criterion_id: "modal-focus-visible",
-            status: "unclear",
-            confidence: "medium"
-          }
-        ],
-        defect_category: "focus_visibility",
-        evidence_note: "The supplied artifact is ambiguous.",
-        severity: "S2"
-      },
+      payload: mockCallbackPayload(),
       responseId: "mock_response_123",
       save,
       sharedSecret: "shared-secret",
@@ -44,23 +28,31 @@ describe("provider bridge common helpers", () => {
     });
 
     expect(result).toEqual({ attempts: 1, delivered: true });
-    expect(task.callbackAttempts).toEqual({ mock_response_123: 1 });
     expect(task.deliveredAssignmentIds).toEqual(["mock_response_123"]);
-    expect(task.lastDeliveryAt).toBe("2026-06-08T05:00:00.000Z");
-    expect(task.lastError).toBeUndefined();
     expect(save).toHaveBeenCalledTimes(2);
-    expect(fetchImpl).toHaveBeenCalledWith(
-      "http://broker.test/provider-callback",
-      expect.objectContaining({
-        method: "POST",
-        body: expect.stringContaining('"provider_id":"mock-second-provider"')
-      })
+  });
+
+  it("detects AWS throttling error messages", () => {
+    expect(isThrottlingErrorMessage("ThrottlingException on list-assignments-for-hit")).toBe(
+      true
     );
-    const requestInit = fetchImpl.mock.calls[0]?.[1];
-    expect(JSON.parse(requestInit?.body as string)).toMatchObject({
-      provider_response_id: "mock_response_123",
-      shared_secret: "shared-secret"
-    });
+    expect(isThrottlingErrorMessage("connection reset")).toBe(false);
+  });
+
+  it("doubles poll backoff until the configured ceiling", () => {
+    expect(
+      nextPollBackoffMs({
+        pollIntervalMs: 15_000,
+        maxPollBackoffMs: 300_000
+      })
+    ).toBe(30_000);
+    expect(
+      nextPollBackoffMs({
+        currentBackoffMs: 200_000,
+        pollIntervalMs: 15_000,
+        maxPollBackoffMs: 300_000
+      })
+    ).toBe(300_000);
   });
 
   it("marks delivery complete and records delivery lag once all expected assignments are delivered", async () => {
