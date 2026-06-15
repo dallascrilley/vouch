@@ -99,6 +99,8 @@ dispatch worker and security-relevant configuration
 The SQLite local-runtime proof is documented in
 `docs/ops/sqlite-local-runtime-validation.md`.
 
+Launch criteria (P0/P1 proof status): [`LAUNCH_CRITERIA.md`](LAUNCH_CRITERIA.md).
+
 Provider integration validation is documented in
 `docs/ops/provider-integration-validation.md`, with local setup guidance in
 `docs/ops/provider-integration-local-setup.md`.
