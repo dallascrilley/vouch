@@ -90,3 +90,15 @@ npm run build
 npm test
 npm run build:js   # emits dist/ used by the image
 ```
+
+### Container smoke (local)
+
+Proves `docker build` → API `/health` → worker dispatch → `agent_next_action: pass`
+without using the host Node toolchain for the runtime:
+
+```bash
+script/validate-docker-smoke
+```
+
+Expect exit `0` and JSON ending with `"status":"docker smoke passed"`. Requires
+Docker daemon; not run in CI by default.

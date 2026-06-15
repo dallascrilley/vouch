@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+#
+# script/validate-docker-smoke — build image, run API + worker, prove /health and
+# simulated review feedback without host Node toolchain (uses curl against container).
+set -euo pipefail
+
+. "$(dirname "$0")/lib/common.sh"
+
+IMAGE="${SMOKE_IMAGE:-ai-human-review-broker:smoke}"
+API_NAME="${SMOKE_API_CONTAINER:-broker-smoke-api}"
+WORKER_NAME="${SMOKE_WORKER_CONTAINER:-broker-smoke-worker}"
+VOLUME="${SMOKE_VOLUME:-broker-smoke-data}"
+HOST_PORT="${SMOKE_PORT:-39000}"
+BASE_URL="http://127.0.0.1:${HOST_PORT}"
+
+cleanup() {
+  docker rm -f "$API_NAME" "$WORKER_NAME" >/dev/null 2>&1 || true
+  if [ "${SMOKE_KEEP_VOLUME:-0}" != "1" ]; then
+    docker volume rm "$VOLUME" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup EXIT
+
+if ! command -v docker >/dev/null 2>&1; then
+  die "docker is required for validate-docker-smoke"
+fi
+
+log "validate-docker-smoke: building ${IMAGE}"
+docker build -t "$IMAGE" .
+
+log "validate-docker-smoke: preparing volume ${VOLUME}"
+docker volume create "$VOLUME" >/dev/null
+
+log "validate-docker-smoke: starting API on port ${HOST_PORT}"
+docker run -d --name "$API_NAME" \
+  -p "${HOST_PORT}:3000" \
+  -v "${VOLUME}:/data" \
+  -e LOCAL_PROVIDER_MODE=simulated \
+  -e LOG_LEVEL=error \
+  "$IMAGE" >/dev/null
+
+log "validate-docker-smoke: starting worker"
+docker run -d --name "$WORKER_NAME" \
+  -v "${VOLUME}:/data" \
+  -e LOCAL_PROVIDER_MODE=simulated \
+  -e LOG_LEVEL=error \
+  --entrypoint node \
+  "$IMAGE" dist/workers/index.js >/dev/null
+
+log "validate-docker-smoke: waiting for /health"
+deadline=$((SECONDS + 60))
+until curl -sf "${BASE_URL}/health" >/dev/null; do
+  if [ "$SECONDS" -ge "$deadline" ]; then
+    docker logs "$API_NAME" 2>&1 | tail -20 >&2 || true
+    die "API did not become healthy at ${BASE_URL}/health"
+  fi
+  sleep 1
+done
+
+JOB_ID="$(
+  curl -sf -X POST "${BASE_URL}/verification-jobs" \
+    -H 'content-type: application/json' \
+    -d @- <<'EOF' | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(JSON.parse(d).job_id))"
+{
+  "acceptance_criteria": [{
+    "criterion_id": "docker-smoke",
+    "criticality": "critical",
+    "evidence_requirements": ["screenshot"],
+    "human_visible_text": "Docker smoke check"
+  }],
+  "budget_policy": { "maxAssignments": 1, "maxJobCost": 5, "maxRetries": 1 },
+  "deadline_at": "2026-12-31T00:00:00.000Z",
+  "idempotency_key": "docker-smoke-check",
+  "risk_tier": "medium",
+  "source": { "repository": "smoke", "commit": "local", "environment": "docker", "route": "/smoke" }
+}
+EOF
+)"
+
+post_step() {
+  local path="$1"
+  local payload="$2"
+  local code
+  code="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${BASE_URL}${path}" \
+    -H 'content-type: application/json' \
+    -d "$payload")"
+  if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
+    die "POST ${path} failed with HTTP ${code}"
+  fi
+}
+
+post_step "/verification-jobs/${JOB_ID}/artifacts" "$(cat <<EOF
+{
+  "manifest_id": "docker-smoke-manifest",
+  "job_id": "${JOB_ID}",
+  "raw_artifacts": [{
+    "artifact_id": "artifact-smoke",
+    "artifact_type": "screenshot",
+    "content_hash": "smoke-hash",
+    "provenance": "docker-smoke"
+  }],
+  "artifact_quality": "sufficient",
+  "environment": { "repository": "smoke", "commit": "local", "environment": "docker", "route": "/smoke" }
+}
+EOF
+)"
+
+post_step "/verification-jobs/${JOB_ID}/privacy-classification" "$(cat <<EOF
+{
+  "classification_id": "docker-smoke-classification",
+  "job_id": "${JOB_ID}",
+  "artifact_manifest_id": "docker-smoke-manifest",
+  "data_class": "internal_low",
+  "redaction_status": "completed",
+  "allowed_reviewer_routes": ["managed"],
+  "policy_version": "v1",
+  "externalization_decision": "allowed",
+  "audit_record_id": "docker-smoke-audit"
+}
+EOF
+)"
+
+post_step "/verification-jobs/${JOB_ID}/human-review-tasks" "$(cat <<EOF
+{
+  "criterion_ids": ["docker-smoke"],
+  "deadline_at": "2026-12-31T00:00:00.000Z",
+  "provider_adapter": "real-provider",
+  "quality_policy": "provider-managed",
+  "reviewer_pool": "managed",
+  "sanitized_package_id": "docker-smoke-package",
+  "task_template": "Docker smoke human review"
+}
+EOF
+)"
+
+log "validate-docker-smoke: waiting for simulated worker + feedback"
+deadline=$((SECONDS + 45))
+ACTION=""
+while [ "$SECONDS" -lt "$deadline" ]; do
+  FEEDBACK="$(curl -sf "${BASE_URL}/verification-jobs/${JOB_ID}/feedback" 2>/dev/null || true)"
+  if [ -n "$FEEDBACK" ]; then
+    ACTION="$(printf '%s' "$FEEDBACK" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{console.log(JSON.parse(d).agent_next_action||'')}catch{}})")"
+    if [ "$ACTION" = "pass" ]; then
+      break
+    fi
+  fi
+  sleep 1
+done
+
+if [ "$ACTION" != "pass" ]; then
+  docker logs "$WORKER_NAME" 2>&1 | tail -20 >&2 || true
+  die "expected agent_next_action pass for ${JOB_ID}, got '${ACTION:-pending}'"
+fi
+
+printf '%s\n' "{\"job_id\":\"${JOB_ID}\",\"agent_next_action\":\"pass\",\"status\":\"docker smoke passed\"}"
+log "validate-docker-smoke: passed"
