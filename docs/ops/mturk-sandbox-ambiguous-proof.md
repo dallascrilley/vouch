@@ -9,6 +9,9 @@ Live Bux sandbox with real AWS assignment IDs remains optional regression; the
 default gate is offline replay (same pattern as `mturk-sandbox-pass-v1` /
 `mturk-sandbox-fail-v1`).
 
+**Live capture status (2026-06-14):** pending operator run on Bux — see
+`docs/ops/bux-mturk-runbook.md` ambiguous section. Offline bundle remains the CI gate.
+
 ## Summary
 
 | Check | Result |
