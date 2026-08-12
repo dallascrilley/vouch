@@ -49,6 +49,6 @@ jobs:
           # unauthenticated checkers while the repository is private.
           args: >-
             --no-progress
-            --exclude '^https://github\.com/dallascrilley/quorum'
+            --exclude '^https://github\.com/dallascrilley/vouch'
             README.md CONTRIBUTING.md SECURITY.md CHANGELOG.md
             docs/**/*.md contracts/**/*.md
