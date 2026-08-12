@@ -1,8 +1,17 @@
-import type { AgentFeedbackSignal, AgentNextAction, FinalVerdictState } from "./models.js";
+import type {
+  AgentFeedbackSignal,
+  AgentNextAction,
+  FinalVerdictState
+} from "./models.js";
 
-type AgentActionInput = Pick<AgentFeedbackSignal, "finalVerdict" | "retryAllowed">;
+type AgentActionInput = Pick<
+  AgentFeedbackSignal,
+  "finalVerdict" | "retryAllowed"
+>;
 
-export function deriveAgentNextAction(input: AgentActionInput): AgentNextAction {
+export function deriveAgentNextAction(
+  input: AgentActionInput
+): AgentNextAction {
   switch (input.finalVerdict) {
     case "pass":
       return "pass";

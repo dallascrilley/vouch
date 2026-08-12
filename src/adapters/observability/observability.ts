@@ -14,5 +14,9 @@ export interface Metrics {
 }
 
 export interface Tracer {
-  inSpan<T>(name: string, fn: () => Promise<T>, attributes?: LogContext): Promise<T>;
+  inSpan<T>(
+    name: string,
+    fn: () => Promise<T>,
+    attributes?: LogContext
+  ): Promise<T>;
 }

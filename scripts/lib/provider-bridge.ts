@@ -236,7 +236,8 @@ export function summarizeBridgeState(state: BridgeState): BridgeStateSummary {
         (total, task) => total + task.deliveredAssignmentCount,
         0
       ),
-      deliveryCompleteTasks: tasks.filter((task) => task.deliveryComplete).length,
+      deliveryCompleteTasks: tasks.filter((task) => task.deliveryComplete)
+        .length,
       expiredTasks: tasks.filter((task) => task.expiredAt).length,
       qualificationRestrictedTasks: tasks.filter(
         (task) => task.qualificationRequirementCount > 0

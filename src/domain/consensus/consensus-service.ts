@@ -19,7 +19,9 @@ export class ConsensusService {
   ) {}
 
   async record(result: ConsensusResult): Promise<void> {
-    const reviewTask = await this.reviewTaskRepository.findById(result.reviewTaskId);
+    const reviewTask = await this.reviewTaskRepository.findById(
+      result.reviewTaskId
+    );
     if (!reviewTask) {
       throw new Error(`Human review task not found: ${result.reviewTaskId}`);
     }
@@ -29,7 +31,9 @@ export class ConsensusService {
       throw new Error(`Verification job not found: ${reviewTask.jobId}`);
     }
 
-    const responses = await this.responseRepository.findByReviewTaskId(result.reviewTaskId);
+    const responses = await this.responseRepository.findByReviewTaskId(
+      result.reviewTaskId
+    );
     if (responses.length === 0) {
       throw new Error("Consensus requires at least one human response");
     }
@@ -50,12 +54,16 @@ export class ConsensusService {
         : undefined;
 
     await this.transactionManager.inTransaction(async () => {
-      await this.ledgerService.recordStateTransition(job.state, "consensus_running", {
-        correlationId: result.consensusId,
-        jobId: job.jobId,
-        payloadHash: result.consensusId,
-        policyVersion: "v1"
-      });
+      await this.ledgerService.recordStateTransition(
+        job.state,
+        "consensus_running",
+        {
+          correlationId: result.consensusId,
+          jobId: job.jobId,
+          payloadHash: result.consensusId,
+          policyVersion: "v1"
+        }
+      );
 
       job.state = "consensus_running";
       await this.jobService.save(job);

@@ -38,7 +38,9 @@ export class JobService {
   ) {}
 
   async createOrGet(input: CreateJobInput): Promise<VerificationJob> {
-    const existingJob = await this.jobRepository.findByIdempotencyKey(input.idempotencyKey);
+    const existingJob = await this.jobRepository.findByIdempotencyKey(
+      input.idempotencyKey
+    );
     if (existingJob) {
       return existingJob;
     }

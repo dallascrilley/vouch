@@ -32,11 +32,15 @@ export function validateProviderConfig(config: ProviderAdapterConfig) {
   }
 
   if (config.ingestionMode === "callback" && !config.callbackBaseUrl?.trim()) {
-    errors.push("callbackBaseUrl is required when PROVIDER_INGESTION_MODE=callback");
+    errors.push(
+      "callbackBaseUrl is required when PROVIDER_INGESTION_MODE=callback"
+    );
   }
 
   if (config.ingestionMode === "callback" && !config.sharedSecret?.trim()) {
-    errors.push("sharedSecret is required when PROVIDER_INGESTION_MODE=callback");
+    errors.push(
+      "sharedSecret is required when PROVIDER_INGESTION_MODE=callback"
+    );
   }
 
   return {
@@ -50,7 +54,12 @@ export function buildLocalProviderValidationProfile(
 ): LocalProviderValidationProfile {
   return {
     providerId: config.providerId,
-    validationCommandSet: ["npm run lint", "npm run build", "npm test", "npm run validate:provider"],
+    validationCommandSet: [
+      "npm run lint",
+      "npm run build",
+      "npm test",
+      "npm run validate:provider"
+    ],
     requiredLocalEnv: [
       "PROVIDER_ENABLED",
       "PROVIDER_API_KEY",

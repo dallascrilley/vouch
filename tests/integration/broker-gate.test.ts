@@ -55,13 +55,15 @@ describe("broker dev-workflow gate", () => {
     const artifactPath = join(artifactDir, "verify-verdict.json");
     try {
       client = await BrokerClient.connect();
-      const { verdict, releaseArtifact } = await client.runSelfVerificationGate({
-        runId: "gate-pass",
-        source,
-        criteria,
-        results: [result("lint", true), result("test", true)],
-        releaseArtifactPath: artifactPath
-      });
+      const { verdict, releaseArtifact } = await client.runSelfVerificationGate(
+        {
+          runId: "gate-pass",
+          source,
+          criteria,
+          results: [result("lint", true), result("test", true)],
+          releaseArtifactPath: artifactPath
+        }
+      );
 
       expect(verdict.final_verdict).toBe("pass");
       expect(verdict.release_gate_effect).toBe("allow");
@@ -71,7 +73,9 @@ describe("broker dev-workflow gate", () => {
       });
       expect(releaseArtifact?.signature).toMatch(/^[0-9a-f]{64}$/);
       expect(existsSync(artifactPath)).toBe(true);
-      expect(JSON.parse(readFileSync(artifactPath, "utf8"))).toEqual(releaseArtifact);
+      expect(JSON.parse(readFileSync(artifactPath, "utf8"))).toEqual(
+        releaseArtifact
+      );
     } finally {
       rmSync(artifactDir, { force: true, recursive: true });
     }

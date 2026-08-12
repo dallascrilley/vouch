@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { buildProviderTestApp, createProviderEligibleJob } from "../helpers/provider-test-app.js";
+import {
+  buildProviderTestApp,
+  createProviderEligibleJob
+} from "../helpers/provider-test-app.js";
 
 async function createProviderTask(app: FastifyInstance, jobId: string) {
   const taskResponse = await app.inject({
@@ -17,7 +20,10 @@ async function createProviderTask(app: FastifyInstance, jobId: string) {
       task_template: "provider-template"
     }
   });
-  return taskResponse.json<{ provider_task_id: string; review_task_id: string }>();
+  return taskResponse.json<{
+    provider_task_id: string;
+    review_task_id: string;
+  }>();
 }
 
 describe("provider auto-advance on unanimous fail", () => {
@@ -45,7 +51,9 @@ describe("provider auto-advance on unanimous fail", () => {
         provider_response_id: "auto-advance-fail",
         reviewer_pseudonymous_id: "provider-reviewer",
         overall_verdict: "fail",
-        criterion_results: [{ criterion_id: "managed-check", status: "fail", confidence: "high" }],
+        criterion_results: [
+          { criterion_id: "managed-check", status: "fail", confidence: "high" }
+        ],
         defect_category: "layout",
         evidence_note: "Unanimous fail should auto-advance.",
         severity: "S2",
@@ -92,7 +100,9 @@ describe("provider auto-advance on unanimous fail", () => {
         provider_response_id: "auto-advance-fail-ledger",
         reviewer_pseudonymous_id: "provider-reviewer",
         overall_verdict: "fail",
-        criterion_results: [{ criterion_id: "managed-check", status: "fail", confidence: "high" }],
+        criterion_results: [
+          { criterion_id: "managed-check", status: "fail", confidence: "high" }
+        ],
         defect_category: "layout",
         evidence_note: "Unanimous fail should auto-advance.",
         severity: "S2",
@@ -112,11 +122,16 @@ describe("provider auto-advance on unanimous fail", () => {
 
     expect(body.consensus).toBeNull();
     expect(body.adjudication).toBeNull();
-    expect(body.ledger.some((event) => event.eventType === "verification.provider.auto_resolved")).toBe(
-      true
-    );
     expect(
-      body.ledger.some((event) => event.eventType === "job.state.human_responses_received.to.final_fail")
+      body.ledger.some(
+        (event) => event.eventType === "verification.provider.auto_resolved"
+      )
+    ).toBe(true);
+    expect(
+      body.ledger.some(
+        (event) =>
+          event.eventType === "job.state.human_responses_received.to.final_fail"
+      )
     ).toBe(true);
   });
 
@@ -133,7 +148,13 @@ describe("provider auto-advance on unanimous fail", () => {
         provider_response_id: "auto-advance-fail-low-confidence",
         reviewer_pseudonymous_id: "provider-reviewer",
         overall_verdict: "fail",
-        criterion_results: [{ criterion_id: "managed-check", status: "fail", confidence: "medium" }],
+        criterion_results: [
+          {
+            criterion_id: "managed-check",
+            status: "fail",
+            confidence: "medium"
+          }
+        ],
         defect_category: "layout",
         evidence_note: "Low confidence fail should stay manual.",
         severity: "S2",
@@ -163,7 +184,13 @@ describe("provider auto-advance on unanimous fail", () => {
         provider_response_id: "auto-advance-fail-mixed",
         reviewer_pseudonymous_id: "provider-reviewer",
         overall_verdict: "fail",
-        criterion_results: [{ criterion_id: "managed-check", status: "unclear", confidence: "high" }],
+        criterion_results: [
+          {
+            criterion_id: "managed-check",
+            status: "unclear",
+            confidence: "high"
+          }
+        ],
         defect_category: "layout",
         evidence_note: "Mixed criterion outcomes should stay manual.",
         severity: "S2",

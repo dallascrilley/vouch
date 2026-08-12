@@ -17,7 +17,8 @@ export function registerReleaseArtifactRoutes(app: FastifyInstance) {
       const signingKey = app.services.runtimeConfig.releaseGateSigningKey;
       if (!signingKey) {
         return reply.code(503).send({
-          message: "Release artifacts are disabled: set RELEASE_GATE_SIGNING_KEY to enable signing"
+          message:
+            "Release artifacts are disabled: set RELEASE_GATE_SIGNING_KEY to enable signing"
         });
       }
 
@@ -27,7 +28,10 @@ export function registerReleaseArtifactRoutes(app: FastifyInstance) {
         return reply.code(404).send({ message: "Verdict not available" });
       }
 
-      const ledger = await app.services.runtimeRepositories.ledgerRepository.listByJobId(jobId);
+      const ledger =
+        await app.services.runtimeRepositories.ledgerRepository.listByJobId(
+          jobId
+        );
 
       return buildReleaseArtifact({
         ledger,

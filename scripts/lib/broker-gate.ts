@@ -110,7 +110,9 @@ export class BrokerClient {
   }
 
   async getFeedback(jobId: string): Promise<Feedback | null> {
-    const res = await this.transport.get(`/verification-jobs/${jobId}/feedback`);
+    const res = await this.transport.get(
+      `/verification-jobs/${jobId}/feedback`
+    );
     return res.status === 200 ? (res.body as Feedback) : null;
   }
 
@@ -120,7 +122,9 @@ export class BrokerClient {
   }
 
   async getStuckState(jobId: string): Promise<unknown> {
-    const res = await this.transport.get(`/verification-jobs/${jobId}/stuck-state`);
+    const res = await this.transport.get(
+      `/verification-jobs/${jobId}/stuck-state`
+    );
     return res.status === 200 ? res.body : null;
   }
 
@@ -270,13 +274,16 @@ export class BrokerClient {
     // to VERIFY_HITL_TIMEOUT_MS (the simulated provider resolves synchronously,
     // so local runs never wait), then surface stuck-state instead of hanging.
     const hitlTimeoutMs = Number(process.env.VERIFY_HITL_TIMEOUT_MS ?? 0);
-    const pollDeadline = Date.now() + (Number.isFinite(hitlTimeoutMs) ? hitlTimeoutMs : 0);
+    const pollDeadline =
+      Date.now() + (Number.isFinite(hitlTimeoutMs) ? hitlTimeoutMs : 0);
     let verdictRes = await this.transport.get(
       `/verification-jobs/${jobId}/verdict`
     );
     while (verdictRes.status === 404 && Date.now() < pollDeadline) {
       await new Promise((resolve) => setTimeout(resolve, 2_000));
-      verdictRes = await this.transport.get(`/verification-jobs/${jobId}/verdict`);
+      verdictRes = await this.transport.get(
+        `/verification-jobs/${jobId}/verdict`
+      );
     }
     if (verdictRes.status === 404) {
       const stuck = await this.transport.get(
@@ -309,7 +316,10 @@ export class BrokerClient {
         : input.releaseArtifactPath;
     if (releaseArtifact && artifactPath) {
       mkdirSync(dirname(artifactPath), { recursive: true });
-      writeFileSync(artifactPath, `${JSON.stringify(releaseArtifact, null, 2)}\n`);
+      writeFileSync(
+        artifactPath,
+        `${JSON.stringify(releaseArtifact, null, 2)}\n`
+      );
     }
 
     return { jobId, verdict, feedback, releaseArtifact };

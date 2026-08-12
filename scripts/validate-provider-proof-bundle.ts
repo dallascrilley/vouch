@@ -16,7 +16,9 @@ async function main() {
   const available = listProviderProofBundles();
 
   if (requestedBundleId && !available.includes(requestedBundleId)) {
-    throw new Error(`Unknown bundle ${requestedBundleId}. Available: ${available.join(", ")}`);
+    throw new Error(
+      `Unknown bundle ${requestedBundleId}. Available: ${available.join(", ")}`
+    );
   }
 
   const bundleIds = requestedBundleId ? [requestedBundleId] : available;
@@ -54,9 +56,11 @@ async function main() {
             bundle_id: bundleId,
             final_verdict: result.feedbackBody.final_verdict,
             job_id: result.jobId,
-            ledger_events: (result.inspectionBody?.ledger as unknown[])?.length ?? 0,
+            ledger_events:
+              (result.inspectionBody?.ledger as unknown[])?.length ?? 0,
             provider_task_id: result.providerTaskId,
-            reference_correlation_ids: bundle.manifest.reference_correlation_ids,
+            reference_correlation_ids:
+              bundle.manifest.reference_correlation_ids,
             status: "provider proof-bundle replay passed"
           },
           null,

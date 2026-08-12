@@ -67,14 +67,14 @@ npm run validate:agent-loop               # API + worker + CLI, full round trip
 
 Each harness exits non-zero on failure and prints a JSON receipt on success:
 
-| Command | What it proves | Success output |
-|---|---|---|
-| `npm run validate:local-runtime` | Job intake, artifact attach, privacy gate, and self-verification survive a real SQLite runtime; inspection endpoints report the job. | `local runtime validation passed` |
-| `npm run validate:provider-e2e` | A provider task is dispatched, a signed callback is ingested, consensus auto-advances, and the job reaches a `pass` verdict. | `"status": "simulated provider e2e passed"` |
+| Command                                  | What it proves                                                                                                                                                  | Success output                                    |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `npm run validate:local-runtime`         | Job intake, artifact attach, privacy gate, and self-verification survive a real SQLite runtime; inspection endpoints report the job.                            | `local runtime validation passed`                 |
+| `npm run validate:provider-e2e`          | A provider task is dispatched, a signed callback is ingested, consensus auto-advances, and the job reaches a `pass` verdict.                                    | `"status": "simulated provider e2e passed"`       |
 | `npm run validate:provider-proof-bundle` | Recorded provider return-paths (pass, ambiguous, fail) replay to the same broker outcomes, so return-path regressions are caught without a live crowd platform. | `"status": "provider proof-bundle replay passed"` |
-| `npm run validate:agent-loop` | The full agent path: spawn the API and dispatch worker, run the `review` CLI with `--wait`, and assert exit `0` with `agent_next_action: pass`. | `"status": "agent loop validation passed"` |
+| `npm run validate:agent-loop`            | The full agent path: spawn the API and dispatch worker, run the `review` CLI with `--wait`, and assert exit `0` with `agent_next_action: pass`.                 | `"status": "agent loop validation passed"`        |
 
-`npm run verify` runs lint, typecheck, and tests *through* the service itself:
+`npm run verify` runs lint, typecheck, and tests _through_ the service itself:
 the checks become acceptance criteria on a verification job, and the resulting
 verdict decides whether the change is allowed. `./script/cibuild` is what CI
 runs, and it calls `verify`.

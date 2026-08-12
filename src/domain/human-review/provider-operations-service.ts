@@ -1,4 +1,7 @@
-import type { ProviderCapabilityProfile, ProviderHealthState } from "./models.js";
+import type {
+  ProviderCapabilityProfile,
+  ProviderHealthState
+} from "./models.js";
 import type { ProviderHealth } from "./provider-routing-policy.js";
 
 export type ProviderCostSnapshot = Record<string, number>;
@@ -31,7 +34,10 @@ export class ProviderOperationsService {
 
   getHealthSnapshot(): ProviderHealth {
     return Object.fromEntries(
-      [...this.providerHealth.values()].map((state) => [state.providerId, state.status])
+      [...this.providerHealth.values()].map((state) => [
+        state.providerId,
+        state.status
+      ])
     );
   }
 

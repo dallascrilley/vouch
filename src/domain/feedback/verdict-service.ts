@@ -24,7 +24,9 @@ export class VerdictService {
   ) {}
 
   async finalize(
-    job: Awaited<ReturnType<JobService["get"]>> extends infer T ? Exclude<T, null> : never,
+    job: Awaited<ReturnType<JobService["get"]>> extends infer T
+      ? Exclude<T, null>
+      : never,
     finalVerdict: FinalVerdictState,
     options: FinalizeOptions = {}
   ): Promise<FinalVerdict> {
@@ -39,7 +41,11 @@ export class VerdictService {
       });
 
       job.state = nextState;
-      if (nextState === "final_pass" || nextState === "final_fail" || nextState === "fail_closed") {
+      if (
+        nextState === "final_pass" ||
+        nextState === "final_fail" ||
+        nextState === "fail_closed"
+      ) {
         job.closedAt = new Date();
       }
       await this.jobService.save(job);

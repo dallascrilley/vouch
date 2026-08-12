@@ -33,12 +33,16 @@ export class PrivacyGate {
     const classification = this.enforceServerSideDecision(input);
 
     await this.transactionManager.inTransaction(async () => {
-      await this.ledgerService.recordStateTransition(job.state, "privacy_classified", {
-        correlationId: classification.classificationId,
-        jobId: job.jobId,
-        payloadHash: classification.classificationId,
-        policyVersion: classification.policyVersion
-      });
+      await this.ledgerService.recordStateTransition(
+        job.state,
+        "privacy_classified",
+        {
+          correlationId: classification.classificationId,
+          jobId: job.jobId,
+          payloadHash: classification.classificationId,
+          policyVersion: classification.policyVersion
+        }
+      );
 
       job.state = "privacy_classified";
       await this.jobService.save(job);
@@ -64,11 +68,17 @@ export class PrivacyGate {
     });
   }
 
-  async assertProviderDispatchAllowed(jobId: string, providerRoute: ReviewerPoolType) {
+  async assertProviderDispatchAllowed(
+    jobId: string,
+    providerRoute: ReviewerPoolType
+  ) {
     const classification =
-      this.classifications.get(jobId) ?? (await this.privacyRepository.findByJobId(jobId));
+      this.classifications.get(jobId) ??
+      (await this.privacyRepository.findByJobId(jobId));
     if (!classification) {
-      throw new Error(`Privacy classification not found for verification job: ${jobId}`);
+      throw new Error(
+        `Privacy classification not found for verification job: ${jobId}`
+      );
     }
 
     // Authoritative gate: recompute the policy for the concrete reviewer pool
@@ -90,13 +100,17 @@ export class PrivacyGate {
       classification.allowedReviewerRoutes.length > 0 &&
       !classification.allowedReviewerRoutes.includes(providerRoute)
     ) {
-      throw new Error(`Provider dispatch is not allowed for route: ${providerRoute}`);
+      throw new Error(
+        `Provider dispatch is not allowed for route: ${providerRoute}`
+      );
     }
 
     return classification;
   }
 
-  private enforceServerSideDecision(input: PrivacyClassification): PrivacyClassification {
+  private enforceServerSideDecision(
+    input: PrivacyClassification
+  ): PrivacyClassification {
     if (
       input.redactionStatus === "failed" ||
       input.redactionStatus === "insufficient_confidence"

@@ -6,12 +6,16 @@ export function assessReviewerEligibility(input: {
   reviewerPool: ReviewerPool;
   response?: HumanResponse;
 }) {
-  const allowed = input.reviewerPool.privacyAllowedClasses.includes(input.dataClass);
+  const allowed = input.reviewerPool.privacyAllowedClasses.includes(
+    input.dataClass
+  );
   const qualityFlags = input.response?.qualityFlags ?? [];
 
   return {
     allowed: allowed && !qualityFlags.includes("blocked"),
-    blockedReasons: allowed ? qualityFlags.filter((flag) => flag === "blocked") : ["privacy class not allowed"],
+    blockedReasons: allowed
+      ? qualityFlags.filter((flag) => flag === "blocked")
+      : ["privacy class not allowed"],
     requiresFollowUp: qualityFlags.includes("attention-check-failed")
   };
 }

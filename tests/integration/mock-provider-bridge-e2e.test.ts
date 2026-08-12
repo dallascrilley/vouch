@@ -30,7 +30,12 @@ describe("mock second-provider bridge e2e", () => {
         PROVIDER_SHARED_SECRET: sharedSecret
       },
       fetchImpl: async (input, init) => {
-        const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
         if (url === "http://mock-provider.test/dispatch") {
           const injected = await mockBridge.inject({
             method: "POST",
@@ -48,7 +53,12 @@ describe("mock second-provider bridge e2e", () => {
       apiKey: bridgeApiKey,
       brokerCallbackUrl: "http://broker.test/provider-callback",
       fetchImpl: async (input, init) => {
-        const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
         if (url === "http://broker.test/provider-callback") {
           const injected = await app.inject({
             method: "POST",

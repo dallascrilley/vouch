@@ -12,7 +12,12 @@ describe("agent feedback next action", () => {
     ["recapture", true, "recapture"],
     ["recapture", false, "escalate"],
     ["unclear", false, "escalate"]
-  ] as const)("maps %s with retryAllowed=%s to %s", (finalVerdict, retryAllowed, nextAction) => {
-    expect(deriveAgentNextActionFromVerdict(finalVerdict, retryAllowed)).toBe(nextAction);
-  });
+  ] as const)(
+    "maps %s with retryAllowed=%s to %s",
+    (finalVerdict, retryAllowed, nextAction) => {
+      expect(deriveAgentNextActionFromVerdict(finalVerdict, retryAllowed)).toBe(
+        nextAction
+      );
+    }
+  );
 });

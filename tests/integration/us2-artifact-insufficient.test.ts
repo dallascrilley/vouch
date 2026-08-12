@@ -111,7 +111,8 @@ describe("US2 artifact-insufficient human response", () => {
           }
         ],
         defect_category: "artifact-issue",
-        evidence_note: "The screenshot is too redacted to determine the outcome.",
+        evidence_note:
+          "The screenshot is too redacted to determine the outcome.",
         overall_verdict: "artifact_insufficient",
         reviewer_pseudonymous_id: "reviewer-artifact",
         severity: "S2"

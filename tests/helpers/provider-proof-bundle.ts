@@ -4,7 +4,10 @@ import { fileURLToPath } from "node:url";
 
 import type { FastifyInstance } from "fastify";
 
-const FIXTURES_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../fixtures/provider-return-path");
+const FIXTURES_ROOT = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "../fixtures/provider-return-path"
+);
 
 export type ProviderProofBundleManifest = {
   bundle_id: string;
@@ -99,27 +102,44 @@ function readJson<T>(path: string): T {
 export function listProviderProofBundles(): string[] {
   return readdirSync(FIXTURES_ROOT).filter((entry) => {
     const bundleDir = join(FIXTURES_ROOT, entry);
-    return statSync(bundleDir).isDirectory() && statSync(join(bundleDir, "manifest.json")).isFile();
+    return (
+      statSync(bundleDir).isDirectory() &&
+      statSync(join(bundleDir, "manifest.json")).isFile()
+    );
   });
 }
 
 export function loadProviderProofBundle(bundleId: string): ProviderProofBundle {
   const bundleDir = join(FIXTURES_ROOT, bundleId);
-  const manifest = readJson<ProviderProofBundleManifest>(join(bundleDir, "manifest.json"));
+  const manifest = readJson<ProviderProofBundleManifest>(
+    join(bundleDir, "manifest.json")
+  );
 
   if (manifest.bundle_id !== bundleId) {
-    throw new Error(`Bundle id mismatch: directory ${bundleId} vs manifest ${manifest.bundle_id}`);
+    throw new Error(
+      `Bundle id mismatch: directory ${bundleId} vs manifest ${manifest.bundle_id}`
+    );
   }
 
   const adjudicationFlowFile = manifest.files.adjudication_flow;
   return {
     manifest,
-    jobSetup: readJson<ProviderProofJobSetup>(join(bundleDir, manifest.files.job_setup)),
-    callbackTemplate: readJson<ProviderProofCallbackTemplate>(join(bundleDir, manifest.files.callback)),
-    bridgeState: readJson<ProviderProofBridgeState>(join(bundleDir, manifest.files.bridge_state)),
-    expected: readJson<ProviderProofExpected>(join(bundleDir, manifest.files.expected)),
+    jobSetup: readJson<ProviderProofJobSetup>(
+      join(bundleDir, manifest.files.job_setup)
+    ),
+    callbackTemplate: readJson<ProviderProofCallbackTemplate>(
+      join(bundleDir, manifest.files.callback)
+    ),
+    bridgeState: readJson<ProviderProofBridgeState>(
+      join(bundleDir, manifest.files.bridge_state)
+    ),
+    expected: readJson<ProviderProofExpected>(
+      join(bundleDir, manifest.files.expected)
+    ),
     adjudicationFlow: adjudicationFlowFile
-      ? readJson<ProviderProofAdjudicationFlow>(join(bundleDir, adjudicationFlowFile))
+      ? readJson<ProviderProofAdjudicationFlow>(
+          join(bundleDir, adjudicationFlowFile)
+        )
       : null
   };
 }
@@ -128,8 +148,12 @@ export async function seedJobFromProofBundle(
   app: FastifyInstance,
   bundle: ProviderProofBundle
 ): Promise<{ jobId: string; reviewTaskId: string; providerTaskId: string }> {
-  const { verification_job: verificationJob, artifacts, privacy_classification: privacy, human_review_task: task } =
-    bundle.jobSetup;
+  const {
+    verification_job: verificationJob,
+    artifacts,
+    privacy_classification: privacy,
+    human_review_task: task
+  } = bundle.jobSetup;
 
   const createResponse = await app.inject({
     method: "POST",
@@ -184,9 +208,14 @@ export async function seedJobFromProofBundle(
     throw new Error(`human-review-tasks failed: ${taskResponse.body}`);
   }
 
-  const taskPayload = taskResponse.json<{ provider_task_id: string; review_task_id: string }>();
+  const taskPayload = taskResponse.json<{
+    provider_task_id: string;
+    review_task_id: string;
+  }>();
   if (!taskPayload.provider_task_id) {
-    throw new Error("human-review-tasks did not return provider_task_id (is mock dispatch enabled?)");
+    throw new Error(
+      "human-review-tasks did not return provider_task_id (is mock dispatch enabled?)"
+    );
   }
 
   return {
@@ -218,7 +247,10 @@ export async function replayProviderProofBundle(
       method: "GET",
       url: `/verification-jobs/${seeded.jobId}/feedback`
     });
-    if (pendingFeedbackResponse.statusCode !== bundle.expected.feedback_before_adjudication.status_code) {
+    if (
+      pendingFeedbackResponse.statusCode !==
+      bundle.expected.feedback_before_adjudication.status_code
+    ) {
       throw new Error(
         `feedback before adjudication status ${pendingFeedbackResponse.statusCode} !== ${bundle.expected.feedback_before_adjudication.status_code}`
       );
@@ -281,7 +313,8 @@ export async function replayProviderProofBundle(
     jobId: seeded.jobId,
     providerTaskId: seeded.providerTaskId,
     reviewTaskId: seeded.reviewTaskId,
-    verdictBody: verdictResponse.statusCode < 400 ? verdictResponse.json() : null
+    verdictBody:
+      verdictResponse.statusCode < 400 ? verdictResponse.json() : null
   };
 }
 
@@ -302,27 +335,38 @@ export function assertProviderProofReplay(
       continue;
     }
     if (result.callbackBody[key] !== value) {
-      throw new Error(`callback.${key}: expected ${String(value)}, got ${String(result.callbackBody[key])}`);
+      throw new Error(
+        `callback.${key}: expected ${String(value)}, got ${String(result.callbackBody[key])}`
+      );
     }
   }
 
   for (const [key, value] of Object.entries(expected.feedback)) {
     const actual = result.feedbackBody[key];
     if (Array.isArray(value)) {
-      if (!Array.isArray(actual) || JSON.stringify(actual) !== JSON.stringify(value)) {
-        throw new Error(`feedback.${key}: expected ${JSON.stringify(value)}, got ${JSON.stringify(actual)}`);
+      if (
+        !Array.isArray(actual) ||
+        JSON.stringify(actual) !== JSON.stringify(value)
+      ) {
+        throw new Error(
+          `feedback.${key}: expected ${JSON.stringify(value)}, got ${JSON.stringify(actual)}`
+        );
       }
       continue;
     }
     if (actual !== value) {
-      throw new Error(`feedback.${key}: expected ${String(value)}, got ${String(actual)}`);
+      throw new Error(
+        `feedback.${key}: expected ${String(value)}, got ${String(actual)}`
+      );
     }
   }
 
   if (expected.verdict && result.verdictBody) {
     for (const [key, value] of Object.entries(expected.verdict)) {
       if (result.verdictBody[key] !== value) {
-        throw new Error(`verdict.${key}: expected ${String(value)}, got ${String(result.verdictBody[key])}`);
+        throw new Error(
+          `verdict.${key}: expected ${String(value)}, got ${String(result.verdictBody[key])}`
+        );
       }
     }
   }
@@ -337,7 +381,9 @@ export function assertProviderProofReplay(
         `ledger event count ${ledger?.length ?? 0} < min ${expected.ledger.min_event_count}`
       );
     }
-    const eventTypes = new Set(ledger.map((event) => event.eventType).filter(Boolean));
+    const eventTypes = new Set(
+      ledger.map((event) => event.eventType).filter(Boolean)
+    );
     for (const eventType of expected.ledger.contains_event_types ?? []) {
       if (!eventTypes.has(eventType)) {
         throw new Error(

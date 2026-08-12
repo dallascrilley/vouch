@@ -65,9 +65,14 @@ Signing uses HMAC-SHA256 with `RELEASE_GATE_SIGNING_KEY`. Locally the gate falls
 
 ```ts
 import { verifyReleaseArtifact } from "./release-artifact.js";
-const artifact = JSON.parse(readFileSync(".runtime/verify-verdict.json", "utf8"));
-if (!verifyReleaseArtifact(artifact, process.env.RELEASE_GATE_SIGNING_KEY!) ||
-    artifact.release_gate_effect !== "allow") process.exit(1);
+const artifact = JSON.parse(
+  readFileSync(".runtime/verify-verdict.json", "utf8")
+);
+if (
+  !verifyReleaseArtifact(artifact, process.env.RELEASE_GATE_SIGNING_KEY!) ||
+  artifact.release_gate_effect !== "allow"
+)
+  process.exit(1);
 ```
 
 **Key rotation:** rotate by setting a new `RELEASE_GATE_SIGNING_KEY` on the broker and all verifiers in one deploy window; artifacts only verify against the key that signed them, so re-run `npm run verify` (or re-fetch the artifact) after rotation. The artifact contains only verdict metadata and hashes — never raw evidence.

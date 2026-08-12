@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { buildProviderTestApp, createProviderEligibleJob } from "../helpers/provider-test-app.js";
+import {
+  buildProviderTestApp,
+  createProviderEligibleJob
+} from "../helpers/provider-test-app.js";
 
 describe("provider dispatch flow", () => {
   let app: FastifyInstance;

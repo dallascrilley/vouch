@@ -43,7 +43,12 @@ describe("US3 consensus regression", () => {
         deadline_at: "2026-06-01T00:00:00.000Z",
         idempotency_key: "consensus-regression",
         risk_tier: "high",
-        source: { repository: "repo", commit: "abc123", environment: "local", route: "/consensus" }
+        source: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/consensus"
+        }
       }
     });
     const jobId = create.json<{ job_id: string }>().job_id;
@@ -63,7 +68,12 @@ describe("US3 consensus regression", () => {
           }
         ],
         artifact_quality: "sufficient",
-        environment: { repository: "repo", commit: "abc123", environment: "local", route: "/consensus" }
+        environment: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/consensus"
+        }
       }
     });
     await app.inject({
@@ -98,7 +108,9 @@ describe("US3 consensus regression", () => {
       url: `/human-review-tasks/${reviewTaskId}/responses`,
       payload: {
         confidence: "high",
-        criterion_results: [{ criterion_id: "consensus", status: "fail", confidence: "high" }],
+        criterion_results: [
+          { criterion_id: "consensus", status: "fail", confidence: "high" }
+        ],
         defect_category: "blocking-error",
         evidence_note: "A blocking error is visible.",
         overall_verdict: "fail",
@@ -133,7 +145,10 @@ describe("US3 consensus regression", () => {
 
     const restarted = buildApp(config);
     await restarted.ready();
-    const inspection = await restarted.inject({ method: "GET", url: `/runtime/inspection/jobs/${jobId}` });
+    const inspection = await restarted.inject({
+      method: "GET",
+      url: `/runtime/inspection/jobs/${jobId}`
+    });
     await restarted.close();
 
     expect(inspection.json()).toMatchObject({

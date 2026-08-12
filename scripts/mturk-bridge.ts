@@ -23,7 +23,11 @@ import {
   type BridgeDispatchBody
 } from "./lib/mturk-bridge.js";
 import { parseTaskTemplate } from "./lib/review-templates.js";
-import { deliverProviderCallback, isThrottlingErrorMessage, nextPollBackoffMs } from "./lib/provider-bridge.js";
+import {
+  deliverProviderCallback,
+  isThrottlingErrorMessage,
+  nextPollBackoffMs
+} from "./lib/provider-bridge.js";
 
 const execFileAsync = promisify(execFile);
 const sandboxEndpoint = MTURK_SANDBOX_ENDPOINT;

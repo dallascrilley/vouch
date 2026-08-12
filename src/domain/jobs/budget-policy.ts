@@ -24,7 +24,9 @@ export type BudgetEvaluation = {
   blockingCaps: string[];
 };
 
-export function summarizeBudgetState(evaluation: BudgetEvaluation): string | undefined {
+export function summarizeBudgetState(
+  evaluation: BudgetEvaluation
+): string | undefined {
   if (evaluation.allowed || evaluation.blockingCaps.length === 0) {
     return undefined;
   }
@@ -32,7 +34,10 @@ export function summarizeBudgetState(evaluation: BudgetEvaluation): string | und
   return `blocked:${evaluation.blockingCaps.join(",")}`;
 }
 
-function mergePolicy(base: BudgetPolicy, override?: Partial<BudgetPolicy>): BudgetPolicy {
+function mergePolicy(
+  base: BudgetPolicy,
+  override?: Partial<BudgetPolicy>
+): BudgetPolicy {
   if (!override) {
     return base;
   }
@@ -44,7 +49,10 @@ function mergePolicy(base: BudgetPolicy, override?: Partial<BudgetPolicy>): Budg
   };
 }
 
-export function resolveBudgetPolicy(policy: BudgetPolicy, riskTier: RiskTier): BudgetPolicy {
+export function resolveBudgetPolicy(
+  policy: BudgetPolicy,
+  riskTier: RiskTier
+): BudgetPolicy {
   return mergePolicy(policy, policy.riskTierOverrides?.[riskTier]);
 }
 

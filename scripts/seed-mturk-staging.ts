@@ -29,7 +29,8 @@ const cases: TestCase[] = [
       criterion_id: "hero-no-overlap",
       criticality: "major",
       evidence_requirements: ["screenshot"],
-      human_visible_text: "Hero headline and CTA do not overlap on 1440px desktop."
+      human_visible_text:
+        "Hero headline and CTA do not overlap on 1440px desktop."
     },
     idempotency_key: "mturk-layout-overlap",
     risk_tier: "medium",
@@ -83,7 +84,8 @@ const cases: TestCase[] = [
       criterion_id: "price-consistency",
       criticality: "critical",
       evidence_requirements: ["screenshot"],
-      human_visible_text: "Displayed staged pricing matches the acceptance criteria text."
+      human_visible_text:
+        "Displayed staged pricing matches the acceptance criteria text."
     },
     idempotency_key: "mturk-price-consistency",
     risk_tier: "medium",
@@ -101,7 +103,8 @@ const cases: TestCase[] = [
       criterion_id: "mobile-nav-expanded",
       criticality: "major",
       evidence_requirements: ["screenshot"],
-      human_visible_text: "Mobile navigation expands without clipping the final item."
+      human_visible_text:
+        "Mobile navigation expands without clipping the final item."
     },
     idempotency_key: "mturk-mobile-nav",
     risk_tier: "medium",
@@ -114,7 +117,12 @@ async function main() {
   const baseUrl = process.env.BROKER_BASE_URL ?? "http://127.0.0.1:3000";
   const agentRunId = process.env.AGENT_RUN_ID ?? "mturk-staging-agent-run";
   const idempotencySuffix = process.env.MTURK_STAGING_IDEMPOTENCY_SUFFIX;
-  const created: Array<{ job_id: string; review_task_id: string; provider_task_id?: string; summary: string }> = [];
+  const created: Array<{
+    job_id: string;
+    review_task_id: string;
+    provider_task_id?: string;
+    summary: string;
+  }> = [];
 
   for (const testCase of cases) {
     const idempotencyKey = idempotencySuffix
@@ -138,43 +146,55 @@ async function main() {
         route: testCase.route
       }
     });
-    const createPayload = await createResponse.json() as { job_id: string };
+    const createPayload = (await createResponse.json()) as { job_id: string };
 
-    await postJson(`${baseUrl}/verification-jobs/${createPayload.job_id}/artifacts`, {
-      artifact_quality: "sufficient",
-      environment: {
-        commit: "mturk-staging",
-        environment: "staging",
-        repository: "quorum",
-        route: testCase.route
-      },
-      job_id: createPayload.job_id,
-      manifest_id: `${testCase.idempotency_key}-manifest`,
-      raw_artifacts: [testCase.artifact]
-    });
+    await postJson(
+      `${baseUrl}/verification-jobs/${createPayload.job_id}/artifacts`,
+      {
+        artifact_quality: "sufficient",
+        environment: {
+          commit: "mturk-staging",
+          environment: "staging",
+          repository: "quorum",
+          route: testCase.route
+        },
+        job_id: createPayload.job_id,
+        manifest_id: `${testCase.idempotency_key}-manifest`,
+        raw_artifacts: [testCase.artifact]
+      }
+    );
 
-    await postJson(`${baseUrl}/verification-jobs/${createPayload.job_id}/privacy-classification`, {
-      allowed_reviewer_routes: ["managed"],
-      artifact_manifest_id: `${testCase.idempotency_key}-manifest`,
-      audit_record_id: `${testCase.idempotency_key}-audit`,
-      classification_id: `${testCase.idempotency_key}-classification`,
-      data_class: "internal_low",
-      externalization_decision: "allowed",
-      job_id: createPayload.job_id,
-      policy_version: "v1",
-      redaction_status: "completed"
-    });
+    await postJson(
+      `${baseUrl}/verification-jobs/${createPayload.job_id}/privacy-classification`,
+      {
+        allowed_reviewer_routes: ["managed"],
+        artifact_manifest_id: `${testCase.idempotency_key}-manifest`,
+        audit_record_id: `${testCase.idempotency_key}-audit`,
+        classification_id: `${testCase.idempotency_key}-classification`,
+        data_class: "internal_low",
+        externalization_decision: "allowed",
+        job_id: createPayload.job_id,
+        policy_version: "v1",
+        redaction_status: "completed"
+      }
+    );
 
-    const taskResponse = await postJson(`${baseUrl}/verification-jobs/${createPayload.job_id}/human-review-tasks`, {
-      criterion_ids: [testCase.criterion.criterion_id],
-      deadline_at: "2026-06-30T00:00:00.000Z",
-      provider_adapter: "real-provider",
-      quality_policy: "provider-managed",
-      reviewer_pool: "managed",
-      sanitized_package_id: `${testCase.idempotency_key}-package`,
-      task_template: testCase.summary
-    });
-    const taskPayload = await taskResponse.json() as { provider_task_id?: string; review_task_id: string };
+    const taskResponse = await postJson(
+      `${baseUrl}/verification-jobs/${createPayload.job_id}/human-review-tasks`,
+      {
+        criterion_ids: [testCase.criterion.criterion_id],
+        deadline_at: "2026-06-30T00:00:00.000Z",
+        provider_adapter: "real-provider",
+        quality_policy: "provider-managed",
+        reviewer_pool: "managed",
+        sanitized_package_id: `${testCase.idempotency_key}-package`,
+        task_template: testCase.summary
+      }
+    );
+    const taskPayload = (await taskResponse.json()) as {
+      provider_task_id?: string;
+      review_task_id: string;
+    };
     created.push({
       job_id: createPayload.job_id,
       provider_task_id: taskPayload.provider_task_id,
@@ -193,7 +213,9 @@ async function postJson(url: string, payload: unknown) {
     body: JSON.stringify(payload)
   });
   if (!response.ok) {
-    throw new Error(`${url} failed: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `${url} failed: ${response.status} ${await response.text()}`
+    );
   }
   return response;
 }

@@ -17,7 +17,11 @@ const providerEnv = {
 
 async function createClassifiedJob(
   app: App,
-  options: { dataClass?: string; redactionStatus?: string; decision?: string } = {}
+  options: {
+    dataClass?: string;
+    redactionStatus?: string;
+    decision?: string;
+  } = {}
 ) {
   const dataClass = options.dataClass ?? "internal_low";
   const redactionStatus = options.redactionStatus ?? "completed";
@@ -39,7 +43,12 @@ async function createClassifiedJob(
       deadline_at: "2026-06-01T00:00:00.000Z",
       idempotency_key: crypto.randomUUID(),
       risk_tier: "medium",
-      source: { repository: "repo", commit: "abc123", environment: "staging", route: "/managed" }
+      source: {
+        repository: "repo",
+        commit: "abc123",
+        environment: "staging",
+        route: "/managed"
+      }
     }
   });
   const jobId = createResponse.json().job_id as string;
@@ -120,7 +129,10 @@ describe("security regressions", () => {
       return taskResponse.json().provider_task_id as string;
     }
 
-    function callback(providerTaskId: string, overrides: Record<string, unknown> = {}) {
+    function callback(
+      providerTaskId: string,
+      overrides: Record<string, unknown> = {}
+    ) {
       return app.inject({
         method: "POST",
         url: "/provider-callback",
@@ -130,7 +142,13 @@ describe("security regressions", () => {
           provider_response_id: "resp-1",
           reviewer_pseudonymous_id: "reviewer",
           overall_verdict: "pass",
-          criterion_results: [{ criterion_id: "managed-check", status: "pass", confidence: "high" }],
+          criterion_results: [
+            {
+              criterion_id: "managed-check",
+              status: "pass",
+              confidence: "high"
+            }
+          ],
           defect_category: "none",
           evidence_note: "ok",
           severity: "S4",
@@ -141,13 +159,17 @@ describe("security regressions", () => {
 
     it("rejects a callback that omits the shared secret", async () => {
       const providerTaskId = await dispatchTask();
-      const response = await callback(providerTaskId, { shared_secret: undefined });
+      const response = await callback(providerTaskId, {
+        shared_secret: undefined
+      });
       expect(response.statusCode).toBe(401);
     });
 
     it("rejects a callback with the wrong shared secret", async () => {
       const providerTaskId = await dispatchTask();
-      const response = await callback(providerTaskId, { shared_secret: "guess" });
+      const response = await callback(providerTaskId, {
+        shared_secret: "guess"
+      });
       expect(response.statusCode).toBe(401);
     });
 
@@ -162,8 +184,12 @@ describe("security regressions", () => {
 
     it("deduplicates a replayed callback instead of reprocessing it", async () => {
       const providerTaskId = await dispatchTask();
-      const first = await callback(providerTaskId, { shared_secret: "top-secret" });
-      const second = await callback(providerTaskId, { shared_secret: "top-secret" });
+      const first = await callback(providerTaskId, {
+        shared_secret: "top-secret"
+      });
+      const second = await callback(providerTaskId, {
+        shared_secret: "top-secret"
+      });
       expect(first.statusCode).toBe(202);
       expect(first.json().deduplicated).toBe(false);
       expect(second.statusCode).toBe(202);
@@ -203,10 +229,15 @@ describe("security regressions", () => {
 
   describe("runtime inspection authorization", () => {
     it("requires the operator token when one is configured", async () => {
-      const app = buildApp({ env: { ...process.env, RUNTIME_OPERATOR_TOKEN: "op-token" } });
+      const app = buildApp({
+        env: { ...process.env, RUNTIME_OPERATOR_TOKEN: "op-token" }
+      });
       await app.ready();
       try {
-        const missing = await app.inject({ method: "GET", url: "/runtime/inspection" });
+        const missing = await app.inject({
+          method: "GET",
+          url: "/runtime/inspection"
+        });
         expect(missing.statusCode).toBe(401);
 
         const authorized = await app.inject({

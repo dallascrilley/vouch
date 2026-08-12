@@ -1,11 +1,11 @@
 # Documentation
 
-| Path | Purpose |
-|------|---------|
+| Path            | Purpose                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------- |
 | `architecture/` | How the verification control plane, agent loop, provider integration, and local runtime fit together. |
-| `ops/` | Running the service: deployment, CI, the dev-workflow gate, and validation procedures. |
-| `security/` | Privacy-gate threat model, local data handling, and provider secret handling. |
-| `decisions/` | Architecture Decision Records. One file per decision, numbered. |
+| `ops/`          | Running the service: deployment, CI, the dev-workflow gate, and validation procedures.                |
+| `security/`     | Privacy-gate threat model, local data handling, and provider secret handling.                         |
+| `decisions/`    | Architecture Decision Records. One file per decision, numbered.                                       |
 
 Wire contracts live outside `docs/` in [`contracts/`](../contracts/), because
 they are asserted by `tests/contract/` rather than read by humans alone.

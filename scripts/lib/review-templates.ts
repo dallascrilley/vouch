@@ -556,7 +556,10 @@ function renderQuestionRows(
     const criterion = criteriaById.get(criterionId);
     const statement = criterion?.statement ?? criterionId;
     return renderChoiceRow({
-      legend: questionForCriterion(envelope, criterion ?? { id: criterionId, statement }),
+      legend: questionForCriterion(
+        envelope,
+        criterion ?? { id: criterionId, statement }
+      ),
       name: `criterion_${index}_answer`,
       number: index + 1,
       options: pairwiseAwareOptions(envelope, input.reviewTaskId)
@@ -569,7 +572,10 @@ function questionForCriterion(
   criterion: TemplateCriterion
 ): string {
   if (criterion.question_template) {
-    return criterion.question_template.replaceAll("{statement}", criterion.statement);
+    return criterion.question_template.replaceAll(
+      "{statement}",
+      criterion.statement
+    );
   }
   return questionForStatement(envelope.template_id, criterion.statement);
 }
@@ -752,13 +758,13 @@ function mapAnswerToStatus(
       if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
         return "unclear";
       }
-      const passMin =
-        envelope.params.pass_min ??
-        4;
-      const failMax =
-        envelope.params.fail_max ??
-        2;
-      return rating >= passMin ? "pass" : rating <= failMax ? "fail" : "unclear";
+      const passMin = envelope.params.pass_min ?? 4;
+      const failMax = envelope.params.fail_max ?? 2;
+      return rating >= passMin
+        ? "pass"
+        : rating <= failMax
+          ? "fail"
+          : "unclear";
     }
   }
 }

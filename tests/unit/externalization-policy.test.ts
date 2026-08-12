@@ -28,7 +28,9 @@ describe("externalization policy", () => {
       })
     ).toEqual({
       allowed: false,
-      blockedReasons: ["public crowd review is blocked for sensitive internal data"],
+      blockedReasons: [
+        "public crowd review is blocked for sensitive internal data"
+      ],
       decision: "managed_only"
     });
   });

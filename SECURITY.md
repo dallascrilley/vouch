@@ -20,12 +20,12 @@ This project is pre-1.0. Only the default branch receives security fixes.
 Quorum handles artifacts that may contain sensitive material, so a few settings
 are not optional in a real deployment:
 
-| Variable | Why it matters |
-|---|---|
-| `RUNTIME_OPERATOR_TOKEN` | Bearer token for the runtime inspection and operations endpoints. Without it those endpoints refuse to serve rather than serving openly. |
-| `PROVIDER_SHARED_SECRET` | Validates provider callbacks. An unvalidated callback endpoint lets anyone inject reviewer responses and forge a verdict. |
-| `PROVIDER_API_KEY` | Credential for the outbound provider adapter. |
-| `RUNTIME_SQLITE_PATH`, `PROVIDER_SQLITE_PATH`, `RUNTIME_ARTIFACT_ROOT` | Local state and artifact paths. Treat them as sensitive storage; they hold evidence packages. |
+| Variable                                                               | Why it matters                                                                                                                           |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `RUNTIME_OPERATOR_TOKEN`                                               | Bearer token for the runtime inspection and operations endpoints. Without it those endpoints refuse to serve rather than serving openly. |
+| `PROVIDER_SHARED_SECRET`                                               | Validates provider callbacks. An unvalidated callback endpoint lets anyone inject reviewer responses and forge a verdict.                |
+| `PROVIDER_API_KEY`                                                     | Credential for the outbound provider adapter.                                                                                            |
+| `RUNTIME_SQLITE_PATH`, `PROVIDER_SQLITE_PATH`, `RUNTIME_ARTIFACT_ROOT` | Local state and artifact paths. Treat them as sensitive storage; they hold evidence packages.                                            |
 
 Never commit `.env` files or real provider credentials. `.gitignore` excludes
 `.env*`; keep local validation logs and captured artifacts out of the

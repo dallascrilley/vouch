@@ -4,7 +4,9 @@ import type { HumanReviewTaskService } from "../domain/human-review/human-review
 
 export async function handleEscalationMessage(
   service: HumanReviewTaskService,
-  message: QueueMessage<Omit<HumanReviewTask, "reviewTaskId" | "state" | "paymentPolicy">>
+  message: QueueMessage<
+    Omit<HumanReviewTask, "reviewTaskId" | "state" | "paymentPolicy">
+  >
 ) {
   await service.create({
     criterionIds: message.payload.criterionIds,

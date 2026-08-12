@@ -3,8 +3,19 @@ import type { Severity, ReviewerPool } from "../human-review/models.js";
 
 export type QuorumState = "met" | "needs_more" | "maxed_out";
 export type DisagreementLevel = "none" | "low" | "medium" | "high";
-export type ConsensusOutcome = "pass" | "fail" | "retry" | "recapture" | "adjudicate" | "fail_closed";
-export type AdjudicationDecision = "pass" | "fail" | "retry" | "recapture" | "fail_closed";
+export type ConsensusOutcome =
+  | "pass"
+  | "fail"
+  | "retry"
+  | "recapture"
+  | "adjudicate"
+  | "fail_closed";
+export type AdjudicationDecision =
+  | "pass"
+  | "fail"
+  | "retry"
+  | "recapture"
+  | "fail_closed";
 
 export type ConsensusResult = {
   consensusId: Identifier;

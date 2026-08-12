@@ -17,7 +17,10 @@ export {
   SQLiteFinalVerdictRepository,
   SQLiteVerdictLedgerRepository
 } from "./sqlite-verdict-repositories.js";
-export { SQLiteLocalQueueStore, type LocalQueueClaim } from "./sqlite-local-queue-store.js";
+export {
+  SQLiteLocalQueueStore,
+  type LocalQueueClaim
+} from "./sqlite-local-queue-store.js";
 
 import {
   SQLiteAcceptanceCriterionRepository,
@@ -55,11 +58,15 @@ export type SQLiteRuntimeRepositories = {
   store: SQLiteRuntimeStore;
 };
 
-export function createSQLiteRuntimeRepositories(databasePath: string): SQLiteRuntimeRepositories {
+export function createSQLiteRuntimeRepositories(
+  databasePath: string
+): SQLiteRuntimeRepositories {
   const store = new SQLiteRuntimeStore(databasePath);
 
   return {
-    acceptanceCriterionRepository: new SQLiteAcceptanceCriterionRepository(store),
+    acceptanceCriterionRepository: new SQLiteAcceptanceCriterionRepository(
+      store
+    ),
     adjudicationCaseRepository: new SQLiteAdjudicationCaseRepository(store),
     artifactManifestRepository: new SQLiteArtifactManifestRepository(store),
     consensusResultRepository: new SQLiteConsensusResultRepository(store),
@@ -69,8 +76,11 @@ export function createSQLiteRuntimeRepositories(databasePath: string): SQLiteRun
     humanReviewTaskRepository: new SQLiteHumanReviewTaskRepository(store),
     jobRepository: new SQLiteVerificationJobRepository(store),
     ledgerRepository: new SQLiteVerdictLedgerRepository(store),
-    privacyClassificationRepository: new SQLitePrivacyClassificationRepository(store),
-    selfVerificationResultRepository: new SQLiteSelfVerificationResultRepository(store),
+    privacyClassificationRepository: new SQLitePrivacyClassificationRepository(
+      store
+    ),
+    selfVerificationResultRepository:
+      new SQLiteSelfVerificationResultRepository(store),
     store
   };
 }

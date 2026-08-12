@@ -22,24 +22,38 @@ export function registerStuckStateRoutes(app: FastifyInstance) {
       }
 
       const [reviewTasks, ledger, consensus] = await Promise.all([
-        app.services.runtimeRepositories.humanReviewTaskRepository.findByJobId(jobId),
+        app.services.runtimeRepositories.humanReviewTaskRepository.findByJobId(
+          jobId
+        ),
         app.services.runtimeRepositories.ledgerRepository.listByJobId(jobId),
-        app.services.runtimeRepositories.consensusResultRepository.findByJobId(jobId)
+        app.services.runtimeRepositories.consensusResultRepository.findByJobId(
+          jobId
+        )
       ]);
       const responsesByTask = await Promise.all(
         reviewTasks.map((task) =>
-          app.services.runtimeRepositories.humanResponseRepository.findByReviewTaskId(task.reviewTaskId)
+          app.services.runtimeRepositories.humanResponseRepository.findByReviewTaskId(
+            task.reviewTaskId
+          )
         )
       );
       const responses = responsesByTask.flat();
 
-      const stuckState = deriveStuckState({ consensus, job, ledger, responses, reviewTasks });
+      const stuckState = deriveStuckState({
+        consensus,
+        job,
+        ledger,
+        responses,
+        reviewTasks
+      });
 
       // Only a hash of the sanitized package id is exposed — never raw
       // artifacts or the package itself.
       const latestTask = reviewTasks.at(-1) ?? null;
       const sanitizedPackageHash = latestTask
-        ? createHash("sha256").update(latestTask.sanitizedPackageId).digest("hex")
+        ? createHash("sha256")
+            .update(latestTask.sanitizedPackageId)
+            .digest("hex")
         : null;
 
       return {

@@ -17,7 +17,12 @@ export type JobSource = {
 
 export type CriterionCriticality = "critical" | "major" | "minor" | "audit";
 
-export type CriterionStatus = "pending" | "pass" | "fail" | "unclear" | "not_visible";
+export type CriterionStatus =
+  | "pending"
+  | "pass"
+  | "fail"
+  | "unclear"
+  | "not_visible";
 
 export type AcceptanceCriterion = {
   criterionId: Identifier;

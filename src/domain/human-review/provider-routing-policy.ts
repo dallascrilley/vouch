@@ -1,4 +1,7 @@
-import type { ProviderCapabilityProfile, ProviderHealthState } from "./models.js";
+import type {
+  ProviderCapabilityProfile,
+  ProviderHealthState
+} from "./models.js";
 import type { ReviewerPoolType } from "../shared/types.js";
 
 export type ProviderHealth = Record<string, ProviderHealthState["status"]>;
@@ -14,7 +17,9 @@ export function selectProviderForPool(input: {
   );
 
   const preferred = input.preferredProviderId
-    ? providersForPool.find((provider) => provider.providerId === input.preferredProviderId)
+    ? providersForPool.find(
+        (provider) => provider.providerId === input.preferredProviderId
+      )
     : undefined;
 
   if (preferred && input.health[preferred.providerId] !== "down") {
@@ -22,8 +27,12 @@ export function selectProviderForPool(input: {
   }
 
   return (
-    providersForPool.find((provider) => input.health[provider.providerId] === "healthy") ??
-    providersForPool.find((provider) => input.health[provider.providerId] !== "down") ??
+    providersForPool.find(
+      (provider) => input.health[provider.providerId] === "healthy"
+    ) ??
+    providersForPool.find(
+      (provider) => input.health[provider.providerId] !== "down"
+    ) ??
     null
   );
 }

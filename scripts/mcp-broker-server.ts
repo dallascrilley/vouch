@@ -58,7 +58,8 @@ function requireString(args: Record<string, unknown>, key: string): string {
 const TOOLS = [
   {
     name: "create_verification_job",
-    description: "POST /verification-jobs — create or idempotently retrieve a job",
+    description:
+      "POST /verification-jobs — create or idempotently retrieve a job",
     inputSchema: {
       type: "object",
       properties: { payload: { type: "object" } },
@@ -130,7 +131,8 @@ const TOOLS = [
   },
   {
     name: "get_stuck_state",
-    description: "GET /verification-jobs/:jobId/stuck-state (operator token when configured)",
+    description:
+      "GET /verification-jobs/:jobId/stuck-state (operator token when configured)",
     inputSchema: {
       type: "object",
       properties: { job_id: { type: "string" } },

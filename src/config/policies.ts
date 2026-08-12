@@ -37,7 +37,9 @@ export type LocalRuntimePolicyDefaults = {
   runtimeValidationScript: string;
 };
 
-export function buildLocalRuntimePolicyDefaults(config: RuntimeConfig): LocalRuntimePolicyDefaults {
+export function buildLocalRuntimePolicyDefaults(
+  config: RuntimeConfig
+): LocalRuntimePolicyDefaults {
   return {
     budgetPolicy: defaultBudgetPolicy,
     providerHealth: defaultProviderHealth,
@@ -49,13 +51,16 @@ export function buildLocalRuntimePolicyDefaults(config: RuntimeConfig): LocalRun
   };
 }
 
-export function loadDefaultProviderConfig(env: NodeJS.ProcessEnv = process.env): ProviderAdapterConfig {
+export function loadDefaultProviderConfig(
+  env: NodeJS.ProcessEnv = process.env
+): ProviderAdapterConfig {
   return {
     providerId: env.PROVIDER_ID ?? "real-provider",
     credentialSource: env.PROVIDER_CREDENTIAL_SOURCE ?? "env",
     accountScope: env.PROVIDER_ACCOUNT_SCOPE ?? "local-workspace",
     dispatchMode: env.PROVIDER_DISPATCH_MODE === "mock" ? "mock" : "api",
-    ingestionMode: env.PROVIDER_INGESTION_MODE === "polling" ? "polling" : "callback",
+    ingestionMode:
+      env.PROVIDER_INGESTION_MODE === "polling" ? "polling" : "callback",
     callbackBaseUrl: env.PROVIDER_CALLBACK_BASE_URL,
     dispatchUrl: env.PROVIDER_DISPATCH_URL,
     enabled: env.PROVIDER_ENABLED === "true",

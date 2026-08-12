@@ -2,7 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "../../src/api/app.js";
-import { buildProviderTestApp, createProviderEligibleJob } from "../helpers/provider-test-app.js";
+import {
+  buildProviderTestApp,
+  createProviderEligibleJob
+} from "../helpers/provider-test-app.js";
 
 type SelfVerificationResponse = {
   escalated: boolean;
@@ -28,7 +31,12 @@ async function seedClassifiedJob(app: FastifyInstance) {
       deadline_at: "2026-06-01T00:00:00.000Z",
       idempotency_key: crypto.randomUUID(),
       risk_tier: "low",
-      source: { repository: "repo", commit: "abc123", environment: "staging", route: "/visual" }
+      source: {
+        repository: "repo",
+        commit: "abc123",
+        environment: "staging",
+        route: "/visual"
+      }
     }
   });
   const jobId = jobResponse.json<{ job_id: string }>().job_id;
@@ -48,7 +56,12 @@ async function seedClassifiedJob(app: FastifyInstance) {
         }
       ],
       artifact_quality: "sufficient",
-      environment: { repository: "repo", commit: "abc123", environment: "staging", route: "/visual" }
+      environment: {
+        repository: "repo",
+        commit: "abc123",
+        environment: "staging",
+        route: "/visual"
+      }
     }
   });
 
@@ -71,13 +84,18 @@ async function seedClassifiedJob(app: FastifyInstance) {
   return jobId;
 }
 
-function selfVerificationPayload(action: "human_review" | "internal_review", criterionId: string) {
+function selfVerificationPayload(
+  action: "human_review" | "internal_review",
+  criterionId: string
+) {
   return {
     result_id: `result-${crypto.randomUUID()}`,
     job_id: "ignored",
     confidence: "low",
     recommended_action: action,
-    criterion_results: [{ criterion_id: criterionId, status: "unclear", confidence: "low" }],
+    criterion_results: [
+      { criterion_id: criterionId, status: "unclear", confidence: "low" }
+    ],
     failure_categories: ["visual-ambiguous"]
   };
 }
@@ -180,7 +198,11 @@ describe("self-verification escalation to human review", () => {
           confidence: "low",
           recommended_action: "human_review",
           criterion_results: [
-            { criterion_id: "managed-check", status: "unclear", confidence: "low" }
+            {
+              criterion_id: "managed-check",
+              status: "unclear",
+              confidence: "low"
+            }
           ],
           failure_categories: ["managed-ambiguous"]
         }
@@ -200,7 +222,13 @@ describe("self-verification escalation to human review", () => {
           provider_response_id: "escalation-callback-pass",
           reviewer_pseudonymous_id: "provider-reviewer",
           overall_verdict: "pass",
-          criterion_results: [{ criterion_id: "managed-check", status: "pass", confidence: "high" }],
+          criterion_results: [
+            {
+              criterion_id: "managed-check",
+              status: "pass",
+              confidence: "high"
+            }
+          ],
           defect_category: "none",
           evidence_note: "Human reviewer confirmed the ambiguous criterion.",
           severity: "S4",

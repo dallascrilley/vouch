@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { buildProviderTestApp, createProviderEligibleJob } from "../helpers/provider-test-app.js";
+import {
+  buildProviderTestApp,
+  createProviderEligibleJob
+} from "../helpers/provider-test-app.js";
 
 const STUCK_REASONS = [
   "awaiting_consensus",
@@ -67,12 +70,15 @@ describe("stuck-state contract", () => {
     expect(typeof body.job_id).toBe("string");
     expect(typeof body.job_state).toBe("string");
     expect(typeof body.stuck).toBe("boolean");
-    expect(body.stuck_reason === null || STUCK_REASONS.includes(body.stuck_reason as string)).toBe(
-      true
-    );
+    expect(
+      body.stuck_reason === null ||
+        STUCK_REASONS.includes(body.stuck_reason as string)
+    ).toBe(true);
     expect(
       body.recommended_next_action === null ||
-        RECOMMENDED_NEXT_ACTIONS.includes(body.recommended_next_action as string)
+        RECOMMENDED_NEXT_ACTIONS.includes(
+          body.recommended_next_action as string
+        )
     ).toBe(true);
 
     const ledgerTail = body.ledger_tail as Array<Record<string, unknown>>;

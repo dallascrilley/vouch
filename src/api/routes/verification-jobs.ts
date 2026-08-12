@@ -51,7 +51,13 @@ function toJobSource(source: CreateJobBody["source"]): JobSource {
   };
 }
 
-function serializeJob(job: Awaited<ReturnType<FastifyInstance["services"]["jobService"]["get"]>> extends infer T ? Exclude<T, null> : never) {
+function serializeJob(
+  job: Awaited<
+    ReturnType<FastifyInstance["services"]["jobService"]["get"]>
+  > extends infer T
+    ? Exclude<T, null>
+    : never
+) {
   return {
     job_id: job.jobId,
     idempotency_key: job.idempotencyKey,
@@ -95,42 +101,48 @@ function serializeJob(job: Awaited<ReturnType<FastifyInstance["services"]["jobSe
 }
 
 export function registerVerificationJobRoutes(app: FastifyInstance) {
-  app.post<{ Body: CreateJobBody }>("/verification-jobs", async (request, reply) => {
-    app.services.metrics.increment("broker.job.create");
-    const body = request.body;
+  app.post<{ Body: CreateJobBody }>(
+    "/verification-jobs",
+    async (request, reply) => {
+      app.services.metrics.increment("broker.job.create");
+      const body = request.body;
 
-    try {
-      const job = await app.services.jobService.createOrGet({
-        acceptanceCriteria: body.acceptance_criteria.map((criterion) => ({
-          criterionId: criterion.criterion_id,
-          criticality: criterion.criticality,
-          evidenceRequirements: criterion.evidence_requirements,
-          humanVisibleText: criterion.human_visible_text,
-          passThreshold: criterion.pass_threshold
-        })),
-        agentRunId: body.agent_run_id,
-        budgetPolicy: body.budget_policy,
-        deadlineAt: new Date(body.deadline_at),
-        idempotencyKey: body.idempotency_key,
-        parentJobId: body.parent_job_id,
-        riskTier: body.risk_tier,
-        source: toJobSource(body.source)
-      });
+      try {
+        const job = await app.services.jobService.createOrGet({
+          acceptanceCriteria: body.acceptance_criteria.map((criterion) => ({
+            criterionId: criterion.criterion_id,
+            criticality: criterion.criticality,
+            evidenceRequirements: criterion.evidence_requirements,
+            humanVisibleText: criterion.human_visible_text,
+            passThreshold: criterion.pass_threshold
+          })),
+          agentRunId: body.agent_run_id,
+          budgetPolicy: body.budget_policy,
+          deadlineAt: new Date(body.deadline_at),
+          idempotencyKey: body.idempotency_key,
+          parentJobId: body.parent_job_id,
+          riskTier: body.risk_tier,
+          source: toJobSource(body.source)
+        });
 
-      return reply.code(202).send(serializeJob(job));
-    } catch (error) {
-      return reply.code(400).send({
-        message: error instanceof Error ? error.message : "Invalid request"
-      });
+        return reply.code(202).send(serializeJob(job));
+      } catch (error) {
+        return reply.code(400).send({
+          message: error instanceof Error ? error.message : "Invalid request"
+        });
+      }
     }
-  });
+  );
 
-  app.get<{ Params: { jobId: string } }>("/verification-jobs/:jobId", async (request, reply) => {
-    const job = await app.services.jobService.get(request.params.jobId);
-    if (!job) {
-      return reply.code(404).send({ message: "Job not found" });
+  app.get<{ Params: { jobId: string } }>(
+    "/verification-jobs/:jobId",
+    async (request, reply) => {
+      const job = await app.services.jobService.get(request.params.jobId);
+      if (!job) {
+        return reply.code(404).send({ message: "Job not found" });
+      }
+
+      return serializeJob(job);
     }
-
-    return serializeJob(job);
-  });
+  );
 }

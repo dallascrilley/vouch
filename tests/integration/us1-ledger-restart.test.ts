@@ -43,7 +43,12 @@ describe("US1 ledger restart", () => {
         deadline_at: "2026-06-01T00:00:00.000Z",
         idempotency_key: "ledger-restart",
         risk_tier: "low",
-        source: { repository: "repo", commit: "abc123", environment: "local", route: "/ledger" }
+        source: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/ledger"
+        }
       }
     });
     const jobId = createResponse.json<{ job_id: string }>().job_id;
@@ -63,7 +68,12 @@ describe("US1 ledger restart", () => {
           }
         ],
         artifact_quality: "sufficient",
-        environment: { repository: "repo", commit: "abc123", environment: "local", route: "/ledger" }
+        environment: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/ledger"
+        }
       }
     });
     await app.inject({

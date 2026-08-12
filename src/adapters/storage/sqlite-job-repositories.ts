@@ -6,7 +6,10 @@ import type {
   VerificationJobRepository
 } from "./repositories.js";
 import type { ArtifactManifest } from "../../domain/artifacts/models.js";
-import type { AcceptanceCriterion, VerificationJob } from "../../domain/jobs/models.js";
+import type {
+  AcceptanceCriterion,
+  VerificationJob
+} from "../../domain/jobs/models.js";
 import type { PrivacyClassification } from "../../domain/privacy/models.js";
 import type { SelfVerificationResult } from "../../domain/self-verification/models.js";
 import { deserializeJson, serializeJson } from "./sqlite-codecs.js";
@@ -22,15 +25,21 @@ export class SQLiteVerificationJobRepository implements VerificationJobRepositor
       .prepare("SELECT payload_json FROM verification_jobs WHERE job_id = ?")
       .get(jobId) as Row | undefined;
 
-    return Promise.resolve(row ? deserializeJson<VerificationJob>(row.payload_json) : null);
+    return Promise.resolve(
+      row ? deserializeJson<VerificationJob>(row.payload_json) : null
+    );
   }
 
   findByIdempotencyKey(idempotencyKey: string) {
     const row = this.store.db
-      .prepare("SELECT payload_json FROM verification_jobs WHERE idempotency_key = ?")
+      .prepare(
+        "SELECT payload_json FROM verification_jobs WHERE idempotency_key = ?"
+      )
       .get(idempotencyKey) as Row | undefined;
 
-    return Promise.resolve(row ? deserializeJson<VerificationJob>(row.payload_json) : null);
+    return Promise.resolve(
+      row ? deserializeJson<VerificationJob>(row.payload_json) : null
+    );
   }
 
   save(job: VerificationJob) {
@@ -43,7 +52,12 @@ export class SQLiteVerificationJobRepository implements VerificationJobRepositor
            payload_json = excluded.payload_json,
            updated_at = excluded.updated_at`
       )
-      .run(job.jobId, job.idempotencyKey, serializeJson(job), job.updatedAt.toISOString());
+      .run(
+        job.jobId,
+        job.idempotencyKey,
+        serializeJson(job),
+        job.updatedAt.toISOString()
+      );
 
     return Promise.resolve();
   }
@@ -54,10 +68,14 @@ export class SQLiteAcceptanceCriterionRepository implements AcceptanceCriterionR
 
   findByJobId(jobId: string) {
     const rows = this.store.db
-      .prepare("SELECT payload_json FROM acceptance_criteria WHERE job_id = ? ORDER BY criterion_id")
+      .prepare(
+        "SELECT payload_json FROM acceptance_criteria WHERE job_id = ? ORDER BY criterion_id"
+      )
       .all(jobId) as Row[];
 
-    return Promise.resolve(rows.map((row) => deserializeJson<AcceptanceCriterion>(row.payload_json)));
+    return Promise.resolve(
+      rows.map((row) => deserializeJson<AcceptanceCriterion>(row.payload_json))
+    );
   }
 
   saveAll(criteria: AcceptanceCriterion[]) {
@@ -70,7 +88,11 @@ export class SQLiteAcceptanceCriterionRepository implements AcceptanceCriterionR
     );
 
     for (const criterion of criteria) {
-      insert.run(criterion.criterionId, criterion.jobId, serializeJson(criterion));
+      insert.run(
+        criterion.criterionId,
+        criterion.jobId,
+        serializeJson(criterion)
+      );
     }
 
     return Promise.resolve();
@@ -82,10 +104,14 @@ export class SQLiteArtifactManifestRepository implements ArtifactManifestReposit
 
   findById(manifestId: string) {
     const row = this.store.db
-      .prepare("SELECT payload_json FROM artifact_manifests WHERE manifest_id = ?")
+      .prepare(
+        "SELECT payload_json FROM artifact_manifests WHERE manifest_id = ?"
+      )
       .get(manifestId) as Row | undefined;
 
-    return Promise.resolve(row ? deserializeJson<ArtifactManifest>(row.payload_json) : null);
+    return Promise.resolve(
+      row ? deserializeJson<ArtifactManifest>(row.payload_json) : null
+    );
   }
 
   save(manifest: ArtifactManifest) {
@@ -108,10 +134,14 @@ export class SQLitePrivacyClassificationRepository implements PrivacyClassificat
 
   findByJobId(jobId: string) {
     const row = this.store.db
-      .prepare("SELECT payload_json FROM privacy_classifications WHERE job_id = ?")
+      .prepare(
+        "SELECT payload_json FROM privacy_classifications WHERE job_id = ?"
+      )
       .get(jobId) as Row | undefined;
 
-    return Promise.resolve(row ? deserializeJson<PrivacyClassification>(row.payload_json) : null);
+    return Promise.resolve(
+      row ? deserializeJson<PrivacyClassification>(row.payload_json) : null
+    );
   }
 
   save(classification: PrivacyClassification) {
@@ -133,10 +163,14 @@ export class SQLiteSelfVerificationResultRepository implements SelfVerificationR
 
   findByJobId(jobId: string) {
     const row = this.store.db
-      .prepare("SELECT payload_json FROM self_verification_results WHERE job_id = ?")
+      .prepare(
+        "SELECT payload_json FROM self_verification_results WHERE job_id = ?"
+      )
       .get(jobId) as Row | undefined;
 
-    return Promise.resolve(row ? deserializeJson<SelfVerificationResult>(row.payload_json) : null);
+    return Promise.resolve(
+      row ? deserializeJson<SelfVerificationResult>(row.payload_json) : null
+    );
   }
 
   save(result: SelfVerificationResult) {

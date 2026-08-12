@@ -32,7 +32,12 @@ describe("US3 budget regression", () => {
         deadline_at: "2026-06-01T00:00:00.000Z",
         idempotency_key: "retry-regression",
         risk_tier: "low",
-        source: { repository: "repo", commit: "abc123", environment: "local", route: "/retry" }
+        source: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/retry"
+        }
       }
     });
     const jobId = create.json<{ job_id: string }>().job_id;
@@ -52,7 +57,12 @@ describe("US3 budget regression", () => {
           }
         ],
         artifact_quality: "sufficient",
-        environment: { repository: "repo", commit: "abc123", environment: "local", route: "/retry" }
+        environment: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/retry"
+        }
       }
     });
     await app.inject({
@@ -87,7 +97,10 @@ describe("US3 budget regression", () => {
       }
     });
 
-    const feedback = await app.inject({ method: "GET", url: `/verification-jobs/${jobId}/feedback` });
+    const feedback = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/feedback`
+    });
     expect(feedback.json()).toMatchObject({
       final_verdict: "retry",
       retry_allowed: true,

@@ -4,19 +4,23 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 type BridgeTask = {
-    deliveredAssignmentCount?: number;
-    deliveredAssignmentIds?: string[];
-    deliveryComplete?: boolean;
-    deliveryCompletedAt?: string;
-    deliveryLagMs?: number;
-    hitId: string;
-    hitStatus?: string;
-    lastDeliveryAt?: string;
-    lastPollAt?: string;
+  deliveredAssignmentCount?: number;
+  deliveredAssignmentIds?: string[];
+  deliveryComplete?: boolean;
+  deliveryCompletedAt?: string;
+  deliveryLagMs?: number;
+  hitId: string;
+  hitStatus?: string;
+  lastDeliveryAt?: string;
+  lastPollAt?: string;
+  nextPollAt?: string;
+  reviewTaskId: string;
+  throttleEvents?: Array<{
+    message?: string;
     nextPollAt?: string;
-    reviewTaskId: string;
-    throttleEvents?: Array<{ message?: string; nextPollAt?: string; recordedAt?: string }>;
-  };
+    recordedAt?: string;
+  }>;
+};
 
 type BridgeStateResponse = {
   tasks: BridgeTask[] | Record<string, BridgeTask>;
@@ -48,7 +52,8 @@ function requireEnv(name: string) {
 
 async function main() {
   const brokerBaseUrl = process.env.BROKER_BASE_URL ?? "http://127.0.0.1:3000";
-  const bridgeBaseUrl = process.env.MTURK_BRIDGE_BASE_URL ?? "http://127.0.0.1:3100";
+  const bridgeBaseUrl =
+    process.env.MTURK_BRIDGE_BASE_URL ?? "http://127.0.0.1:3100";
   const hitId = requireEnv("PHASE6_HIT_ID");
   const jobId = requireEnv("PHASE6_JOB_ID");
   const reviewTaskId = requireEnv("PHASE6_REVIEW_TASK_ID");
@@ -57,13 +62,24 @@ async function main() {
   const awsEndpointUrl = process.env.MTURK_AWS_ENDPOINT_URL;
   const awsRegion = process.env.MTURK_AWS_REGION ?? "us-east-1";
 
-  const assignments = await listAssignments({ awsEndpointUrl, awsRegion, hitId });
-  const bridgeState = await getJson<BridgeStateResponse>(`${bridgeBaseUrl}/state`, {
-    authorization: `Bearer ${bridgeApiKey}`
+  const assignments = await listAssignments({
+    awsEndpointUrl,
+    awsRegion,
+    hitId
   });
+  const bridgeState = await getJson<BridgeStateResponse>(
+    `${bridgeBaseUrl}/state`,
+    {
+      authorization: `Bearer ${bridgeApiKey}`
+    }
+  );
   const bridgeTasks = normalizeBridgeTasks(bridgeState.tasks);
-  const bridgeTask = bridgeTasks.find((task) => task.hitId === hitId || task.reviewTaskId === reviewTaskId);
-  const feedback = await getOptionalJson<FeedbackResponse>(`${brokerBaseUrl}/verification-jobs/${jobId}/feedback`);
+  const bridgeTask = bridgeTasks.find(
+    (task) => task.hitId === hitId || task.reviewTaskId === reviewTaskId
+  );
+  const feedback = await getOptionalJson<FeedbackResponse>(
+    `${brokerBaseUrl}/verification-jobs/${jobId}/feedback`
+  );
 
   const bridgeHealthErrors = bridgeTask ? validateBridgeHealth(bridgeTask) : [];
 
@@ -89,7 +105,13 @@ async function main() {
   };
 
   if (bridgeHealthErrors.length > 0) {
-    console.log(JSON.stringify({ ...result, status: "bridge_health_schema_violation" }, null, 2));
+    console.log(
+      JSON.stringify(
+        { ...result, status: "bridge_health_schema_violation" },
+        null,
+        2
+      )
+    );
     process.exitCode = 6;
     return;
   }
@@ -101,25 +123,39 @@ async function main() {
   }
 
   if (!feedback?.agent_next_action) {
-    console.log(JSON.stringify({ ...result, status: "pending_feedback" }, null, 2));
+    console.log(
+      JSON.stringify({ ...result, status: "pending_feedback" }, null, 2)
+    );
     process.exitCode = 4;
     return;
   }
 
   if (expectedAction && feedback.agent_next_action !== expectedAction) {
-    console.log(JSON.stringify({ ...result, status: "unexpected_agent_next_action" }, null, 2));
+    console.log(
+      JSON.stringify(
+        { ...result, status: "unexpected_agent_next_action" },
+        null,
+        2
+      )
+    );
     process.exitCode = 5;
     return;
   }
 
   const deliveredCount =
-    bridgeTask?.deliveredAssignmentCount ?? bridgeTask?.deliveredAssignmentIds?.length ?? 0;
-  if (!bridgeTask?.deliveryComplete && (!bridgeTask || deliveredCount < assignments.length)) {
+    bridgeTask?.deliveredAssignmentCount ??
+    bridgeTask?.deliveredAssignmentIds?.length ??
+    0;
+  if (
+    !bridgeTask?.deliveryComplete &&
+    (!bridgeTask || deliveredCount < assignments.length)
+  ) {
     console.log(
       JSON.stringify(
         {
           ...result,
-          bridge_delivery_note: "bridge_task_missing_or_stale_using_aws_and_feedback",
+          bridge_delivery_note:
+            "bridge_task_missing_or_stale_using_aws_and_feedback",
           status: "verified"
         },
         null,
@@ -137,7 +173,10 @@ async function main() {
 function validateBridgeHealth(task: BridgeTask): string[] {
   const errors: string[] = [];
 
-  if (task.deliveryComplete !== undefined && typeof task.deliveryComplete !== "boolean") {
+  if (
+    task.deliveryComplete !== undefined &&
+    typeof task.deliveryComplete !== "boolean"
+  ) {
     errors.push("deliveryComplete must be a boolean when present");
   }
   if (
@@ -146,23 +185,37 @@ function validateBridgeHealth(task: BridgeTask): string[] {
   ) {
     errors.push("deliveryLagMs must be a non-negative number when present");
   }
-  if (task.throttleEvents !== undefined && !Array.isArray(task.throttleEvents)) {
+  if (
+    task.throttleEvents !== undefined &&
+    !Array.isArray(task.throttleEvents)
+  ) {
     errors.push("throttleEvents must be an array when present");
   }
-  for (const field of ["deliveryCompletedAt", "lastPollAt", "nextPollAt"] as const) {
+  for (const field of [
+    "deliveryCompletedAt",
+    "lastPollAt",
+    "nextPollAt"
+  ] as const) {
     const value = task[field];
     if (value !== undefined && Number.isNaN(new Date(value).getTime())) {
       errors.push(`${field} must be an ISO timestamp when present`);
     }
   }
-  if (task.deliveryComplete === true && (task.deliveredAssignmentIds?.length ?? task.deliveredAssignmentCount ?? 0) === 0) {
+  if (
+    task.deliveryComplete === true &&
+    (task.deliveredAssignmentIds?.length ??
+      task.deliveredAssignmentCount ??
+      0) === 0
+  ) {
     errors.push("deliveryComplete is true but no assignments were delivered");
   }
 
   return errors;
 }
 
-function normalizeBridgeTasks(tasks: BridgeStateResponse["tasks"]): BridgeTask[] {
+function normalizeBridgeTasks(
+  tasks: BridgeStateResponse["tasks"]
+): BridgeTask[] {
   if (Array.isArray(tasks)) {
     return tasks;
   }
@@ -200,10 +253,15 @@ async function listAssignments(input: {
   return payload.Assignments ?? [];
 }
 
-async function getJson<T>(url: string, headers?: Record<string, string>): Promise<T> {
+async function getJson<T>(
+  url: string,
+  headers?: Record<string, string>
+): Promise<T> {
   const response = await fetch(url, { headers });
   if (!response.ok) {
-    throw new Error(`${url} failed: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `${url} failed: ${response.status} ${await response.text()}`
+    );
   }
   return response.json() as Promise<T>;
 }
@@ -214,7 +272,9 @@ async function getOptionalJson<T>(url: string): Promise<T | null> {
     return null;
   }
   if (!response.ok) {
-    throw new Error(`${url} failed: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `${url} failed: ${response.status} ${await response.text()}`
+    );
   }
   return response.json() as Promise<T>;
 }

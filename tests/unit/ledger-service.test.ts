@@ -4,7 +4,9 @@ import { LedgerService } from "../../src/domain/ledger/ledger-service.js";
 import type { VerdictLedgerRepository } from "../../src/adapters/storage/repositories.js";
 
 describe("LedgerService", () => {
-  const createRepository = (append: VerdictLedgerRepository["append"]): VerdictLedgerRepository => ({
+  const createRepository = (
+    append: VerdictLedgerRepository["append"]
+  ): VerdictLedgerRepository => ({
     append,
     listByJobId() {
       return Promise.resolve([]);
@@ -15,12 +17,16 @@ describe("LedgerService", () => {
     const append = vi.fn<VerdictLedgerRepository["append"]>();
     const service = new LedgerService(createRepository(append));
 
-    const event = await service.recordStateTransition("created", "artifacts_collected", {
-      correlationId: "corr-1",
-      jobId: "job-1",
-      payloadHash: "payload-1",
-      policyVersion: "policy-1"
-    });
+    const event = await service.recordStateTransition(
+      "created",
+      "artifacts_collected",
+      {
+        correlationId: "corr-1",
+        jobId: "job-1",
+        payloadHash: "payload-1",
+        policyVersion: "policy-1"
+      }
+    );
 
     expect(event.eventType).toBe("job.state.created.to.artifacts_collected");
     expect(append).toHaveBeenCalledWith(event);

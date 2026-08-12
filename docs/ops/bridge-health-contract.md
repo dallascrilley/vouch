@@ -8,18 +8,18 @@ in `scripts/mturk-bridge.ts` + `scripts/lib/provider-bridge.ts`).
 
 Each entry in `tasks` (array or keyed object) describes one provider task (MTurk HIT):
 
-| Field | Type | Meaning |
-|-------|------|---------|
-| `hitId` | string | Provider task id (HIT id) |
-| `reviewTaskId` | string | Broker review task the HIT was dispatched for |
-| `deliveredAssignmentCount` / `deliveredAssignmentIds` | number / string[] | Assignments successfully POSTed to `/provider-callback` |
-| `deliveryComplete` | boolean | Every expected assignment (HIT `MaxAssignments`) delivered to the broker; the bridge stops polling this HIT |
-| `deliveryCompletedAt` | ISO timestamp | When `deliveryComplete` flipped true |
-| `deliveryLagMs` | number | Worker `SubmitTime` → broker delivery latency for the most recent delivery |
-| `lastPollAt` | ISO timestamp | Last `list-assignments-for-hit` attempt for this HIT |
-| `nextPollAt` | ISO timestamp | Present only while backing off after throttling; no polls before this time |
-| `throttleEvents` | array | Recent throttling incidents: `{ message, recordedAt, nextPollAt }` (last 10 kept) |
-| `lastError` | object | Most recent poll/delivery error: `{ message, recordedAt }` |
+| Field                                                 | Type              | Meaning                                                                                                     |
+| ----------------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------- |
+| `hitId`                                               | string            | Provider task id (HIT id)                                                                                   |
+| `reviewTaskId`                                        | string            | Broker review task the HIT was dispatched for                                                               |
+| `deliveredAssignmentCount` / `deliveredAssignmentIds` | number / string[] | Assignments successfully POSTed to `/provider-callback`                                                     |
+| `deliveryComplete`                                    | boolean           | Every expected assignment (HIT `MaxAssignments`) delivered to the broker; the bridge stops polling this HIT |
+| `deliveryCompletedAt`                                 | ISO timestamp     | When `deliveryComplete` flipped true                                                                        |
+| `deliveryLagMs`                                       | number            | Worker `SubmitTime` → broker delivery latency for the most recent delivery                                  |
+| `lastPollAt`                                          | ISO timestamp     | Last `list-assignments-for-hit` attempt for this HIT                                                        |
+| `nextPollAt`                                          | ISO timestamp     | Present only while backing off after throttling; no polls before this time                                  |
+| `throttleEvents`                                      | array             | Recent throttling incidents: `{ message, recordedAt, nextPollAt }` (last 10 kept)                           |
+| `lastError`                                           | object            | Most recent poll/delivery error: `{ message, recordedAt }`                                                  |
 
 `totals.deliveryCompleteTasks` counts tasks with `deliveryComplete: true`.
 
@@ -47,9 +47,8 @@ that exhausted `MTURK_MAX_CALLBACK_ATTEMPTS`.
 
 - `deliveryComplete` must be a boolean, `deliveryLagMs` a non-negative number,
   `throttleEvents` an array — type violations fail the run (exit 6, `status:
-  "bridge_health_schema_violation"`).
+"bridge_health_schema_violation"`).
 - When `deliveryComplete` is true and assignments are delivered, the run no longer
   reports `bridge_task_missing_or_stale_using_aws_and_feedback`.
 - The JSON result includes a `bridge_health` block echoing the fields above for
   proof-doc capture.
-

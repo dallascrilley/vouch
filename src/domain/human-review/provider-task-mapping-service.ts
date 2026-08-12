@@ -14,7 +14,9 @@ export class ProviderTaskMappingService {
     private readonly receiptRepository: ProviderResponseReceiptRepository
   ) {}
 
-  async createMapping(input: Omit<ProviderTaskMapping, "createdAt" | "updatedAt">) {
+  async createMapping(
+    input: Omit<ProviderTaskMapping, "createdAt" | "updatedAt">
+  ) {
     const mapping: ProviderTaskMapping = {
       ...input,
       createdAt: new Date(),
@@ -25,7 +27,8 @@ export class ProviderTaskMappingService {
   }
 
   async markStatus(reviewTaskId: string, status: ProviderTaskMappingStatus) {
-    const mapping = await this.mappingRepository.findByReviewTaskId(reviewTaskId);
+    const mapping =
+      await this.mappingRepository.findByReviewTaskId(reviewTaskId);
     if (!mapping) {
       throw new Error(`Provider task mapping not found: ${reviewTaskId}`);
     }
@@ -46,7 +49,9 @@ export class ProviderTaskMappingService {
   async recordReceipt(
     receipt: ProviderResponseReceipt
   ): Promise<{ receipt: ProviderResponseReceipt; deduplicated: boolean }> {
-    const existing = await this.receiptRepository.findByDedupeKey(receipt.dedupeKey);
+    const existing = await this.receiptRepository.findByDedupeKey(
+      receipt.dedupeKey
+    );
     if (existing) {
       return { receipt: existing, deduplicated: true };
     }

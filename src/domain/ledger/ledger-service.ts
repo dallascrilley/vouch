@@ -4,9 +4,22 @@ import type { JobState } from "../shared/types.js";
 
 const allowedTransitions: Record<JobState, JobState[]> = {
   created: ["artifacts_collected", "canceled"],
-  artifacts_collected: ["privacy_classified", "artifact_recapture_requested", "canceled"],
-  privacy_classified: ["self_verifying", "fail_closed", "internal_review_queued", "external_review_queued"],
-  self_verifying: ["decision_point", "artifact_recapture_requested", "fail_closed"],
+  artifacts_collected: [
+    "privacy_classified",
+    "artifact_recapture_requested",
+    "canceled"
+  ],
+  privacy_classified: [
+    "self_verifying",
+    "fail_closed",
+    "internal_review_queued",
+    "external_review_queued"
+  ],
+  self_verifying: [
+    "decision_point",
+    "artifact_recapture_requested",
+    "fail_closed"
+  ],
   decision_point: [
     "final_pass",
     "final_fail",
@@ -17,8 +30,18 @@ const allowedTransitions: Record<JobState, JobState[]> = {
     "adjudication_required",
     "fail_closed"
   ],
-  external_review_queued: ["human_responses_received", "adjudication_required", "fail_closed", "canceled"],
-  internal_review_queued: ["human_responses_received", "adjudication_required", "fail_closed", "canceled"],
+  external_review_queued: [
+    "human_responses_received",
+    "adjudication_required",
+    "fail_closed",
+    "canceled"
+  ],
+  internal_review_queued: [
+    "human_responses_received",
+    "adjudication_required",
+    "fail_closed",
+    "canceled"
+  ],
   human_responses_received: [
     "consensus_running",
     "adjudication_required",
@@ -27,8 +50,20 @@ const allowedTransitions: Record<JobState, JobState[]> = {
     "external_review_queued",
     "fail_closed"
   ],
-  consensus_running: ["final_pass", "final_fail", "artifact_recapture_requested", "adjudication_required", "fail_closed"],
-  adjudication_required: ["final_pass", "final_fail", "agent_retry_requested", "artifact_recapture_requested", "fail_closed"],
+  consensus_running: [
+    "final_pass",
+    "final_fail",
+    "artifact_recapture_requested",
+    "adjudication_required",
+    "fail_closed"
+  ],
+  adjudication_required: [
+    "final_pass",
+    "final_fail",
+    "agent_retry_requested",
+    "artifact_recapture_requested",
+    "fail_closed"
+  ],
   final_pass: [],
   final_fail: [],
   agent_retry_requested: [],

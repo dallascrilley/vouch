@@ -8,7 +8,8 @@ import type { VerdictService } from "../feedback/verdict-service.js";
 import type { HumanReviewTaskService } from "../human-review/human-review-task-service.js";
 import type { HumanReviewTask } from "../human-review/models.js";
 
-export const SELF_VERIFICATION_ESCALATION_TEMPLATE = "self-verification-escalation";
+export const SELF_VERIFICATION_ESCALATION_TEMPLATE =
+  "self-verification-escalation";
 
 export type SelfVerificationOutcome = {
   escalated: boolean;
@@ -26,30 +27,40 @@ export class SelfVerificationService {
     private readonly reviewTaskService: HumanReviewTaskService
   ) {}
 
-  async record(result: SelfVerificationResult): Promise<SelfVerificationOutcome> {
+  async record(
+    result: SelfVerificationResult
+  ): Promise<SelfVerificationOutcome> {
     const job = await this.jobService.get(result.jobId);
     if (!job) {
       throw new Error(`Verification job not found: ${result.jobId}`);
     }
 
     return this.transactionManager.inTransaction(async () => {
-      await this.ledgerService.recordStateTransition(job.state, "self_verifying", {
-        correlationId: result.resultId,
-        jobId: job.jobId,
-        payloadHash: result.resultId,
-        policyVersion: "v1"
-      });
+      await this.ledgerService.recordStateTransition(
+        job.state,
+        "self_verifying",
+        {
+          correlationId: result.resultId,
+          jobId: job.jobId,
+          payloadHash: result.resultId,
+          policyVersion: "v1"
+        }
+      );
       job.state = "self_verifying";
       await this.jobService.save(job);
 
       await this.resultRepository.save(result);
 
-      await this.ledgerService.recordStateTransition(job.state, "decision_point", {
-        correlationId: result.resultId,
-        jobId: job.jobId,
-        payloadHash: result.resultId,
-        policyVersion: "v1"
-      });
+      await this.ledgerService.recordStateTransition(
+        job.state,
+        "decision_point",
+        {
+          correlationId: result.resultId,
+          jobId: job.jobId,
+          payloadHash: result.resultId,
+          policyVersion: "v1"
+        }
+      );
       job.state = "decision_point";
       await this.jobService.save(job);
 
@@ -62,11 +73,15 @@ export class SelfVerificationService {
       }
 
       const resolution = this.resolveAction(result.recommendedAction);
-      const verdict = await this.verdictService.finalize(job, resolution.finalVerdict, {
-        criterionOutcomes: result.criterionResults,
-        machineCheckFailures: result.failureCategories,
-        retryRecommendation: resolution.retryRecommendation
-      });
+      const verdict = await this.verdictService.finalize(
+        job,
+        resolution.finalVerdict,
+        {
+          criterionOutcomes: result.criterionResults,
+          machineCheckFailures: result.failureCategories,
+          retryRecommendation: resolution.retryRecommendation
+        }
+      );
 
       await this.feedbackService.emit(job, verdict, {
         machineCheckFailures: result.failureCategories,
@@ -98,14 +113,18 @@ export class SelfVerificationService {
       deadlineAt,
       jobId: result.jobId,
       qualityPolicy: "single-reviewer",
-      reviewerPool: result.recommendedAction === "internal_review" ? "internal" : "managed",
+      reviewerPool:
+        result.recommendedAction === "internal_review" ? "internal" : "managed",
       sanitizedPackageId: `selfverify-${result.resultId}-package`,
       taskTemplate: SELF_VERIFICATION_ESCALATION_TEMPLATE
     });
   }
 
   private resolveAction(
-    action: Exclude<SelfVerificationResult["recommendedAction"], "human_review" | "internal_review">
+    action: Exclude<
+      SelfVerificationResult["recommendedAction"],
+      "human_review" | "internal_review"
+    >
   ) {
     switch (action) {
       case "pass":

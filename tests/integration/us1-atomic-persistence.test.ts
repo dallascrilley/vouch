@@ -63,7 +63,10 @@ describe("US1 atomic persistence", () => {
     const jobId = createResponse.json<{ job_id: string }>().job_id;
 
     const saveSpy = vi
-      .spyOn(app.services.runtimeRepositories.artifactManifestRepository, "save")
+      .spyOn(
+        app.services.runtimeRepositories.artifactManifestRepository,
+        "save"
+      )
       .mockRejectedValueOnce(new Error("disk full"));
 
     const artifactResponse = await app.inject({
@@ -99,7 +102,9 @@ describe("US1 atomic persistence", () => {
     saveSpy.mockRestore();
 
     expect(artifactResponse.statusCode).toBe(400);
-    expect(inspectionResponse.json<{ job: { state: string }; ledger: unknown[] }>()).toMatchObject({
+    expect(
+      inspectionResponse.json<{ job: { state: string }; ledger: unknown[] }>()
+    ).toMatchObject({
       job: {
         state: "created"
       },

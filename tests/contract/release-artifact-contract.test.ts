@@ -36,7 +36,12 @@ async function finalizeJob(app: FastifyInstance) {
       deadline_at: "2026-06-01T00:00:00.000Z",
       idempotency_key: crypto.randomUUID(),
       risk_tier: "low",
-      source: { repository: "repo", commit: "abc123", environment: "ci", route: "/verify" }
+      source: {
+        repository: "repo",
+        commit: "abc123",
+        environment: "ci",
+        route: "/verify"
+      }
     }
   });
   const jobId = jobResponse.json<{ job_id: string }>().job_id;
@@ -56,7 +61,12 @@ async function finalizeJob(app: FastifyInstance) {
         }
       ],
       artifact_quality: "sufficient",
-      environment: { repository: "repo", commit: "abc123", environment: "ci", route: "/verify" }
+      environment: {
+        repository: "repo",
+        commit: "abc123",
+        environment: "ci",
+        route: "/verify"
+      }
     }
   });
 
@@ -83,7 +93,9 @@ async function finalizeJob(app: FastifyInstance) {
       job_id: jobId,
       confidence: "high",
       recommended_action: "pass",
-      criterion_results: [{ criterion_id: "release-check", status: "pass", confidence: "high" }]
+      criterion_results: [
+        { criterion_id: "release-check", status: "pass", confidence: "high" }
+      ]
     }
   });
 
