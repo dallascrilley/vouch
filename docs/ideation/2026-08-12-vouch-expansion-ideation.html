@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ideation: Vouch Beyond MTurk — Expansion &amp; Agent Integration</title>
+<style>
+  :root {
+    --bg: #faf9f7;
+    --surface: #ffffff;
+    --ink: #1d2229;
+    --muted: #5b6470;
+    --line: #e3e0da;
+    --accent: #0e6e5c;
+    --accent-soft: #e8f3f0;
+    --accent-text: #0a5546;
+    --warn-soft: #fdf1e4;
+    --warn-text: #8a4c0f;
+    --info-soft: #eaf0f8;
+    --info-text: #2d5384;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .page {
+    max-width: 900px;
+    margin-inline: auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+  p, li, dd { max-width: 72ch; }
+  h1 { font-size: 1.85rem; line-height: 1.25; margin: 0.4rem 0 0.6rem; letter-spacing: -0.01em; }
+  h2 { font-size: 1.35rem; margin: 2.8rem 0 0.8rem; padding-top: 1.2rem; border-top: 1px solid var(--line); letter-spacing: -0.005em; }
+  h3 { font-size: 1.08rem; margin: 0; }
+  a { color: var(--accent-text); }
+  code { font-family: var(--mono); font-size: 0.86em; background: #f0eeea; padding: 0.08em 0.35em; border-radius: 4px; }
+  .eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent-text); margin: 0;
+  }
+  .meta { color: var(--muted); font-size: 0.9rem; margin: 0 0 1.6rem; }
+  .meta b { color: var(--ink); font-weight: 600; }
+  .stats {
+    display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.4rem 0 0.4rem; padding: 0;
+    list-style: none;
+  }
+  .stats li {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    padding: 0.5rem 0.9rem; font-size: 0.85rem; color: var(--muted);
+  }
+  .stats li strong { display: block; font-size: 1.15rem; color: var(--ink); }
+  nav.doc-nav { margin: 1.6rem 0 0; font-size: 0.9rem; }
+  nav.doc-nav a { margin-right: 1.1rem; }
+  .jump { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1rem 0 1.8rem; }
+  .jump ol { margin: 0.3rem 0 0; padding-left: 1.3rem; }
+  .jump li { margin: 0.2rem 0; font-size: 0.92rem; }
+  article.idea {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 1.4rem 1.6rem 1.2rem; margin: 1.4rem 0;
+  }
+  .idea-head { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 0.4rem; }
+  .rank {
+    font-family: var(--mono); font-weight: 700; font-size: 0.85rem;
+    background: var(--accent-soft); color: var(--accent-text);
+    border-radius: 999px; padding: 0.15rem 0.65rem;
+  }
+  .chips { display: flex; gap: 0.45rem; flex-wrap: wrap; margin: 0.5rem 0 0.9rem; }
+  .chip {
+    font-size: 0.75rem; font-weight: 600; border-radius: 999px; padding: 0.18rem 0.7rem;
+    background: #f0eeea; color: var(--muted);
+  }
+  .chip.axis { background: var(--info-soft); color: var(--info-text); }
+  .chip.conf { background: var(--accent-soft); color: var(--accent-text); }
+  .chip.cx { background: var(--warn-soft); color: var(--warn-text); }
+  .idea dl { margin: 0.8rem 0 0; }
+  .idea dt {
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); margin-top: 0.85rem;
+  }
+  .idea dd { margin: 0.25rem 0 0; }
+  .basis { font-size: 0.93rem; }
+  .basis code { font-size: 0.82em; }
+  figure { margin: 1.2rem 0 0.4rem; }
+  figure svg { max-width: 100%; height: auto; display: block; }
+  figcaption { font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; margin: 1rem 0; }
+  th, td { text-align: left; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  td:first-child { font-family: var(--mono); font-size: 0.82rem; white-space: nowrap; color: var(--muted); }
+  .grounding p { margin: 0.7rem 0; }
+  .grounding h3 { margin-top: 1.4rem; font-size: 0.95rem; }
+  .callout {
+    background: var(--warn-soft); border-radius: 10px; padding: 0.9rem 1.2rem; margin: 1.2rem 0;
+  }
+  .callout .eyebrow { color: var(--warn-text); }
+  footer.composition-signal {
+    margin-top: 3.5rem; padding-top: 1.2rem; border-top: 1px solid var(--line);
+    font-size: 0.8rem; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<p class="eyebrow">Ideation</p>
+<h1>Vouch Beyond MTurk — Expansion &amp; Agent Integration</h1>
+<p class="meta">
+  <b>Date:</b> 2026-08-12 &nbsp;·&nbsp; <b>Topic:</b> vouch-expansion &nbsp;·&nbsp; <b>Mode:</b> repo-grounded<br>
+  <b>Focus:</b> expand Vouch beyond quick + cheap MTurk human verification of UI/design work — broader classes of human verification, and an agent plugin/skill integration.
+</p>
+
+<ul class="stats">
+  <li><strong>45</strong> raw ideas</li>
+  <li><strong>5</strong> ideation frames</li>
+  <li><strong>36</strong> merged candidates</li>
+  <li><strong>27 / 9 / 0</strong> sound / weak / refuted</li>
+  <li><strong>7</strong> survivors</li>
+  <li><strong>5 / 5</strong> axes covered</li>
+</ul>
+
+<nav class="doc-nav">
+  <a href="#grounding-context">Grounding Context</a>
+  <a href="#topic-axes">Topic Axes</a>
+  <a href="#ranked-ideas">Ranked Ideas</a>
+  <a href="#rejection-summary">Rejection Summary</a>
+</nav>
+
+<section id="grounding-context" class="grounding">
+<h2>Grounding Context</h2>
+<h3>Codebase Context</h3>
+<p>Vouch is <em>human review as an API for consensus verification</em>. The loop: an agent POSTs artifacts + acceptance criteria → server-authoritative privacy gate → self-verification → human review via provider adapters (MTurk, local simulator, internal reviewer) → consensus / adjudication → append-only verdict ledger → the agent branches on a structured exit code (0 pass · 1 fail · 2 retry · 3 recapture · 4 escalate · 5 pending). Fastify HTTP API, MCP broker, and CLI transports; SQLite single-node; self-hosted, source-only distribution; privacy- and audit-first posture ("prove offline, self-report live"). Five built-in task templates, all UI/design-focused.</p>
+<p>Recurring evidence pattern across the five axis dossiers: <strong>the generalization seams are already built but dormant.</strong> The broker treats <code>task_template</code> as an opaque string; <code>evidenceRequirements</code> is typed but never consumed; <code>goldTaskPolicy</code>, <code>qualificationRules</code>, and <code>regionOrLocaleRules</code> are declared and never read; <code>criterionProbabilities</code> and the <code>needs_more</code> quorum state exist with no adaptive loop driving them; the provider registry is a hardcoded three-adapter array behind a clean two-method interface; and <code>requestHumanReview()</code> already collapses the five-call protocol into one typed function that no distribution surface exposes.</p>
+<p><em>Past learnings: none — no <code>docs/solutions/</code> store exists in this repo. Learnings researcher skipped (corpus verifiably absent).</em></p>
+<h3>External Context (research value: high)</h3>
+<p>Closest analog: <strong>Tendem by Toloka</strong> — "human expert judgment callable at production scale via MCP," 10k+ verified experts, enterprise positioning. Open-source HITL MCP servers (<code>ask_user_text</code> / <code>ask_user_confirm</code>) route questions to the single developer operating the agent — approval, not independent judgment. Framework gates (LangGraph <code>interrupt()</code>, AutoGen <code>UserProxyAgent</code>) are single-human approval patterns, not consensus verification. Market: Toloka $2–10/hr self-serve; Scale AI $15–60/hr managed and losing frontier-lab trust post-Meta stake (neutrality now matters commercially); Prolific ~$350M annualized after pivoting to AI eval; RLHF/human-feedback market $2.8B (2025) → $18.6B projected (2034). <strong>Identified gap: nothing combines cheap crowd-consensus voting with a first-class agent tool-call interface.</strong> Useful analogies: CI required checks, prediction markets (independent uncorrelated voters), N-of-M code-review quorums.</p>
+<h3>Evidence Dossiers</h3>
+<p>Five extraction dossiers under <code>/tmp/compound-engineering-501/ce-ideate/9d88be20/</code>: <code>evidence-review-domains.md</code>, <code>evidence-reviewer-providers.md</code>, <code>evidence-agent-integration.md</code>, <code>evidence-consensus-trust.md</code>, <code>evidence-distribution-deployment.md</code>. All <code>direct:</code> bases below were spot-verified against the repo by a fresh-context adversarial verifier.</p>
+</section>
+
+<section id="topic-axes">
+<h2>Topic Axes</h2>
+<ol>
+  <li><strong>review-domain-generalization</strong> — task templates beyond UI/design</li>
+  <li><strong>reviewer-providers</strong> — reviewer sources beyond MTurk</li>
+  <li><strong>agent-integration</strong> — MCP / plugin / skill / SDK surface for AI agents</li>
+  <li><strong>consensus-trust</strong> — consensus, adjudication, reputation, ledger</li>
+  <li><strong>distribution-deployment</strong> — packaging, hosting, multi-tenancy, positioning</li>
+</ol>
+</section>
+
+<section id="ranked-ideas">
+<h2>Ranked Ideas</h2>
+<div class="jump">
+  <span class="eyebrow">Jump to</span>
+  <ol>
+    <li><a href="#idea-1">The Agent-Native Verification Stack</a></li>
+    <li><a href="#idea-2">Universal Evidence Envelope + Agent-Trajectory Review</a></li>
+    <li><a href="#idea-3">The Two-Person Rule at the Tool Boundary</a></li>
+    <li><a href="#idea-4">The Question-Quality Flywheel</a></li>
+    <li><a href="#idea-5">Mixed-Substrate Juries</a></li>
+    <li><a href="#idea-6">Sequential Adaptive Quorum (SPRT Retirement)</a></li>
+    <li><a href="#idea-7">The Compliance &amp; Trust Wedge</a></li>
+  </ol>
+</div>
+
+<article class="idea" id="idea-1">
+  <div class="idea-head"><span class="rank">1</span><h3>The Agent-Native Verification Stack</h3></div>
+  <div class="chips">
+    <span class="chip axis">agent-integration</span>
+    <span class="chip conf">Confidence 85%</span>
+    <span class="chip cx">Complexity High</span>
+  </div>
+  <p>Make <code>human_review</code> a single tool call any agent can afford to make, by shipping three complementary pieces as one product bet: <strong>(a) one-call packaging</strong> — expose the existing <code>requestHumanReview()</code> abstraction as a first-class MCP tool / Claude Code skill plus generated bindings for OpenAI Agents SDK, LangChain, and AutoGen, instead of today's five 1:1 endpoint-mapped tools; <strong>(b) provisional settlement</strong> — the agent proceeds immediately on a provisional verdict with an expiry and reversal scope (check-clearing model), and a <code>verification.verdict.reversed</code> event names exactly which commits and artifacts to unwind when human consensus later dissents; <strong>(c) a verdict precedent cache</strong> — key verdicts on (criterion, evidence <code>contentHash</code>, policy version, material source context) so unchanged content re-verified across retries, rebases, and parallel agents returns the prior human verdict instantly and free, with stare-decisis-style "distinguish on the facts" and explicit-overrule semantics.</p>
+  <figure>
+    <svg viewBox="0 0 800 250" role="img" aria-label="Flow: agent tool call, cache check, provisional verdict, human quorum behind, confirm or reverse">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="#5b6470"/>
+        </marker>
+      </defs>
+      <rect x="10" y="90" width="130" height="54" rx="10" fill="#eaf0f8" stroke="#2d5384"/>
+      <text x="75" y="112" text-anchor="middle" font-size="13" fill="#1d2229">Agent calls</text>
+      <text x="75" y="130" text-anchor="middle" font-size="13" font-family="monospace" fill="#1d2229">human_review()</text>
+      <path d="M140 117 L205 117" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <path d="M262 90 L318 117 L262 144 L206 117 Z" fill="#fff" stroke="#5b6470"/>
+      <text x="262" y="113" text-anchor="middle" font-size="12" fill="#1d2229">precedent</text>
+      <text x="262" y="128" text-anchor="middle" font-size="12" fill="#1d2229">cache hit?</text>
+      <path d="M262 90 L262 45 L400 45" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="300" y="38" font-size="12" fill="#0a5546">yes — prior verdict, ~free</text>
+      <path d="M318 117 L390 117" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="326" y="108" font-size="12" fill="#5b6470">no</text>
+      <rect x="390" y="90" width="150" height="54" rx="10" fill="#e8f3f0" stroke="#0e6e5c"/>
+      <text x="465" y="112" text-anchor="middle" font-size="13" fill="#1d2229">Provisional verdict</text>
+      <text x="465" y="130" text-anchor="middle" font-size="12" fill="#5b6470">agent proceeds now</text>
+      <path d="M540 117 L620 117" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="620" y="90" width="160" height="54" rx="10" fill="#fff" stroke="#5b6470"/>
+      <text x="700" y="112" text-anchor="middle" font-size="13" fill="#1d2229">Human vouch</text>
+      <text x="700" y="130" text-anchor="middle" font-size="12" fill="#5b6470">runs behind the agent</text>
+      <path d="M700 144 L700 195 L545 195" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="390" y="168" width="155" height="54" rx="10" fill="#fdf1e4" stroke="#8a4c0f"/>
+      <text x="467" y="190" text-anchor="middle" font-size="13" fill="#1d2229">confirm — or reverse</text>
+      <text x="467" y="208" text-anchor="middle" font-size="12" font-family="monospace" fill="#8a4c0f">verdict.reversed</text>
+      <path d="M390 195 L75 195 L75 149" stroke="#5b6470" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arr)"/>
+      <text x="180" y="188" font-size="12" fill="#8a4c0f">names commits/artifacts to unwind</text>
+    </svg>
+    <figcaption>Illustrative: how the three pieces remove the latency and repeat-cost barriers that keep agents from calling humans today.</figcaption>
+  </figure>
+  <dl>
+    <dt>Basis</dt>
+    <dd class="basis"><code>direct:</code> <code>scripts/mcp-broker-server.ts:58-90</code> — MCP tools map 1:1 to HTTP endpoints, no workflow bundling; <code>scripts/lib/agent-review-client.ts:20-46</code> — the typed one-call abstraction already exists; exit code 5 (pending) and the "minutes-to-hours latency class" decision at <code>docs/architecture/agent-loop-integration.md:39-46</code>; <code>VisualEvidence.contentHash</code> and source-context fields (<code>src/api/routes/verification-jobs.ts:23-35</code>) already captured, while <code>idempotencyKey</code> dedupes only in-flight requests. <code>external:</code> Reg CC provisional credit / card-network chargebacks; Bazel content-addressed caching; market gap — Tendem is expert-tier and enterprise, HITL MCP servers are single-operator approval; nothing is crowd-consensus <em>and</em> agent-native.</dd>
+    <dt>Rationale</dt>
+    <dd>This is the direct answer to the prompt's "agent plugin/skill integration" ask. The three pieces attack the three real adoption barriers in order: integration friction (one call, any framework), latency incompatibility (agents run in seconds; humans take minutes-to-hours — provisional settlement makes the check happen <em>behind</em> the agent instead of in front of it), and repeat economics (agent loops re-verify the same unchanged content constantly; caching makes cost O(distinct content) instead of O(runs), and turns the ledger into an appreciating asset).</dd>
+    <dt>Downsides</dt>
+    <dd>Three moving parts — sequence carefully (packaging first, cache second, provisional third). Reversal semantics push complexity onto the calling agent (what does "unwind" mean after a deploy?). Cache invalidation must be conservative: over-broad reuse silently weakens the human guarantee that is the whole product.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-2">
+  <div class="idea-head"><span class="rank">2</span><h3>Universal Evidence Envelope + Agent-Trajectory Review</h3></div>
+  <div class="chips">
+    <span class="chip axis">review-domain-generalization</span>
+    <span class="chip conf">Confidence 80%</span>
+    <span class="chip cx">Complexity Medium</span>
+  </div>
+  <p>Generalize the review path from "screenshot in, vote out" to a typed <code>EvidenceBundle[]</code> with per-type renderers, wire the long-inert <code>evidenceRequirements</code> field so criteria declare what evidence they need, and open the closed five-template union into a criteria-driven template surface. Then ship the flagship vertical this unlocks and nobody else offers: <strong>consensus review of an agent's tool-call trajectory</strong> — was each step justified, where was the first error — with code-diff review (<code>code_diff</code> + <code>test_output</code> artifact types) as the low-risk first instantiation, and MQM-style span-level error annotation (defect category + severity, aggregated instead of raw votes) as the review mode that finally fills the <code>defect_category</code> / <code>human_annotations</code> fields the agent contract already promises.</p>
+  <figure>
+    <svg viewBox="0 0 800 210" role="img" aria-label="Before/after: visualEvidence-only narrows to screenshots; evidence bundles carry screenshots, diffs, trajectories, and policy docs">
+      <rect x="10" y="30" width="360" height="150" rx="10" fill="#fff" stroke="#e3e0da"/>
+      <text x="30" y="55" font-size="12" font-weight="700" fill="#8a4c0f">TODAY</text>
+      <rect x="30" y="70" width="150" height="40" rx="8" fill="#f0eeea" stroke="#5b6470"/>
+      <text x="105" y="94" text-anchor="middle" font-size="12" font-family="monospace" fill="#1d2229">ArtifactType ×10</text>
+      <path d="M180 90 L235 90" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="235" y="70" width="115" height="40" rx="8" fill="#fdf1e4" stroke="#8a4c0f"/>
+      <text x="292" y="88" text-anchor="middle" font-size="11" font-family="monospace" fill="#1d2229">visualEvidence</text>
+      <text x="292" y="102" text-anchor="middle" font-size="11" fill="#8a4c0f">only</text>
+      <text x="30" y="145" font-size="12" fill="#5b6470">dom_snapshot, trace_summary, video…</text>
+      <text x="30" y="162" font-size="12" fill="#5b6470">declared, then thrown away at review</text>
+      <rect x="430" y="30" width="360" height="150" rx="10" fill="#fff" stroke="#e3e0da"/>
+      <text x="450" y="55" font-size="12" font-weight="700" fill="#0a5546">PROPOSED</text>
+      <rect x="450" y="70" width="150" height="40" rx="8" fill="#f0eeea" stroke="#5b6470"/>
+      <text x="525" y="94" text-anchor="middle" font-size="12" font-family="monospace" fill="#1d2229">ArtifactType ×N</text>
+      <path d="M600 90 L655 90" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="655" y="62" width="120" height="26" rx="6" fill="#e8f3f0" stroke="#0e6e5c"/>
+      <text x="715" y="79" text-anchor="middle" font-size="11" fill="#1d2229">screenshot</text>
+      <rect x="655" y="92" width="120" height="26" rx="6" fill="#e8f3f0" stroke="#0e6e5c"/>
+      <text x="715" y="109" text-anchor="middle" font-size="11" fill="#1d2229">code diff</text>
+      <rect x="655" y="122" width="120" height="26" rx="6" fill="#e8f3f0" stroke="#0e6e5c"/>
+      <text x="715" y="139" text-anchor="middle" font-size="11" fill="#1d2229">agent trajectory</text>
+      <text x="450" y="145" font-size="12" fill="#5b6470">EvidenceBundle[] + per-type renderer;</text>
+      <text x="450" y="162" font-size="12" fill="#5b6470">criteria declare required evidence</text>
+    </svg>
+    <figcaption>Illustrative: the artifact vocabulary is already general — the review path narrows it to one shape.</figcaption>
+  </figure>
+  <dl>
+    <dt>Basis</dt>
+    <dd class="basis"><code>direct:</code> <code>src/domain/artifacts/models.ts:4-14</code> already declares <code>dom_snapshot | accessibility_tree | console_summary | network_summary | trace_summary | video</code>, while <code>src/domain/human-review/models.ts:28,31-37</code> narrows everything to <code>visualEvidence?: VisualEvidence</code>; <code>scripts/lib/review-templates.ts:7-13</code> — closed five-template union; <code>src/domain/jobs/models.ts:32</code> — <code>evidenceRequirements: string[]</code> semantically inert; <code>AgentFeedback</code> promises <code>defect_category</code>/<code>human_annotations</code> no template can fill; <code>severityRank</code> already implemented (<code>adjudication-service.ts:15-21</code>). <code>external:</code> process supervision is where the $2.8B→$18.6B human-feedback market is heading; MQM/DQF is the ASTM-standardized precedent for typed-error annotation at crowd scale.</dd>
+    <dt>Rationale</dt>
+    <dd>This is the mechanism behind "use it for much more" — one schema generalization converts five fixed use cases into an open template surface, and the trajectory-review vertical is the single most differentiated position available: consensus-native process supervision, where a screenshot is worthless and every competitor is either single-expert or not agent-native. The verifier rated this the most differentiated idea in the set.</dd>
+    <dt>Downsides</dt>
+    <dd>Touches three layers (artifact schema, review models, provider bridge rendering), so it needs a deliberate migration. Trajectory review demands higher-skill reviewers than binary screenshot checks — pool quality becomes the binding constraint (pairs with ideas 4 and 5). Renderer work is per evidence type and accumulates.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-3">
+  <div class="idea-head"><span class="rank">3</span><h3>The Two-Person Rule at the Tool Boundary</h3></div>
+  <div class="chips">
+    <span class="chip axis">agent-integration</span>
+    <span class="chip conf">Confidence 75%</span>
+    <span class="chip cx">Complexity Medium</span>
+  </div>
+  <p>Every current integration is agent-initiated: the agent decides whether to ask for review, and self-verification can finalize a verdict without any human. Invert the control point, borrowing from nuclear surety and aviation Required Inspection Items: ship Vouch as a <strong>harness plugin that intercepts irreversible tool calls</strong> (deploy, migration, force-push, external send, spend) at the hook boundary and blocks until vouch returns — the policy lives in the repo/harness config, not in the agent's judgment, and the verifier structurally cannot be the doer. The resulting position is unusual and durable: <em>the only human-in-the-loop layer the agent cannot skip.</em></p>
+  <dl>
+    <dt>Basis</dt>
+    <dd class="basis"><code>direct:</code> all integration surfaces are agent-initiated (<code>scripts/mcp-broker-server.ts:58-90</code>); <code>src/domain/self-verification/self-verification-service.ts:67-92</code> — non-escalation actions finalize via <code>verdictService.finalize()</code> without ever touching consensus, so the party being checked currently decides whether the check happens. <code>external:</code> DoD two-person rule; FAA Required Inspection Items (14 CFR 121.369 — the inspector may not be the mechanic who did the work); the grounding's finding that existing HITL MCP servers route to the single operating developer for approval rather than enforcing independent judgment.</dd>
+    <dt>Rationale</dt>
+    <dd>The verifier called this the strongest strategic idea in the set given current agent-autonomy risk concerns. It converts Vouch from a library an agent may call into a control an operator can rely on — a different product with a different buyer (whoever owns the blast radius, not the agent developer). It also directly closes the self-verification bypass, the largest silent trust gap in the architecture.</dd>
+    <dt>Downsides</dt>
+    <dd>Requires per-harness hook integration (Claude Code hooks first is the natural wedge). A blocking gate re-creates the latency problem — pair with idea 1's provisional settlement for the medium-risk tier and hard-block only the truly irreversible. Policy authoring is a new UX surface that must stay small.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-4">
+  <div class="idea-head"><span class="rank">4</span><h3>The Question-Quality Flywheel</h3></div>
+  <div class="chips">
+    <span class="chip axis">consensus-trust</span>
+    <span class="chip conf">Confidence 80%</span>
+    <span class="chip cx">Complexity Medium</span>
+  </div>
+  <p>Three dormant assets compose into one compounding loop. <strong>Discrimination-test templates</strong> (triangle / duo–trio from sensory panel science: "which of these three is different?") ask a question class Vouch can't ask today — <em>is this change humanly perceptible at all?</em> — and because the correct answer is known by construction, every task doubles as a free gold task. Gold-task outcomes feed <strong>reviewer reputation</strong> (implementing the never-read <code>goldTaskPolicy</code> / <code>qualificationRules</code> fields, replacing the binary blocked-flag with calibrated accuracy weighting in consensus). And promoting criteria to a <strong>reusable library with disagreement telemetry</strong> turns chronic reviewer splits into a signal that the <em>question</em> is defective — the already-collected <code>unclear</code> / <code>not_visible</code> statuses stop being discarded.</p>
+  <figure>
+    <svg viewBox="0 0 800 220" role="img" aria-label="Loop: discrimination templates produce free gold tasks, which score reviewers, which improve consensus weighting, while criterion telemetry improves the questions">
+      <rect x="20" y="80" width="180" height="56" rx="10" fill="#e8f3f0" stroke="#0e6e5c"/>
+      <text x="110" y="103" text-anchor="middle" font-size="12.5" fill="#1d2229">Discrimination templates</text>
+      <text x="110" y="121" text-anchor="middle" font-size="11.5" fill="#5b6470">answer known by construction</text>
+      <path d="M200 108 L280 108" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="240" y="99" text-anchor="middle" font-size="11.5" fill="#0a5546">free gold tasks</text>
+      <rect x="280" y="80" width="150" height="56" rx="10" fill="#fff" stroke="#5b6470"/>
+      <text x="355" y="103" text-anchor="middle" font-size="12.5" fill="#1d2229">Reviewer reputation</text>
+      <text x="355" y="121" text-anchor="middle" font-size="11.5" font-family="monospace" fill="#5b6470">goldTaskPolicy</text>
+      <path d="M430 108 L510 108" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="510" y="80" width="170" height="56" rx="10" fill="#eaf0f8" stroke="#2d5384"/>
+      <text x="595" y="103" text-anchor="middle" font-size="12.5" fill="#1d2229">Weighted consensus</text>
+      <text x="595" y="121" text-anchor="middle" font-size="11.5" fill="#5b6470">fewer votes, higher accuracy</text>
+      <path d="M595 136 L595 185 L200 185" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <rect x="20" y="158" width="180" height="54" rx="10" fill="#fff" stroke="#5b6470"/>
+      <text x="110" y="180" text-anchor="middle" font-size="12.5" fill="#1d2229">Criterion library</text>
+      <text x="110" y="198" text-anchor="middle" font-size="11.5" fill="#5b6470">chronic splits → fix the question</text>
+      <path d="M110 158 L110 136" stroke="#5b6470" stroke-width="1.5" marker-end="url(#arr)"/>
+      <text x="700" y="185" font-size="11.5" fill="#5b6470" text-anchor="middle">every cycle improves</text>
+      <text x="700" y="200" font-size="11.5" fill="#5b6470" text-anchor="middle">questions and juries</text>
+    </svg>
+    <figcaption>Illustrative: the loop is the point — each component makes the others cheaper and more accurate with use.</figcaption>
+  </figure>
+  <dl>
+    <dt>Basis</dt>
+    <dd class="basis"><code>direct:</code> <code>src/domain/human-review/models.ts:135-137</code> — <code>qualificationRules</code>, <code>goldTaskPolicy</code>, <code>regionOrLocaleRules</code> "defined but never read or evaluated in code"; <code>reviewer-quality-service.ts:4-21</code> — eligibility is a binary blocked-flag, no accuracy tracking; <code>CriterionStatus</code> already records <code>unclear</code> / <code>not_visible</code> and discards them; <code>TemplateAttentionCheck</code> proves the ground-truth-comparison primitive exists. <code>external:</code> ISO 4120 triangle test / ASTM difference testing — the standard method for statistically defensible verdicts from small untrained panels.</dd>
+    <dt>Rationale</dt>
+    <dd>The verifier rated this the most mechanistically coherent synthesis: gold tasks generate ground truth → ground truth scores reviewers → scores weight consensus → disagreement telemetry fixes the questions themselves. It is the only direction where the product gets measurably <em>better with use</em> rather than just bigger — reviewer reputation and a calibrated criterion library are assets a competitor cannot copy by shipping features. It is also the trust prerequisite for taking any higher-stakes domain (ideas 2 and 7) to market.</dd>
+    <dt>Downsides</dt>
+    <dd>Gold-task injection adds per-job overhead cost. Discrimination templates only generate ground truth for perceptibility-class questions — correctness-class gold tasks still need authoring. Reputation systems invite gaming and need decay/rotation design.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-5">
+  <div class="idea-head"><span class="rank">5</span><h3>Mixed-Substrate Juries</h3></div>
+  <div class="chips">
+    <span class="chip axis">reviewer-providers</span>
+    <span class="chip conf">Confidence 70%</span>
+    <span class="chip cx">Complexity Medium</span>
+  </div>
+  <p>Nothing in the provider contract asserts a reviewer is human. Register <strong>LLM juror panels</strong> (N independent models, different vendors/prompts) as first-class providers alongside <code>public-crowd</code> and <code>internal-reviewer</code>, so model votes and human votes enter the same vouch, the same disagreement calculus, and the same ledger — each vote tagged with its substrate. Default policy: the model panel votes first; humans are pulled in as the escalation tier when models disagree or the criterion class is historically miscalibrated. This reframes the product's core noun from "human review" to <em>vouch</em>, and produces a dataset nobody else has: paired human/model verdicts on identical criteria in an append-only ledger.</p>
+  <dl>
+    <dt>Basis</dt>
+    <dd class="basis"><code>direct:</code> <code>ProviderCapabilityProfile</code> (<code>src/domain/human-review/models.ts:141-154</code>) has no field constraining the reviewer to be a person — <code>costModel</code> and <code>latencyProfile</code> are free strings; <code>src/adapters/providers/local-provider-simulator.ts:11-38</code> already proves a non-human responder flows end-to-end through consensus and the ledger. <code>reasoned:</code> MTurk economics cap the volume Vouch can serve; a model-first / human-escalation ladder is the only structure that keeps "quick + cheap" true at agent-loop volumes while preserving human ground truth where it matters.</dd>
+    <dt>Rationale</dt>
+    <dd>This is the cheapest path to volumes MTurk can't reach and the natural pairing for idea 1's economics. The paired human/model verdict corpus it generates is the strategic asset — it powers calibration (when can models be trusted per criterion class), pricing, and routing, and it compounds. The related enabling work — converting the hardcoded three-adapter array into a plugin registry, and structuring cost/latency for merit-order routing — slots naturally under this direction.</dd>
+    <dt>Downsides</dt>
+    <dd>Enters crowded LLM-as-judge territory — the differentiation is the consensus machinery and the human escalation tier, and messaging must protect the "human ground truth" brand. Correlated model votes weaken consensus math (enforce vendor/prompt diversity). Substrate labeling in the ledger must be rigorous or the audit story degrades.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-6">
+  <div class="idea-head"><span class="rank">6</span><h3>Sequential Adaptive Quorum (SPRT Retirement)</h3></div>
+  <div class="chips">
+    <span class="chip axis">consensus-trust</span>
+    <span class="chip conf">Confidence 75%</span>
+    <span class="chip cx">Complexity Medium</span>
+  </div>
+  <p>Replace fixed <code>maxAssignments</code> with a sequential stopping rule borrowed from Wald's SPRT and Zooniverse's SWAP retirement: assign one reviewer at a time, update per-criterion posteriors (reviewer-weighted once idea 4 lands), and stop the moment the posterior clears a caller-specified confidence threshold. Unambiguous artifacts terminate after 2 votes; genuinely contested ones escalate on their own evidence rather than on a guess made at dispatch time. "Cheap" stops being a pricing claim and becomes an algorithmic property.</p>
+  <figure>
+    <svg viewBox="0 0 800 190" role="img" aria-label="Comparison: fixed-N buys three votes for every task; sequential stopping spends two votes on easy tasks and five on contested ones">
+      <text x="20" y="30" font-size="12" font-weight="700" fill="#8a4c0f">FIXED N=3</text>
+      <g>
+        <rect x="20" y="45" width="26" height="26" rx="5" fill="#fdf1e4" stroke="#8a4c0f"/><rect x="52" y="45" width="26" height="26" rx="5" fill="#fdf1e4" stroke="#8a4c0f"/><rect x="84" y="45" width="26" height="26" rx="5" fill="#fdf1e4" stroke="#8a4c0f"/>
+        <text x="130" y="63" font-size="12" fill="#5b6470">easy task — 1 vote wasted ×2</text>
+      </g>
+      <g>
+        <rect x="20" y="85" width="26" height="26" rx="5" fill="#fdf1e4" stroke="#8a4c0f"/><rect x="52" y="85" width="26" height="26" rx="5" fill="#fdf1e4" stroke="#8a4c0f"/><rect x="84" y="85" width="26" height="26" rx="5" fill="#fdf1e4" stroke="#8a4c0f"/>
+        <text x="130" y="103" font-size="12" fill="#5b6470">contested task — stopped too early, wrong verdict risk</text>
+      </g>
+      <text x="440" y="30" font-size="12" font-weight="700" fill="#0a5546">SEQUENTIAL (stop on confidence)</text>
+      <g>
+        <rect x="440" y="45" width="26" height="26" rx="5" fill="#e8f3f0" stroke="#0e6e5c"/><rect x="472" y="45" width="26" height="26" rx="5" fill="#e8f3f0" stroke="#0e6e5c"/>
+        <text x="512" y="63" font-size="12" fill="#5b6470">easy task — retires at 2</text>
+      </g>
+      <g>
+        <rect x="440" y="85" width="26" height="26" rx="5" fill="#e8f3f0" stroke="#0e6e5c"/><rect x="472" y="85" width="26" height="26" rx="5" fill="#e8f3f0" stroke="#0e6e5c"/><rect x="504" y="85" width="26" height="26" rx="5" fill="#e8f3f0" stroke="#0e6e5c"/><rect x="536" y="85" width="26" height="26" rx="5" fill="#e8f3f0" stroke="#0e6e5c"/><rect x="568" y="85" width="26" height="26" rx="5" fill="#e8f3f0" stroke="#0e6e5c"/>
+        <text x="612" y="103" font-size="12" fill="#5b6470">contested — buys 5, earns the verdict</text>
+      </g>
+      <text x="20" y="155" font-size="12" fill="#5b6470">Same budget, reallocated: majority of tasks get cheaper; the ambiguous minority gets more accurate.</text>
+    </svg>
+    <figcaption>Illustrative: spend follows ambiguity instead of a dispatch-time guess.</figcaption>
+  </figure>
+  <dl>
+    <dt>Basis</dt>
+    <dd class="basis"><code>direct:</code> <code>src/domain/consensus/models.ts:4,26-27</code> — <code>QuorumState = "met" | "needs_more" | "maxed_out"</code> and <code>criterionProbabilities: Record&lt;string, number&gt;</code> already exist with no adaptive loop driving them; <code>TemplatePricing.max_assignments</code> fixes the count at dispatch. <code>external:</code> Wald's SPRT (sequential acceptance sampling); Zooniverse Space Warps SWAP retirement — the same mechanism proven on citizen-science crowds.</dd>
+    <dt>Rationale</dt>
+    <dd>The sequential machinery is half-built (three-state quorum, recorded posteriors) and nobody is driving it. It is the largest single unit-economics lever available — 2–3× cost reduction on the easy majority, reallocated to the contested minority — and it is what makes idea 5's escalation ladder principled rather than heuristic.</dd>
+    <dt>Downsides</dt>
+    <dd>Sequential assignment raises wall-clock latency versus parallel batch dispatch (mitigate: small parallel batches with early-stop between rounds). MTurk's batch HIT mechanics resist one-at-a-time assignment — may fit internal/model pools first. Needs calibrated priors to avoid overconfident early stops; change the budget API before external users depend on fixed-N semantics.</dd>
+  </dl>
+</article>
+
+<article class="idea" id="idea-7">
+  <div class="idea-head"><span class="rank">7</span><h3>The Compliance &amp; Trust Wedge</h3></div>
+  <div class="chips">
+    <span class="chip axis">distribution-deployment</span>
+    <span class="chip conf">Confidence 65%</span>
+    <span class="chip cx">Complexity High</span>
+  </div>
+  <p>Everything the deployment dossier files under "limitations" — single-node, self-hosted, no SaaS, source-only — is a <em>procurement requirement</em> in regulated environments (defense, health, financial back offices) where sending artifacts to a public crowd is categorically off-limits. Lean in as a deliberate market position: harden and document the <strong>air-gapped posture</strong> (the fail-closed, server-authoritative privacy gate is the product); add the <strong>compliance evidence types</strong> the risk taxonomy already promises (<code>risk_tier</code> accepts <code>"regulated"</code> and <code>"release_gating"</code> today, but no policy-document or audit-citation artifact can back them); support signed <strong>professional attestations</strong> (identified expert, credential, scope) in the ledger; and make verdicts externally credible with a <strong>verdict transparency log</strong> — asymmetric signing, real content digests, optional public Merkle log (Certificate Transparency for human judgment) so an auditor can verify "a human quorum passed this build" without seeing the evidence.</p>
+  <dl>
+    <dt>Basis</dt>
+    <dd class="basis"><code>direct:</code> <code>README.md:177-179</code> — single-node is "deliberate for a service you can run and audit on one box"; <code>src/domain/privacy/privacy-gate.ts:29-68</code> — externalization is server-authoritative and fail-closed; <code>src/api/routes/verification-jobs.ts:22</code> accepts <code>"regulated"</code>/<code>"release_gating"</code> while <code>src/domain/artifacts/models.ts:4-14</code> has no compliance evidence type (a verified internal contradiction); <code>src/domain/feedback/release-artifact.ts</code> — the release attestation is symmetric HMAC (self-verifying only), and some ledger <code>payloadHash</code> values are identifiers, not digests (<code>consensus-service.ts:63</code>, <code>verdict-service.ts:39</code>). <code>external:</code> RFC 6962 Certificate Transparency / Sigstore; market signal that provider neutrality and "who owns the panel" now drive procurement (Scale AI trust fallout).</dd>
+    <dt>Rationale</dt>
+    <dd>Tendem, Scale, and Prolific are structurally excluded from this segment — they are hosted marketplaces. Vouch's current architecture is not a compromise here but the specification, so entry cost is mostly hardening, evidence types, and positioning rather than new architecture. The transparency log also solves the open-source posture's hardest question — how self-hosted verdicts become credible to outside parties — without a hosted service.</dd>
+    <dt>Downsides</dt>
+    <dd>A compliance/regulated sales motion is entirely different from dev-tool adoption — hard to run alongside ideas 1–3 without splitting focus. Professional-attestation supply (licensed auditors) is a network Vouch doesn't have. Transparency-log work is standards-grade engineering. <strong>Regardless of this direction:</strong> the symmetric-HMAC release artifact and identifier-as-<code>payloadHash</code> findings are real weaknesses in a document shipped as externally consumable — worth fixing on their own.</dd>
+  </dl>
+</article>
+</section>
+
+<section id="rejection-summary">
+<h2>Rejection Summary</h2>
+<p>45 raw ideas merged to 36 candidates (9 dedupe clusters, 5 cross-frame syntheses). A fresh-context verifier spot-checked every basis against the repo: 27 sound, 9 weak, 0 refuted. Cuts and absorptions:</p>
+<table>
+  <thead><tr><th>ID</th><th>Idea</th><th>Reason</th></tr></thead>
+  <tbody>
+    <tr><td>M1</td><td>One-call <code>human_review</code> tool packaging</td><td>Absorbed into idea 1 (its first component).</td></tr>
+    <tr><td>M9</td><td>Content-addressed verdict precedent cache</td><td>Absorbed into idea 1 (its third component).</td></tr>
+    <tr><td>S43</td><td>Provisional settlement + chargeback</td><td>Absorbed into idea 1 (its second component).</td></tr>
+    <tr><td>S18</td><td>Exit-code protocol as a published mini-standard</td><td>Premature standardization before adoption; carried as a sub-decision of idea 1.</td></tr>
+    <tr><td>S29</td><td>Pre-flight requirement disambiguation votes</td><td>Novel and sound, but one template within idea 1's surface, not its own direction.</td></tr>
+    <tr><td>S3</td><td>Code-diff review as second domain</td><td>Absorbed into idea 2 as the first vertical.</td></tr>
+    <tr><td>S39</td><td>MQM-style span annotation mode</td><td>Absorbed into idea 2 (its review mode).</td></tr>
+    <tr><td>M4</td><td>Reviewer reputation from ledger data</td><td>Absorbed into idea 4.</td></tr>
+    <tr><td>S38</td><td>Discrimination-test templates (ISO 4120)</td><td>Absorbed into idea 4 (its gold-task engine).</td></tr>
+    <tr><td>S28</td><td>Criterion library with disagreement telemetry</td><td>Absorbed into idea 4.</td></tr>
+    <tr><td>M3</td><td>Provider plugin registry</td><td>Sound enabling refactor, not a direction — unit-level work under ideas 5/2.</td></tr>
+    <tr><td>S40</td><td>Merit-order reviewer dispatch</td><td>Folded into idea 5's escalation ladder; depends on M3 restructuring.</td></tr>
+    <tr><td>S4</td><td>Compliance evidence artifact types</td><td>Absorbed into idea 7.</td></tr>
+    <tr><td>S45</td><td>Verdict transparency log</td><td>Absorbed into idea 7; the symmetric-HMAC finding stands alone as a fix worth making now.</td></tr>
+    <tr><td>M5</td><td>Sampled audit mode / calibration flywheel</td><td>Sound; cut at the 7-idea cap — revisit as a non-blocking mode of idea 1 in brainstorm.</td></tr>
+    <tr><td>S26</td><td>Own users as reviewer pool</td><td>Sound; cut at cap — provider expansion covered by idea 5; revisit with a first-party surface.</td></tr>
+    <tr><td>S36</td><td>Global attention scheduler (information gain)</td><td>Sound but premature at current scale; no code trace yet.</td></tr>
+    <tr><td>S7</td><td>60-second Docker demo via simulator</td><td>Worthwhile tactical item below this set's ambition floor — just do it.</td></tr>
+    <tr><td>M2</td><td>Poll→push (SSE/webhook back-channel)</td><td>Verifier: human turnaround, not poll interval, is the bottleneck; the recorded no-webhook rationale was never engaged.</td></tr>
+    <tr><td>M7</td><td><code>verify_this()</code> zero-argument broker inference</td><td>Contradicts the recorded no-quick-verify decision without engaging it; adoption claim unsupported. Client-side criteria inference may return via idea 1.</td></tr>
+    <tr><td>S14</td><td>Bidirectional human→agent clarifying questions</td><td><code>repair_hint</code> is a one-shot string; a back-channel Q&amp;A mechanism is an unsupported leap.</td></tr>
+    <tr><td>S24</td><td><code>vouch.yml</code> GitHub App required check</td><td>Hosted-receiver requirement conflicts with the documented no-hosted-instance posture; tension unaddressed.</td></tr>
+    <tr><td>S30</td><td>Barter federation between instances</td><td>Free-string <code>paymentPolicy</code> is too thin a basis for a federation protocol; cuts against the privacy-first posture.</td></tr>
+    <tr><td>S32</td><td>Longitudinal panel / diary studies</td><td><code>--resume</code> supports polling later, not multi-day panel operations; scope jump.</td></tr>
+    <tr><td>S35</td><td>Standalone professional attestation tier</td><td>Core concept absorbed into idea 7; standalone pitch leaned on a fabricated price point the verifier caught.</td></tr>
+    <tr><td>X2</td><td>Economic-dispatch pipeline bundle</td><td>Bundles four subsystems of uneven maturity; thematic label, not a buildable unit — its sound parts survive as ideas 5 and 6.</td></tr>
+    <tr><td>X5</td><td>"Check the agent can't skip" bundle</td><td>Idea 3 stands alone; bundling with S24 inherited its hosted-instance tension.</td></tr>
+    <tr><td>—</td><td>Axis coverage</td><td>All five axes have at least one survivor — no deliberate gaps.</td></tr>
+  </tbody>
+</table>
+</section>
+
+<footer class="composition-signal">Composed 2026-08-12 by ce-ideate from repo grounding (5 evidence dossiers, run 9d88be20), external web research, and a fresh-context basis verification pass.</footer>
+
+</div>
+</body>
+</html>

@@ -38,7 +38,7 @@ Or use **Actions → ci → Run workflow** in GitHub.
 - **Zero runs in history:** enable Actions under repo **Settings → Actions → General**, then check:
 
   ```bash
-  gh api repos/dallascrilley/quorum/actions/permissions
+  gh api repos/dallascrilley/quorum-private/actions/permissions
   ```
 
 - **Runs stuck in `queued`:** the repository needs GitHub-hosted runner minutes or a self-hosted runner. Local `./script/cibuild` is the interim gate.

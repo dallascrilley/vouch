@@ -43,6 +43,16 @@ export function validateProviderConfig(config: ProviderAdapterConfig) {
     );
   }
 
+  if (
+    config.dispatchTimeoutMs !== undefined &&
+    (!Number.isFinite(config.dispatchTimeoutMs) ||
+      config.dispatchTimeoutMs <= 0)
+  ) {
+    errors.push(
+      "dispatchTimeoutMs must be a finite positive number when configured"
+    );
+  }
+
   return {
     valid: errors.length === 0,
     errors

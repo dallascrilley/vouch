@@ -7,12 +7,14 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
-- **Renamed to Quorum.** The project was previously the repository
+- **Renamed to Vouch.** The product was previously the repository
   `DallasCrilleyMarTech/review-qa-broker` and the package
-  `ai-human-review-broker`. It is now `dallascrilley/quorum` and the package
-  `quorum`. The Docker image tag changed from `ai-human-review-broker` to
-  `quorum`. HTTP routes, event names, and environment variables are unchanged;
-  "broker" remains the internal name for the service component.
+  `ai-human-review-broker`. The package is now `vouch`, and the Docker image
+  tag changed from `ai-human-review-broker` to `vouch`. The Pi command and
+  Vouch-prefixed environment variables use the new brand. The current GitHub
+  remote remains `dallascrilley/quorum-private` until that repository rename is
+  performed. Consensus event fields remain domain terms, and "broker" remains
+  the internal name for the service component.
 - Moved wire contracts out of the spec scaffold: `specs/00N-*/contracts/` is now
   `contracts/verification-control-plane/`, `contracts/local-runtime/`, and
   `contracts/provider-integration/`.

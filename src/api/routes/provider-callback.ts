@@ -2,8 +2,10 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 import type { FastifyInstance } from "fastify";
 
+import { ProviderDispatchError } from "../../adapters/providers/real-provider-adapter.js";
 import type { ProviderCallbackPayload } from "../../domain/human-review/provider-response-service.js";
 import { shouldFallbackProvider } from "../../domain/human-review/provider-routing-policy.js";
+import { reserveRealProviderDispatch } from "../spend-ceiling.js";
 
 type ProviderCallbackBody = ProviderCallbackPayload & {
   shared_secret?: string;
@@ -24,16 +26,22 @@ export function registerProviderCallbackRoutes(app: FastifyInstance) {
   app.post<{ Body: ProviderCallbackBody }>(
     "/provider-callback",
     async (request, reply) => {
+      let pairwiseProviderTaskId: string | null = null;
+      let pairwiseReservationKey: string | undefined;
+      let pairwiseReservationCreated = false;
       try {
         const expectedSecret = app.services.providerConfig?.sharedSecret;
         // When a shared secret is configured the callback MUST present a matching
         // one. Omitting the field no longer skips the check (auth-bypass fix).
-        if (expectedSecret) {
-          if (!secretsMatch(request.body?.shared_secret, expectedSecret)) {
-            return reply.code(401).send({
-              message: "Invalid provider callback secret"
-            });
-          }
+        if (!expectedSecret) {
+          return reply.code(503).send({
+            message: "Provider callback authentication is not configured"
+          });
+        }
+        if (!secretsMatch(request.body?.shared_secret, expectedSecret)) {
+          return reply.code(401).send({
+            message: "Invalid provider callback secret"
+          });
         }
 
         const ingested = await app.services.providerResponseService.ingest(
@@ -49,7 +57,6 @@ export function registerProviderCallbackRoutes(app: FastifyInstance) {
           );
 
         let pairwiseReviewTaskId: string | null = null;
-        let pairwiseProviderTaskId: string | null = null;
         if (!advanced.advanced) {
           const pairwise =
             await app.services.providerWorkflowService.maybeQueuePairwiseTieBreak(
@@ -80,6 +87,15 @@ export function registerProviderCallbackRoutes(app: FastifyInstance) {
               });
 
               if (!fallbackDecision.fallback) {
+                pairwiseReservationKey = `review-task:${task.reviewTaskId}`;
+                reserveRealProviderDispatch({
+                  ceilingUsd: app.services.runtimeConfig.realSpendCeilingUsd,
+                  idempotencyKey: pairwiseReservationKey,
+                  jobId: task.jobId,
+                  spendCeiling: app.services.spendCeiling,
+                  task
+                });
+                pairwiseReservationCreated = true;
                 const dispatchResult =
                   await app.services.providerDispatchWorker.dispatch(task);
                 task.providerTaskRef = dispatchResult.providerTaskId;
@@ -101,6 +117,14 @@ export function registerProviderCallbackRoutes(app: FastifyInstance) {
           review_task_id: ingested.reviewTaskId
         });
       } catch (error) {
+        if (
+          pairwiseReservationCreated &&
+          pairwiseReservationKey &&
+          !pairwiseProviderTaskId &&
+          !(error instanceof ProviderDispatchError && error.ambiguous)
+        ) {
+          app.services.spendCeiling.release(pairwiseReservationKey);
+        }
         return reply.code(422).send({
           message:
             error instanceof Error

@@ -10,6 +10,7 @@ type CreateHumanReviewTaskInput = {
   criterionIds: string[];
   deadlineAt: Date;
   jobId: string;
+  idempotencyKey?: string;
   providerAdapter?: string;
   qualityPolicy: string;
   reviewerPool: ReviewerPoolType;
@@ -28,6 +29,13 @@ export class HumanReviewTaskService {
   ) {}
 
   async create(input: CreateHumanReviewTaskInput): Promise<HumanReviewTask> {
+    const result = await this.createOrGet(input);
+    return result.task;
+  }
+
+  async createOrGet(
+    input: CreateHumanReviewTaskInput
+  ): Promise<{ created: boolean; task: HumanReviewTask }> {
     const job = await this.jobService.get(input.jobId);
     if (!job) {
       throw new Error(`Verification job not found: ${input.jobId}`);
@@ -52,6 +60,12 @@ export class HumanReviewTaskService {
         : "external_review_queued";
 
     return this.transactionManager.inTransaction(async () => {
+      if (input.idempotencyKey) {
+        const existing = await this.reviewTaskRepository.findByIdempotencyKey(
+          input.idempotencyKey
+        );
+        if (existing) return { created: false, task: existing };
+      }
       await this.ledgerService.recordStateTransition(job.state, queueState, {
         correlationId: `review-task:${input.jobId}`,
         jobId: job.jobId,
@@ -63,6 +77,7 @@ export class HumanReviewTaskService {
       await this.jobService.save(job);
 
       const reviewTask: HumanReviewTask = {
+        idempotencyKey: input.idempotencyKey,
         reviewTaskId: `review_${crypto.randomUUID()}`,
         jobId: job.jobId,
         criterionIds: input.criterionIds,
@@ -79,7 +94,7 @@ export class HumanReviewTaskService {
       };
 
       await this.reviewTaskRepository.save(reviewTask);
-      return reviewTask;
+      return { created: true, task: reviewTask };
     });
   }
 

@@ -11,12 +11,16 @@ import type {
   HumanReviewVerdict,
   Severity
 } from "../../domain/human-review/models.js";
+import { ProviderDispatchError } from "../../adapters/providers/real-provider-adapter.js";
 import { shouldFallbackProvider } from "../../domain/human-review/provider-routing-policy.js";
+import { PrivacyPolicyError } from "../../domain/privacy/privacy-gate.js";
 import type { ReviewerPoolType } from "../../domain/shared/types.js";
+import { reserveRealProviderDispatch } from "../spend-ceiling.js";
 
 type HumanReviewTaskBody = {
   criterion_ids: string[];
   deadline_at: string;
+  idempotency_key?: string;
   provider_adapter?: string;
   quality_policy: string;
   reviewer_pool: ReviewerPoolType;
@@ -69,11 +73,20 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
   app.post<{ Params: { jobId: string }; Body: HumanReviewTaskBody }>(
     "/verification-jobs/:jobId/human-review-tasks",
     async (request, reply) => {
+      let providerTaskId: string | undefined;
+      let reservationKey: string | undefined;
+      let reservationCreated = false;
+      let dispatchedReviewTask:
+        | Awaited<
+            ReturnType<typeof app.services.humanReviewTaskService.createOrGet>
+          >["task"]
+        | undefined;
       try {
-        const reviewTask = await app.services.humanReviewTaskService.create({
+        const result = await app.services.humanReviewTaskService.createOrGet({
           criterionIds: request.body.criterion_ids,
           deadlineAt: new Date(request.body.deadline_at),
           jobId: request.params.jobId,
+          idempotencyKey: request.body.idempotency_key,
           providerAdapter: request.body.provider_adapter,
           qualityPolicy: request.body.quality_policy,
           reviewerPool: request.body.reviewer_pool,
@@ -90,7 +103,24 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
             : undefined
         });
 
-        let providerTaskId: string | undefined;
+        const reviewTask = result.task;
+        dispatchedReviewTask = reviewTask;
+        const canRetryRealDispatch =
+          !result.created &&
+          reviewTask.state === "queued" &&
+          app.services.providerConfig?.enabled === true &&
+          reviewTask.providerAdapter === app.services.providerConfig.providerId;
+        if (!result.created && !canRetryRealDispatch) {
+          return reply.code(202).send({
+            dispatch_status: reviewTask.state,
+            job_id: reviewTask.jobId,
+            provider_adapter: reviewTask.providerAdapter,
+            provider_task_id: reviewTask.providerTaskRef,
+            review_task_id: reviewTask.reviewTaskId,
+            reviewer_pool: reviewTask.reviewerPool
+          });
+        }
+
         let dispatchStatus = reviewTask.state;
 
         if (
@@ -111,6 +141,23 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
             !fallbackDecision.fallback &&
             app.services.providerDispatchWorker
           ) {
+            if (
+              app.services.runtimeConfig.realSpendCeilingUsd !== undefined &&
+              !request.body.idempotency_key
+            ) {
+              throw new Error("Real dispatch idempotency key is required");
+            }
+            reservationKey =
+              request.body.idempotency_key ??
+              `review-task:${reviewTask.reviewTaskId}`;
+            reserveRealProviderDispatch({
+              ceilingUsd: app.services.runtimeConfig.realSpendCeilingUsd,
+              idempotencyKey: reservationKey,
+              jobId: reviewTask.jobId,
+              spendCeiling: app.services.spendCeiling,
+              task: reviewTask
+            });
+            reservationCreated = true;
             const dispatchResult =
               await app.services.providerDispatchWorker.dispatch(reviewTask);
             reviewTask.providerTaskRef = dispatchResult.providerTaskId;
@@ -143,12 +190,34 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
           reviewer_pool: reviewTask.reviewerPool
         });
       } catch (error) {
-        return reply.code(403).send({
-          message:
-            error instanceof Error
-              ? error.message
-              : "Human review task rejected"
-        });
+        const ambiguousDispatch =
+          error instanceof ProviderDispatchError && error.ambiguous;
+        if (
+          reservationCreated &&
+          reservationKey &&
+          !providerTaskId &&
+          !ambiguousDispatch
+        ) {
+          app.services.spendCeiling.release(reservationKey);
+        }
+        if (ambiguousDispatch && dispatchedReviewTask) {
+          return reply.code(202).send({
+            dispatch_status: "unknown",
+            job_id: dispatchedReviewTask.jobId,
+            provider_adapter: dispatchedReviewTask.providerAdapter,
+            provider_task_id: dispatchedReviewTask.providerTaskRef,
+            review_task_id: dispatchedReviewTask.reviewTaskId,
+            reviewer_pool: dispatchedReviewTask.reviewerPool
+          });
+        }
+        const message =
+          error instanceof Error ? error.message : "Human review task rejected";
+        const policyRejection =
+          error instanceof PrivacyPolicyError ||
+          message.includes("Invalid job state transition: fail_closed") ||
+          message.includes("Real spend") ||
+          message.includes("idempotency key");
+        return reply.code(policyRejection ? 403 : 502).send({ message });
       }
     }
   );

@@ -7,7 +7,7 @@ the compiled output with production-only dependencies as a non-root user.
 ## Image
 
 ```bash
-docker build -t quorum:latest .
+docker build -t vouch:latest .
 ```
 
 The image is based on `node:24-bookworm-slim`. Node 24 is required because the
@@ -21,7 +21,7 @@ docker run -d --name broker \
   -p 3000:3000 \
   -v broker-data:/data \
   -e RUNTIME_OPERATOR_TOKEN="$(openssl rand -hex 32)" \
-  quorum:latest
+  vouch:latest
 ```
 
 - `GET /health` is unauthenticated and used by the container `HEALTHCHECK`.
@@ -40,7 +40,7 @@ polls the queue:
 docker run -d --name broker-worker \
   -v broker-data:/data \
   --entrypoint node \
-  quorum:latest dist/workers/index.js
+  vouch:latest dist/workers/index.js
 ```
 
 It shares the same `/data` volume as the API server. It also handles
@@ -70,9 +70,9 @@ loop forever.
   a matching `x-operator-token` header. When it is **not** set, the endpoints are
   **refused with `503` in production** (and only open in non-production for local
   dev). Always set it in production.
-- **`PROVIDER_SHARED_SECRET`** — when set, `/provider-callback` requires a
-  matching secret (timing-safe comparison). Omitting it on a request no longer
-  bypasses the check.
+- **`PROVIDER_SHARED_SECRET`** — required for the callback ingestion path;
+  `/provider-callback` requires a matching secret (timing-safe comparison).
+  Omitting it from configuration or a request fails closed.
 
 ## Provider integration
 

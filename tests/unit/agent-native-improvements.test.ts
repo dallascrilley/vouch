@@ -86,6 +86,36 @@ describe("agent-native improvements", () => {
     await app.close();
   });
 
+  it("requires the operator token for broker routes", async () => {
+    const app = buildApp({
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        RUNTIME_OPERATOR_TOKEN: "operator-test-token",
+        RUNTIME_SQLITE_PATH: ":memory:"
+      }
+    });
+    await app.ready();
+
+    expect(
+      (await app.inject({ method: "GET", url: "/health" })).statusCode
+    ).toBe(401);
+    expect(
+      (
+        await app.inject({
+          headers: { "x-operator-token": "operator-test-token" },
+          method: "GET",
+          url: "/health"
+        })
+      ).statusCode
+    ).toBe(200);
+    expect(
+      (await app.inject({ method: "GET", url: "/verification-jobs/missing" }))
+        .statusCode
+    ).toBe(401);
+    await app.close();
+  });
+
   it("BrokerClient exposes primitive getJob", async () => {
     const client = await BrokerClient.connect();
     const gate = await client.runSelfVerificationGate({

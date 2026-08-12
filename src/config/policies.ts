@@ -66,6 +66,7 @@ export function loadDefaultProviderConfig(
     enabled: env.PROVIDER_ENABLED === "true",
     apiKey: env.PROVIDER_API_KEY,
     sharedSecret: env.PROVIDER_SHARED_SECRET,
+    dispatchTimeoutMs: Number(env.PROVIDER_DISPATCH_TIMEOUT_MS ?? 30_000),
     fallbackProviderId: env.PROVIDER_FALLBACK_PROVIDER_ID ?? "internal-reviewer"
   };
 }

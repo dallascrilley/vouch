@@ -32,6 +32,18 @@ export class SQLiteHumanReviewTaskRepository implements HumanReviewTaskRepositor
     );
   }
 
+  findByIdempotencyKey(idempotencyKey: string) {
+    const row = this.store.db
+      .prepare(
+        "SELECT payload_json FROM human_review_tasks WHERE idempotency_key = ?"
+      )
+      .get(idempotencyKey) as Row | undefined;
+
+    return Promise.resolve(
+      row ? deserializeJson<HumanReviewTask>(row.payload_json) : null
+    );
+  }
+
   findByJobId(jobId: string) {
     const rows = this.store.db
       .prepare(
@@ -47,13 +59,20 @@ export class SQLiteHumanReviewTaskRepository implements HumanReviewTaskRepositor
   save(task: HumanReviewTask) {
     this.store.db
       .prepare(
-        `INSERT INTO human_review_tasks (review_task_id, job_id, payload_json)
-         VALUES (?, ?, ?)
+        `INSERT INTO human_review_tasks
+          (review_task_id, job_id, idempotency_key, payload_json)
+         VALUES (?, ?, ?, ?)
          ON CONFLICT(review_task_id) DO UPDATE SET
            job_id = excluded.job_id,
+           idempotency_key = excluded.idempotency_key,
            payload_json = excluded.payload_json`
       )
-      .run(task.reviewTaskId, task.jobId, serializeJson(task));
+      .run(
+        task.reviewTaskId,
+        task.jobId,
+        task.idempotencyKey ?? null,
+        serializeJson(task)
+      );
 
     return Promise.resolve();
   }

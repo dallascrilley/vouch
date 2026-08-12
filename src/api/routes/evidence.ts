@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 
+import { ProviderDispatchError } from "../../adapters/providers/real-provider-adapter.js";
 import type {
   ArtifactManifest,
   ArtifactQuality,
@@ -12,11 +13,13 @@ import type {
   ExternalizationDecision,
   RedactionStatus
 } from "../../domain/privacy/models.js";
+import { PrivacyPolicyError } from "../../domain/privacy/privacy-gate.js";
 import type { ReviewerPoolType } from "../../domain/shared/types.js";
 import type {
   CriterionResult,
   RecommendedAction
 } from "../../domain/self-verification/models.js";
+import { reserveRealProviderDispatch } from "../spend-ceiling.js";
 
 type ArtifactBody = {
   manifest_id: string;
@@ -178,6 +181,8 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
         });
 
         let providerTaskId: string | null = null;
+        let reservationKey: string | undefined;
+        let reservationCreated = false;
         if (outcome.reviewTask) {
           const task = outcome.reviewTask;
           if (
@@ -201,6 +206,15 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
               });
 
               if (!fallbackDecision.fallback) {
+                reservationKey = `review-task:${task.reviewTaskId}`;
+                reserveRealProviderDispatch({
+                  ceilingUsd: app.services.runtimeConfig.realSpendCeilingUsd,
+                  idempotencyKey: reservationKey,
+                  jobId: task.jobId,
+                  spendCeiling: app.services.spendCeiling,
+                  task
+                });
+                reservationCreated = true;
                 const dispatchResult =
                   await app.services.providerDispatchWorker.dispatch(task);
                 task.providerTaskRef = dispatchResult.providerTaskId;
@@ -209,6 +223,17 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
                 providerTaskId = dispatchResult.providerTaskId;
               }
             } catch (dispatchError) {
+              if (
+                reservationCreated &&
+                reservationKey &&
+                !providerTaskId &&
+                !(
+                  dispatchError instanceof ProviderDispatchError &&
+                  dispatchError.ambiguous
+                )
+              ) {
+                app.services.spendCeiling.release(reservationKey);
+              }
               request.log.error(
                 {
                   err: dispatchError,
@@ -246,6 +271,9 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
           review_task_id: outcome.reviewTask?.reviewTaskId ?? null
         });
       } catch (error) {
+        if (error instanceof PrivacyPolicyError) {
+          return reply.code(403).send({ message: error.message });
+        }
         return reply.code(400).send({
           message:
             error instanceof Error

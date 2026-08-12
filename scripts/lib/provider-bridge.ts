@@ -4,6 +4,7 @@ import { dirname } from "node:path";
 export type BridgeDispatchBody = {
   callback_url?: string;
   criterion_ids: string[];
+  idempotency_key?: string;
   review_task_id: string;
   reviewer_pool: string;
   sanitized_package_id: string;
@@ -34,6 +35,7 @@ export type BridgeTaskRecord = {
   pollBackoffMs?: number;
   throttleEvents?: BridgeThrottleEvent[];
   hitId: string;
+  idempotencyKey?: string;
   hitExpirationAt?: string;
   hitReviewStatus?: string;
   hitStatus?: string;

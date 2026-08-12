@@ -46,6 +46,10 @@ export class ProviderTaskMappingService {
     return this.mappingRepository.findByProviderTaskId(providerTaskId);
   }
 
+  async findByReviewTaskId(reviewTaskId: string) {
+    return this.mappingRepository.findByReviewTaskId(reviewTaskId);
+  }
+
   async recordReceipt(
     receipt: ProviderResponseReceipt
   ): Promise<{ receipt: ProviderResponseReceipt; deduplicated: boolean }> {

@@ -6,12 +6,13 @@ set -euo pipefail
 
 . "$(dirname "$0")/lib/common.sh"
 
-IMAGE="${SMOKE_IMAGE:-quorum:smoke}"
+IMAGE="${SMOKE_IMAGE:-vouch:smoke}"
 API_NAME="${SMOKE_API_CONTAINER:-broker-smoke-api}"
 WORKER_NAME="${SMOKE_WORKER_CONTAINER:-broker-smoke-worker}"
 VOLUME="${SMOKE_VOLUME:-broker-smoke-data}"
 HOST_PORT="${SMOKE_PORT:-39000}"
 BASE_URL="http://127.0.0.1:${HOST_PORT}"
+OPERATOR_TOKEN="${SMOKE_OPERATOR_TOKEN:-docker-smoke-operator-token}"
 
 cleanup() {
   docker rm -f "$API_NAME" "$WORKER_NAME" >/dev/null 2>&1 || true
@@ -36,12 +37,13 @@ docker run -d --name "$API_NAME" \
   -p "${HOST_PORT}:3000" \
   -v "${VOLUME}:/data" \
   -e LOCAL_PROVIDER_MODE=simulated \
+  -e RUNTIME_OPERATOR_TOKEN="$OPERATOR_TOKEN" \
   -e LOG_LEVEL=error \
   "$IMAGE" >/dev/null
 
 log "validate-docker-smoke: waiting for /health before worker (SQLite migrations)"
 deadline=$((SECONDS + 60))
-until curl -sf "${BASE_URL}/health" >/dev/null; do
+until curl -sf "${BASE_URL}/health" -H "x-operator-token: ${OPERATOR_TOKEN}" >/dev/null; do
   if [ "$SECONDS" -ge "$deadline" ]; then
     docker logs "$API_NAME" 2>&1 | tail -20 >&2 || true
     die "API did not become healthy at ${BASE_URL}/health"
@@ -49,10 +51,21 @@ until curl -sf "${BASE_URL}/health" >/dev/null; do
   sleep 1
 done
 
+unauthenticated_health_code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE_URL}/health")"
+if [ "$unauthenticated_health_code" != "401" ]; then
+  die "unauthenticated /health was not rejected (HTTP ${unauthenticated_health_code})"
+fi
+
+unauthenticated_job_code="$(curl -s -o /dev/null -w '%{http_code}' "${BASE_URL}/verification-jobs/missing")"
+if [ "$unauthenticated_job_code" != "401" ]; then
+  die "unauthenticated broker route was not rejected (HTTP ${unauthenticated_job_code})"
+fi
+
 log "validate-docker-smoke: starting worker"
 docker run -d --name "$WORKER_NAME" \
   -v "${VOLUME}:/data" \
   -e LOCAL_PROVIDER_MODE=simulated \
+  -e RUNTIME_OPERATOR_TOKEN="$OPERATOR_TOKEN" \
   -e LOG_LEVEL=error \
   --entrypoint node \
   "$IMAGE" dist/workers/index.js >/dev/null
@@ -60,6 +73,7 @@ docker run -d --name "$WORKER_NAME" \
 JOB_KEY="docker-smoke-$(date +%s)"
 JOB_ID="$(
   curl -sf -X POST "${BASE_URL}/verification-jobs" \
+    -H "x-operator-token: ${OPERATOR_TOKEN}" \
     -H 'content-type: application/json' \
     -d "$(cat <<EOF
 {
@@ -84,6 +98,7 @@ post_step() {
   local payload="$2"
   local code
   code="$(curl -s -o /dev/null -w '%{http_code}' -X POST "${BASE_URL}${path}" \
+    -H "x-operator-token: ${OPERATOR_TOKEN}" \
     -H 'content-type: application/json' \
     -d "$payload")"
   if [ "$code" -lt 200 ] || [ "$code" -ge 300 ]; then
@@ -139,7 +154,8 @@ log "validate-docker-smoke: waiting for simulated worker + feedback"
 deadline=$((SECONDS + 45))
 ACTION=""
 while [ "$SECONDS" -lt "$deadline" ]; do
-  FEEDBACK="$(curl -sf "${BASE_URL}/verification-jobs/${JOB_ID}/feedback" 2>/dev/null || true)"
+  FEEDBACK="$(curl -sf "${BASE_URL}/verification-jobs/${JOB_ID}/feedback" \
+    -H "x-operator-token: ${OPERATOR_TOKEN}" 2>/dev/null || true)"
   if [ -n "$FEEDBACK" ]; then
     ACTION="$(printf '%s' "$FEEDBACK" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{console.log(JSON.parse(d).agent_next_action||'')}catch{}})")"
     if [ "$ACTION" = "pass" ]; then

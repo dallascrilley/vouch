@@ -20,7 +20,11 @@ function buildSigningApp(signingKey?: string, operatorToken?: string) {
 }
 
 async function finalizeJob(app: FastifyInstance) {
+  const headers = app.services.runtimeConfig.operatorToken
+    ? { "x-operator-token": app.services.runtimeConfig.operatorToken }
+    : undefined;
   const jobResponse = await app.inject({
+    headers,
     method: "POST",
     url: "/verification-jobs",
     payload: {
@@ -47,6 +51,7 @@ async function finalizeJob(app: FastifyInstance) {
   const jobId = jobResponse.json<{ job_id: string }>().job_id;
 
   await app.inject({
+    headers,
     method: "POST",
     url: `/verification-jobs/${jobId}/artifacts`,
     payload: {
@@ -71,6 +76,7 @@ async function finalizeJob(app: FastifyInstance) {
   });
 
   await app.inject({
+    headers,
     method: "POST",
     url: `/verification-jobs/${jobId}/privacy-classification`,
     payload: {
@@ -86,6 +92,7 @@ async function finalizeJob(app: FastifyInstance) {
   });
 
   await app.inject({
+    headers,
     method: "POST",
     url: `/verification-jobs/${jobId}/self-verification-results`,
     payload: {

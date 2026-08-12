@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Report suspected vulnerabilities privately through
-[GitHub Security Advisories](https://github.com/dallascrilley/quorum/security/advisories/new),
+[GitHub Security Advisories](https://github.com/dallascrilley/quorum-private/security/advisories/new),
 or by email to dallas@dallascrilley.com. Please do not open a public issue for
 a security problem.
 
@@ -17,7 +17,7 @@ This project is pre-1.0. Only the default branch receives security fixes.
 
 ## Security-relevant configuration
 
-Quorum handles artifacts that may contain sensitive material, so a few settings
+Vouch handles artifacts that may contain sensitive material, so a few settings
 are not optional in a real deployment:
 
 | Variable                                                               | Why it matters                                                                                                                           |
