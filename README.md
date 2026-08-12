@@ -13,6 +13,19 @@ privacy, routes what machines cannot settle to human reviewers, aggregates their
 answers into a consensus verdict, adjudicates disagreement, and hands the agent
 back a machine-readable next action and repair hints.
 
+## Provenance
+
+Quorum is original work in this repository: the verification control plane, privacy
+gate, consensus and adjudication, ledger, agent CLI, OpenAPI contracts, and offline
+harnesses. Provider adapters (including the Mechanical Turk bridge) are integration
+code against external platforms; those platforms are not part of this repo. There is
+no upstream template this service is forked from.
+
+**What CI proves offline:** install, build, lint, typecheck, unit/contract tests, and
+the four simulated harnesses (local runtime, provider e2e, proof-bundle replay, agent
+loop). **What is self-reported:** live crowd platforms such as MTurk require your own
+AWS/requester setup and are not exercised in CI.
+
 ## See it in under a minute
 
 One command spawns the API, the dispatch worker, and the agent CLI, drives a
@@ -168,8 +181,8 @@ handling.
   counters. OpenTelemetry export is a planned adapter, not shipped.
 - **No hosted instance.** There is nothing to sign up for. Everything here runs
   from this repository.
-- **Not published to a registry.** Install by cloning; there is no `npm install
-  quorum`.
+- **Not published to a registry.** `package.json` is `"private": true` on purpose
+  (source install only). Install by cloning; there is no `npm install quorum`.
 
 ## Requirements
 
