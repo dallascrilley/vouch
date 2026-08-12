@@ -48,7 +48,7 @@ jobs:
           # Self-referencing github.com URLs are excluded: they 404 for
           # unauthenticated checkers while the repository is private.
           args: >-
-            --no-progress --exclude-mail
+            --no-progress
             --exclude '^https://github\.com/dallascrilley/quorum'
             README.md CONTRIBUTING.md SECURITY.md CHANGELOG.md
             docs/**/*.md contracts/**/*.md
