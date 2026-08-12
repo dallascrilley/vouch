@@ -56,8 +56,11 @@ npm run validate:agent-loop
 - **Never weaken a gate to get it green.** If a check is wrong, fix the check
   and say so in the pull request.
 - **No secrets, ever.** `.env*` is ignored. Provider credentials, callback
-  secrets, account identifiers, and captured live artifacts stay out of the
-  repository, including in test fixtures and documentation.
+  secrets, and account identifiers stay out of the repository, including in
+  test fixtures and documentation. The one sanctioned exception: opaque,
+  sandbox-scoped correlation ids (HIT/assignment ids with pseudonymized
+  workers) may appear in replay fixtures as provenance — they identify no
+  account and resolve to nothing without requester credentials.
 
 ## Optional local hooks
 

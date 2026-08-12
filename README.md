@@ -13,7 +13,7 @@ privacy, routes what machines cannot settle to human reviewers, aggregates their
 answers into a consensus verdict, adjudicates disagreement, and hands the agent
 back a machine-readable next action and repair hints.
 
-## See it in 30 seconds
+## See it in under a minute
 
 One command spawns the API, the dispatch worker, and the agent CLI, drives a
 screenshot through the whole review loop, and asserts the agent got an
