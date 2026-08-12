@@ -37,6 +37,6 @@ Exit codes (agent_next_action):
 stdout: single JSON object (job_id, feedback, agent_next_action, …)
 
 Docs: docs/architecture/agent-loop-integration.md
-OpenAPI: specs/001-verification-control-plane/contracts/openapi.yaml
+OpenAPI: contracts/verification-control-plane/openapi.yaml
 `);
 }

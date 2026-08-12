@@ -150,7 +150,7 @@ const TOOLS = [
 ] as const;
 
 const server = new Server(
-  { name: "ai-human-review-broker", version: "0.1.0" },
+  { name: "quorum", version: "0.1.0" },
   { capabilities: { tools: {} } }
 );
 

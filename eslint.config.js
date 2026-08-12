@@ -12,7 +12,7 @@ export default tseslint.config(
       ".worktrees/",
       "*.log",
       ".env*",
-      "specs/"
+      "contracts/"
     ]
   },
   {

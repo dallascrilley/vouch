@@ -4,7 +4,7 @@
   "source": {
     "proof_doc": "tests/integration/provider-auto-advance-fail.test.ts",
     "captured_at": "2026-06-09",
-    "description": "Simulated unanimous high-confidence fail: callback ingested, auto-advanced to final fail with retry feedback. Replace with live sandbox capture when a Bux fail HIT is run."
+    "description": "Simulated unanimous high-confidence fail: callback ingested, auto-advanced to final fail with retry feedback. Offline replay gate."
   },
   "reference_correlation_ids": {
     "hit_id": "SIM-FAIL-HIT-0001",

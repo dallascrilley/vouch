@@ -6,7 +6,7 @@ set -euo pipefail
 
 . "$(dirname "$0")/lib/common.sh"
 
-IMAGE="${SMOKE_IMAGE:-ai-human-review-broker:smoke}"
+IMAGE="${SMOKE_IMAGE:-quorum:smoke}"
 API_NAME="${SMOKE_API_CONTAINER:-broker-smoke-api}"
 WORKER_NAME="${SMOKE_WORKER_CONTAINER:-broker-smoke-worker}"
 VOLUME="${SMOKE_VOLUME:-broker-smoke-data}"

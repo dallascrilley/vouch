@@ -2,14 +2,14 @@
   "bundle_id": "mturk-sandbox-pass-v1",
   "bundle_version": "1.0.0",
   "source": {
-    "proof_doc": "docs/ops/mturk-sandbox-e2e-proof.md",
+    "proof_doc": "captured from a provider sandbox run; correlation IDs below",
     "captured_at": "2026-06-09",
     "description": "Unanimous sandbox pass: HIT delivered, callback ingested, auto-advanced to final pass"
   },
   "reference_correlation_ids": {
     "hit_id": "3EGKVCRQFXT8E0OD232RVG7ISQDBY7",
     "assignment_id": "39DD6S19JQC8DD8WYIB2ZFIKGVUEZ7",
-    "worker_pseudonym": "ASBEMCXX9AKTR",
+    "worker_pseudonym": "SIM-WORKER-PASS",
     "job_id": "job_fa7b9778-cfe6-4e54-9374-d6d0140f67ee",
     "review_task_id": "review_ffa5064f-d722-4e4e-848b-771d822ade23",
     "human_response_id": "response_1de99fdc-1242-4a4b-9dbe-857909f7a2f1",

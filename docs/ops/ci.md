@@ -6,9 +6,10 @@ Workflow: `.github/workflows/ci.yml` (`ci`)
 
 1. `npm ci` (Node 24)
 2. `npm run build:js`
-3. `npm run verify` — lint, type-check, tests through broker gate
+3. `npm run verify` — lint, type-check, tests through the self-verification gate
 4. OpenAPI 3.1 contract check
-5. Markdown link check (lychee) — **only when doc paths change** (`**/*.md`, `docs/**`, `specs/**`) or on `workflow_dispatch`
+5. The four offline harnesses: `validate:local-runtime`, `validate:provider-e2e`, `validate:provider-proof-bundle`, `validate:agent-loop`
+6. Markdown link check (lychee) — **only when doc paths change** (`**/*.md`, `docs/**`, `contracts/**`) or on `workflow_dispatch`
 
 Workflow also uses shallow checkout (`fetch-depth: 2` — enough for paths-filter on push), npm cache, and `concurrency` with `cancel-in-progress` to drop superseded runs.
 
@@ -34,19 +35,16 @@ Or use **Actions → ci → Run workflow** in GitHub.
 
 ## Troubleshooting
 
-- **Zero runs in history:** enable Actions under repo **Settings → Actions → General**.
-- **Runs stuck in `queued`:** check repo Actions permissions first:
+- **Zero runs in history:** enable Actions under repo **Settings → Actions → General**, then check:
 
   ```bash
-  gh api repos/DallasCrilleyMarTech/review-qa-broker/actions/permissions
+  gh api repos/dallascrilley/quorum/actions/permissions
   ```
 
-  If `"enabled": false` with org conflict (`409`), Actions is disabled at the **organization** level — a repo admin must allow Actions under **Org → Settings → Actions → Policies**, then re-enable on the repo. Until then, use local `npm run verify`.
-
-- **Queued with Actions enabled:** private repos need GitHub-hosted runner minutes or a self-hosted runner. Local `npm run verify` is the interim gate.
+- **Runs stuck in `queued`:** the repository needs GitHub-hosted runner minutes or a self-hosted runner. Local `./script/cibuild` is the interim gate.
 - **Engine errors:** CI uses Node 24; match locally with `.mise.toml`.
-- **Link check failures:** fix broken `docs/**/*.md` or `README.md` links before merge.
-- **`gh` HTTP 401** (e.g. `gh run watch` mid-session): refresh auth from 1Password — `bash scripts/ops/gh-auth-from-1p.sh` (requires `op` + `gh`; unsets inherited `GITHUB_TOKEN` that shadows keyring login).
+- **`ruby not found`:** `script/cibuild` uses Ruby for the OpenAPI version check. GitHub runners and macOS ship it.
+- **Link check failures:** fix broken `docs/**/*.md`, `contracts/**/*.md`, or `README.md` links before merge.
 
 ## Signed release-gate artifact
 

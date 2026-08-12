@@ -1,7 +1,26 @@
 {
-  "name": "ai-human-review-broker",
+  "name": "quorum",
   "version": "0.1.0",
   "private": true,
+  "description": "Human review as an API: agents submit work, real reviewers return a consensus verdict.",
+  "license": "MIT",
+  "author": "Dallas Crilley <dallas@dallascrilley.com>",
+  "homepage": "https://github.com/dallascrilley/quorum#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dallascrilley/quorum.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dallascrilley/quorum/issues"
+  },
+  "keywords": [
+    "human-in-the-loop",
+    "ai-agents",
+    "verification",
+    "consensus",
+    "typescript",
+    "fastify"
+  ],
   "type": "module",
   "engines": {
     "node": ">=24"

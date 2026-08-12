@@ -2,7 +2,7 @@
 
 Schema contract between the broker-side validators (`npm run validate:mturk-phase6`)
 and any provider bridge that exposes a `GET /state` endpoint (the MTurk bridge lives
-on the `mturk-staging` branch in `scripts/mturk-bridge.ts` + `scripts/lib/provider-bridge.ts`).
+in `scripts/mturk-bridge.ts` + `scripts/lib/provider-bridge.ts`).
 
 ## Per-task fields
 
@@ -53,4 +53,3 @@ that exhausted `MTURK_MAX_CALLBACK_ATTEMPTS`.
 - The JSON result includes a `bridge_health` block echoing the fields above for
   proof-doc capture.
 
-Restart and recovery evidence: `docs/ops/mturk-bridge-restart-proof.md`.

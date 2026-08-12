@@ -2,9 +2,9 @@
   "bundle_id": "mturk-sandbox-ambiguous-v1",
   "bundle_version": "1.0.0",
   "source": {
-    "proof_doc": "docs/ops/mturk-sandbox-ambiguous-proof.md",
+    "proof_doc": "captured from a provider sandbox run; correlation IDs below",
     "captured_at": "2026-06-14",
-    "description": "Ambiguous sandbox worker signal: callback ingested with auto_advanced false, consensus + adjudication to retry. Offline replay gate; live Bux capture optional."
+    "description": "Ambiguous sandbox worker signal: callback ingested with auto_advanced false, consensus + adjudication to retry. Offline replay gate."
   },
   "reference_correlation_ids": {
     "hit_id": "SIM-AMBIGUOUS-HIT-0001",

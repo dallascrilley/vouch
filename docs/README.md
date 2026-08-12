@@ -2,12 +2,17 @@
 
 | Path | Purpose |
 |------|---------|
-| `decisions/` | Architecture Decision Records (ADRs). One file per decision, numbered. |
-| `solutions/` | Captured solutions to non-obvious problems — write via `ce-compound`, refresh via `ce-compound-refresh`. |
-| `lessons.md` | Running log of project learnings. |
-| `todo.md` | Backlog scratchpad (promote durable items to issues). |
+| `architecture/` | How the verification control plane, agent loop, provider integration, and local runtime fit together. |
+| `ops/` | Running the service: deployment, CI, the dev-workflow gate, and validation procedures. |
+| `security/` | Privacy-gate threat model, local data handling, and provider secret handling. |
+| `decisions/` | Architecture Decision Records. One file per decision, numbered. |
+
+Wire contracts live outside `docs/` in [`contracts/`](../contracts/), because
+they are asserted by `tests/contract/` rather than read by humans alone.
 
 ## Conventions
 
-- New architectural decision → copy `decisions/0000-template.md` to the next number.
-- Keep docs close to the code they describe; link from `README.md` when user-facing.
+- New architectural decision: copy `decisions/0000-template.md` to the next
+  number.
+- Keep docs close to the code they describe, and link them from `README.md`
+  when they are user-facing.

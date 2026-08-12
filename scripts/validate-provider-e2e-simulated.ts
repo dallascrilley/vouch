@@ -1,6 +1,6 @@
 /**
  * Simulated provider E2E: mock dispatch → callback → auto-advance → pass verdict.
- * Proves the in-repo loop without MTurk/bridge. For sandbox proof see provider-e2e-playbook.md.
+ * Proves the in-repo loop without MTurk/bridge.
  */
 import { buildApp } from "../src/api/app.js";
 

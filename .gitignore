@@ -11,12 +11,43 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
-.todos/
 .context/
 .warp/
 .warp.json
+
+# --- local agent / tracker state (never part of the public tree) ---
+.agents/
+.beads/
+.claude/
+.codex/
+.cursor/
+.grok/
+.sisyphus/
+.specify/
+.todos/
+.compound-engineering/
+AGENTS.md
+CLAUDE.md
+/STATUS.md
+/TODO.md
+/BACKLOG.md
+/IDEAS.md
+/NOTES.md
+/SCRATCH.md
+/PROJECT_CONTEXT.md
+/LAUNCH_CRITERIA.md
+/initial.md
 /goalplan.md
-.compound-engineering/*.local.yaml
+/handoff.md
+prd.json
+docs/plans/
+docs/ideation/
+docs/whats-next/
+docs/residual-review-findings/
+docs/planning/
+docs/solutions/
+docs/todo.md
+docs/lessons.md
 
 # --- added by project-bootstrap ---
 # Assembled to .gitignore (core + language profile appended).

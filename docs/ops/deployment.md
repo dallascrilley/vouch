@@ -7,7 +7,7 @@ the compiled output with production-only dependencies as a non-root user.
 ## Image
 
 ```bash
-docker build -t ai-human-review-broker:latest .
+docker build -t quorum:latest .
 ```
 
 The image is based on `node:24-bookworm-slim`. Node 24 is required because the
@@ -21,7 +21,7 @@ docker run -d --name broker \
   -p 3000:3000 \
   -v broker-data:/data \
   -e RUNTIME_OPERATOR_TOKEN="$(openssl rand -hex 32)" \
-  ai-human-review-broker:latest
+  quorum:latest
 ```
 
 - `GET /health` is unauthenticated and used by the container `HEALTHCHECK`.
@@ -40,7 +40,7 @@ polls the queue:
 docker run -d --name broker-worker \
   -v broker-data:/data \
   --entrypoint node \
-  ai-human-review-broker:latest dist/workers/index.js
+  quorum:latest dist/workers/index.js
 ```
 
 It shares the same `/data` volume as the API server. It also handles

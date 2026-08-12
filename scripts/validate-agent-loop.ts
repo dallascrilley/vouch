@@ -1,6 +1,6 @@
 /**
  * Agent loop validation: spawns API + simulated worker, runs `npm run review --wait`,
- * asserts exit 0 and agent_next_action pass. See docs/solutions/runtime/sim-worker-never-finalizes-verdict.md.
+ * asserts exit 0 and agent_next_action pass.
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";

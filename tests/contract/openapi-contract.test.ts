@@ -37,7 +37,7 @@ describe("OpenAPI contract", () => {
   it("uses OpenAPI 3.1 and resolves all local schema refs", () => {
     const contractPath = resolve(
       process.cwd(),
-      "specs/001-verification-control-plane/contracts/openapi.yaml"
+      "contracts/verification-control-plane/openapi.yaml"
     );
     const document = YAML.parse(
       readFileSync(contractPath, "utf8")
