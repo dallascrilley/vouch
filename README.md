@@ -1,21 +1,21 @@
-# Quorum — human review as an API
+# Vouch — human review as an API
 
 Agents submit work. Real reviewers return a consensus verdict.
 
-[![ci](https://github.com/dallascrilley/quorum/actions/workflows/ci.yml/badge.svg)](https://github.com/dallascrilley/quorum/actions/workflows/ci.yml)
+[![ci](https://github.com/dallascrilley/vouch/actions/workflows/ci.yml/badge.svg)](https://github.com/dallascrilley/vouch/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![node](https://img.shields.io/badge/node-24%2B-brightgreen.svg)](.mise.toml)
 
 An autonomous agent can tell you its screenshot rendered. It cannot tell you the
-hero headline overlaps the CTA. Quorum is the service that closes that gap: an
-agent POSTs a verification job with artifacts, Quorum gates the evidence for
+hero headline overlaps the CTA. Vouch is the service that closes that gap: an
+agent POSTs a verification job with artifacts, Vouch gates the evidence for
 privacy, routes what machines cannot settle to human reviewers, aggregates their
 answers into a consensus verdict, adjudicates disagreement, and hands the agent
 back a machine-readable next action and repair hints.
 
 ## Provenance
 
-Quorum is original work in this repository: the verification control plane, privacy
+Vouch is original work in this repository: the verification control plane, privacy
 gate, consensus and adjudication, ledger, agent CLI, OpenAPI contracts, and offline
 harnesses. Provider adapters (including the Mechanical Turk bridge) are integration
 code against external platforms; those platforms are not part of this repo. There is
@@ -108,10 +108,10 @@ the integration guide is
 The container image builds from the repository `Dockerfile`:
 
 ```bash
-docker build -t quorum:latest .
-docker run -d -p 3000:3000 -v quorum-data:/data \
+docker build -t vouch:latest .
+docker run -d -p 3000:3000 -v vouch-data:/data \
   -e RUNTIME_OPERATOR_TOKEN="$(openssl rand -hex 32)" \
-  quorum:latest
+  vouch:latest
 ```
 
 `GET /health` is unauthenticated for liveness; state persists under `/data`;
@@ -182,7 +182,7 @@ handling.
 - **No hosted instance.** There is nothing to sign up for. Everything here runs
   from this repository.
 - **Not published to a registry.** `package.json` is `"private": true` on purpose
-  (source install only). Install by cloning; there is no `npm install quorum`.
+  (source install only). Install by cloning; there is no `npm install vouch`.
 
 ## Requirements
 
