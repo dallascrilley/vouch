@@ -28,6 +28,6 @@ production persistence layer.
 
 ## Rule for agents
 
-- Treat README, `AGENTS.md`, and this doc as the source of truth for what runs today.
+- Treat the README and this doc as the source of truth for what runs today.
 - Treat `docs/architecture/verification-control-plane.md` as the **target** architecture.
 - Do not assume PostgreSQL, pg-boss, S3, or OTel are available without checking `src/`.
