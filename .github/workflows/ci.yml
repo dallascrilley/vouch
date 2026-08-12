@@ -11,7 +11,10 @@ concurrency:
 
 jobs:
   verify:
+    name: verify + offline harnesses
     runs-on: ubuntu-latest
+    # A harness that spawns servers must fail loudly rather than hang a runner.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
@@ -23,14 +26,29 @@ jobs:
             docs:
               - '**/*.md'
               - 'docs/**'
-              - 'specs/**'
+              - 'contracts/**'
       - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
-      - run: ./script/cibuild
+      - name: Gate (install, build, lint, typecheck, tests, OpenAPI version)
+        run: ./script/cibuild
+      - name: Offline harness — local runtime
+        run: npm run validate:local-runtime
+      - name: Offline harness — simulated provider e2e
+        run: npm run validate:provider-e2e
+      - name: Offline harness — provider proof-bundle replay
+        run: npm run validate:provider-proof-bundle
+      - name: Offline harness — agent loop
+        run: npm run validate:agent-loop
       - name: Markdown link check
         if: steps.changes.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
         uses: lycheeverse/lychee-action@v2
         with:
-          args: README.md docs/**/*.md specs/**/*.md
+          # Self-referencing github.com URLs are excluded: they 404 for
+          # unauthenticated checkers while the repository is private.
+          args: >-
+            --no-progress
+            --exclude '^https://github\.com/dallascrilley/quorum'
+            README.md CONTRIBUTING.md SECURITY.md CHANGELOG.md
+            docs/**/*.md contracts/**/*.md

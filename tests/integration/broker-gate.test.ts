@@ -11,7 +11,7 @@ import {
 } from "../../scripts/lib/broker-gate.js";
 
 const source = {
-  repository: "ai-human-review-broker",
+  repository: "quorum",
   branch: "test",
   commit: "deadbeefcafe",
   environment: "ci",

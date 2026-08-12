@@ -25,7 +25,7 @@ run_cibuild() {
   npm ci --no-audit --no-fund
   npm run build:js
   npm run verify
-  ruby -ryaml -e 'data = YAML.load_file("specs/001-verification-control-plane/contracts/openapi.yaml"); abort("openapi version mismatch") unless data["openapi"] == "3.1.0"'
+  ruby -ryaml -e 'data = YAML.load_file("contracts/verification-control-plane/openapi.yaml"); abort("openapi version mismatch") unless data["openapi"] == "3.1.0"'
 }
 
 run_console() { node; }

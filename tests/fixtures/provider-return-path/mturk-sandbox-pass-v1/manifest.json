@@ -2,7 +2,7 @@
   "bundle_id": "mturk-sandbox-pass-v1",
   "bundle_version": "1.0.0",
   "source": {
-    "proof_doc": "docs/ops/mturk-sandbox-e2e-proof.md",
+    "proof_doc": "captured from a provider sandbox run; correlation IDs below",
     "captured_at": "2026-06-09",
     "description": "Unanimous sandbox pass: HIT delivered, callback ingested, auto-advanced to final pass"
   },

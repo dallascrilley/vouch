@@ -83,7 +83,7 @@ function selfVerificationPayload(action: "human_review" | "internal_review", cri
 }
 
 describe("self-verification escalation to human review", () => {
-  describe("simulated provider path (no Staging)", () => {
+  describe("simulated provider path (no external provider)", () => {
     let app: FastifyInstance;
 
     beforeEach(async () => {

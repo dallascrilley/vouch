@@ -62,7 +62,7 @@ function runCheck(check: Check): {
   const passed = res.status === 0;
   // Dogfood knob: VERIFY_FORCE_HUMAN_REVIEW=true reports failures as
   // "unclear" so the gate exercises the full HITL escalation (sim provider
-  // locally, Staging when PROVIDER_ENABLED). Default keeps hard failures
+  // locally, a deployed provider when PROVIDER_ENABLED). Default keeps hard failures
   // machine-resolved so the gate cannot be greenwashed by the simulator.
   const escalateFailures = process.env.VERIFY_FORCE_HUMAN_REVIEW === "true";
   const evidenceHash = createHash("sha256")
@@ -97,7 +97,7 @@ async function main(): Promise<void> {
 
   const repository =
     git(["rev-parse", "--show-toplevel"]).split("/").pop() ??
-    "ai-human-review-broker";
+    "quorum";
   const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]) || undefined;
   const commit = git(["rev-parse", "HEAD"]) || "unknown";
   const runId = `${commit.slice(0, 12)}-${Date.now()}`;

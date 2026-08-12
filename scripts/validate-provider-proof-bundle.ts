@@ -1,5 +1,5 @@
 /**
- * Replay provider return-path proof bundles offline (no Staging/AWS/bridge).
+ * Replay provider return-path proof bundles offline (no crowd provider, AWS, or bridge).
  * Usage: npm run validate:provider-proof-bundle            # replays every bundle
  *        npm run validate:provider-proof-bundle -- <id>    # replays one bundle
  */

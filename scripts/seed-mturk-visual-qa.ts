@@ -50,7 +50,7 @@ async function main() {
       commit,
       environment: "visual-fixture",
       feature_flags: ["visual-qa-fixture"],
-      repository: "ai-human-review-broker",
+      repository: "quorum",
       route: "/fixtures/visual-qa/hero-cta-overlap.html",
       viewport: evidence.viewport
     }
@@ -65,7 +65,7 @@ async function main() {
         commit,
         environment: "visual-fixture",
         feature_flags: ["visual-qa-fixture"],
-        repository: "ai-human-review-broker",
+        repository: "quorum",
         route: "/fixtures/visual-qa/hero-cta-overlap.html",
         viewport: evidence.viewport
       },

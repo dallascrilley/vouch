@@ -1,50 +1,80 @@
-# AI Human Review Broker
+# Quorum — human review as an API
 
-Contract-first TypeScript service for verification job intake, privacy gating,
-self-verification, human review orchestration, consensus, adjudication, verdict
-ledgering, and machine-readable feedback.
+Agents submit work. Real reviewers return a consensus verdict.
 
-## Prerequisites
+[![ci](https://github.com/dallascrilley/quorum/actions/workflows/ci.yml/badge.svg)](https://github.com/dallascrilley/quorum/actions/workflows/ci.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![node](https://img.shields.io/badge/node-24%2B-brightgreen.svg)](.mise.toml)
 
-- **Node.js 24+** (required by `engines` and CI). Recommended setup:
+An autonomous agent can tell you its screenshot rendered. It cannot tell you the
+hero headline overlaps the CTA. Quorum is the service that closes that gap: an
+agent POSTs a verification job with artifacts, Quorum gates the evidence for
+privacy, routes what machines cannot settle to human reviewers, aggregates their
+answers into a consensus verdict, adjudicates disagreement, and hands the agent
+back a machine-readable next action and repair hints.
 
-```bash
-mise install   # reads .mise.toml
-npm ci
+## See it in 30 seconds
+
+One command spawns the API, the dispatch worker, and the agent CLI, drives a
+screenshot through the whole review loop, and asserts the agent got an
+actionable answer back:
+
+```console
+$ npm ci && npm run validate:agent-loop
+
+{
+  "agent_next_action": "pass",
+  "job_id": "job_1e3152bc-09e6-4828-a37d-53322e334122",
+  "status": "agent loop validation passed"
+}
+$ echo $?
+0
 ```
 
-Without mise, use any Node 24 install and ensure `node -v` reports v24+ before `npm ci`.
+The exit code is the contract an agent branches on: `0` pass, `1` fail,
+`2` retry, `3` recapture, `4` escalate, `5` pending. stdout is a single JSON
+object carrying the verdict, the unresolved criteria, and repair hints.
 
-## Commands
+## Verify it yourself, offline
 
-Canonical entrypoints (bootstrap): `script/setup`, `script/test`, `script/cibuild`
-(or `just setup`, `just test`, `just cibuild`). `script/cibuild` mirrors CI's broker
-gate (`npm ci`, `build:js`, `verify`, OpenAPI version check).
-
-- `npm run lint`
-- `npm run build`
-- `npm run build:js` — emit runnable JS to `dist/`
-- `npm test`
-- `npm run dev`
-- `npm start` — run the compiled API server (`dist/api/server.js`)
-- `npm run start:worker` — run the compiled dispatch worker
-- `npm run validate:local-runtime`
-- `npm run validate:provider`
-- `npm run validate:provider-e2e` — simulated dispatch → callback → pass verdict
-- `npm run validate:agent-loop` — full CLI + worker simulated review loop
-- `npm run verify` — run lint + build + tests through the broker and gate on the verdict
-
-## Agent integration
-
-Agents commission human review with one command. Start the API **and** dispatch worker locally:
+The reason to trust any of the above is that you can reproduce it on a laptop
+with no accounts, no API keys, and no network calls. Four harnesses drive the
+real service through the real review loop against simulated reviewers, and the
+unit and contract suite covers the rest.
 
 ```bash
-npm run dev          # terminal 1 — API
+mise install     # or install Node 24+ any way you like
+npm ci
+npm test                                  # 173 tests, 72 files
+npm run validate:local-runtime            # SQLite persistence + inspection endpoints
+npm run validate:provider-e2e             # dispatch -> callback -> auto-advance -> pass verdict
+npm run validate:provider-proof-bundle    # replay captured provider return-paths
+npm run validate:agent-loop               # API + worker + CLI, full round trip
+```
+
+Each harness exits non-zero on failure and prints a JSON receipt on success:
+
+| Command | What it proves | Success output |
+|---|---|---|
+| `npm run validate:local-runtime` | Job intake, artifact attach, privacy gate, and self-verification survive a real SQLite runtime; inspection endpoints report the job. | `local runtime validation passed` |
+| `npm run validate:provider-e2e` | A provider task is dispatched, a signed callback is ingested, consensus auto-advances, and the job reaches a `pass` verdict. | `"status": "simulated provider e2e passed"` |
+| `npm run validate:provider-proof-bundle` | Recorded provider return-paths (pass, ambiguous, fail) replay to the same broker outcomes, so return-path regressions are caught without a live crowd platform. | `"status": "provider proof-bundle replay passed"` |
+| `npm run validate:agent-loop` | The full agent path: spawn the API and dispatch worker, run the `review` CLI with `--wait`, and assert exit `0` with `agent_next_action: pass`. | `"status": "agent loop validation passed"` |
+
+`npm run verify` runs lint, typecheck, and tests *through* the service itself:
+the checks become acceptance criteria on a verification job, and the resulting
+verdict decides whether the change is allowed. `./script/cibuild` is what CI
+runs, and it calls `verify`.
+
+## Running it for real
+
+Start the API and the dispatch worker, then commission a review from the CLI:
+
+```bash
+npm run dev          # terminal 1 — API on :3000
 npm run dev:worker   # terminal 2 — provider dispatch
 npm run review -- --help
 ```
-
-Example visual QA:
 
 ```bash
 npm run review -- \
@@ -54,68 +84,105 @@ npm run review -- \
   --risk medium --wait
 ```
 
-Exit codes map to `agent_next_action` (0 pass, 1 fail, 2 retry, 3 recapture, 4 escalate, 5 pending). stdout is JSON with `job_id`, `feedback`, and repair hints.
+Five survey templates ship: yes/no screenshot checks, A/B screenshot compares,
+1–5 rubric ratings, field-extraction checks, and instruction-following checks.
+`--estimate` prices a job without dispatching it; `--resume` and `--status` poll
+a job commissioned earlier. The wire contract is
+[docs/architecture/agent-review-contract.md](docs/architecture/agent-review-contract.md);
+the integration guide is
+[docs/architecture/agent-loop-integration.md](docs/architecture/agent-loop-integration.md).
 
-Full integration guide: [docs/architecture/agent-loop-integration.md](docs/architecture/agent-loop-integration.md). Wire contract: [docs/architecture/agent-review-contract.md](docs/architecture/agent-review-contract.md). Project context for agents: [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
-
-## Dev Workflow Gate
-
-`npm run verify` routes lint, typecheck, and tests through the broker's
-self-verification lifecycle. CI runs `./script/cibuild`, which includes `verify`
-plus an OpenAPI version check (lychee link check runs only in GitHub Actions).
-Set `BROKER_URL` to record verdicts in a deployed broker. See
-`docs/ops/dev-workflow-integration.md`.
-
-## Deployment
-
-The service builds into a single container image (`Dockerfile`, Node 24 base):
+The container image builds from the repository `Dockerfile`:
 
 ```bash
-docker build -t ai-human-review-broker:latest .
-docker run -d -p 3000:3000 -v broker-data:/data \
+docker build -t quorum:latest .
+docker run -d -p 3000:3000 -v quorum-data:/data \
   -e RUNTIME_OPERATOR_TOKEN="$(openssl rand -hex 32)" \
-  ai-human-review-broker:latest
+  quorum:latest
 ```
 
-The server exposes an unauthenticated `GET /health` for liveness, persists state
-under `/data`, and shuts down cleanly on `SIGTERM`. Full guidance, including the
-dispatch worker and security-relevant configuration
-(`RUNTIME_OPERATOR_TOKEN`, `PROVIDER_SHARED_SECRET`), is in
-`docs/ops/deployment.md`.
+`GET /health` is unauthenticated for liveness; state persists under `/data`;
+`SIGTERM` drains cleanly. Full guidance, including the worker and the
+security-relevant configuration (`RUNTIME_OPERATOR_TOKEN`,
+`PROVIDER_SHARED_SECRET`), is in [docs/ops/deployment.md](docs/ops/deployment.md).
 
-## Current Scope
+## How it fits together
 
-- User Story 1: end-to-end verification loop with pass, retry, recapture, and fail-closed outcomes
-- User Story 2: human review task creation, response ingestion, consensus, and adjudication
-- User Story 3: externalization policy, provider routing, retention, metrics, calibration, and budget-blocked ledger events
+```text
+       agent
+         │  POST /verification-jobs  (+ artifacts, acceptance criteria)
+         ▼
+  ┌──────────────────────────────────────────────────────────────┐
+  │  privacy gate      classify evidence; fail closed on secret,  │
+  │                    regulated, or failed-redaction material    │
+  ├──────────────────────────────────────────────────────────────┤
+  │  self-verification machine checks settle what they can        │
+  ├──────────────────────────────────────────────────────────────┤
+  │  human review      unresolved criteria become review tasks;   │
+  │                    the dispatch worker sends a sanitized      │
+  │                    package to a provider adapter              │
+  ├──────────────────────────────────────────────────────────────┤
+  │  consensus         aggregate independent reviewer responses   │
+  │  adjudication      break ties, escalate severe minorities     │
+  ├──────────────────────────────────────────────────────────────┤
+  │  verdict + ledger  durable outcome, budget and retention      │
+  │                    events, machine-readable feedback          │
+  └──────────────────────────────────────────────────────────────┘
+         │  GET /verification-jobs/:id/feedback
+         ▼
+       agent (pass / fail / retry / recapture / escalate)
+```
 
-## Local Runtime
+Design decisions worth naming:
 
-- Structured verification state persists in SQLite via `RUNTIME_SQLITE_PATH`.
-- Local artifact and inspection paths live under `RUNTIME_ARTIFACT_ROOT`.
-- Runtime inspection endpoints are available at `/runtime/inspection` and `/runtime/inspection/jobs/:jobId`.
+- **Fail closed on privacy, not open.** Evidence classified secret, regulated,
+  or failed-redaction never leaves for external review; it fails the job instead.
+  Enforced in [`src/domain/privacy/`](src/domain/privacy/) and covered by
+  `tests/integration/security-regression.test.ts`.
+- **The verdict is a ledger entry, not a return value.** Budget blocks, retries,
+  and adjudications are all recorded events, which is what makes the loop
+  auditable after the fact. See [`src/domain/ledger/`](src/domain/ledger/).
+- **A simulator can never greenwash a failing gate.** Hard machine failures stay
+  machine-resolved; only genuinely unresolved criteria escalate to humans.
+- **Contract-first.** The HTTP surface lives in
+  [`contracts/verification-control-plane/openapi.yaml`](contracts/verification-control-plane/openapi.yaml)
+  and events in [`events.md`](contracts/verification-control-plane/events.md);
+  `tests/contract/` asserts the implementation against both.
 
-## Validation
+Deeper reading: [docs/architecture/](docs/architecture/) for the control plane,
+the agent loop, and the provider integration;
+[docs/security/](docs/security/) for the privacy-gate threat model and secret
+handling.
 
-The SQLite local-runtime proof is documented in
-`docs/ops/sqlite-local-runtime-validation.md`.
+## Honest boundaries
 
-Launch criteria (P0/P1 proof status): [`LAUNCH_CRITERIA.md`](LAUNCH_CRITERIA.md).
+- **The reviewers in every command above are simulated.** The offline harnesses
+  prove the loop, not that a crowd of humans is standing by. The Amazon
+  Mechanical Turk adapter (`scripts/mturk-bridge.ts`) is real code, but running
+  it needs your own AWS account and MTurk requester setup, and nothing in CI or
+  in the harnesses exercises it.
+- **Single-node by design.** State is SQLite on local disk and the queue is a
+  SQLite table. That is deliberate for a service you can run and audit on one
+  box; it is not a horizontally scaled deployment.
+- **Metrics are a local sink.** `GET /runtime/metrics` reports in-process
+  counters. OpenTelemetry export is a planned adapter, not shipped.
+- **No hosted instance.** There is nothing to sign up for. Everything here runs
+  from this repository.
+- **Not published to a registry.** Install by cloning; there is no `npm install
+  quorum`.
 
-Provider integration validation is documented in
-`docs/ops/provider-integration-validation.md`, with local setup guidance in
-`docs/ops/provider-integration-local-setup.md`.
+## Requirements
 
-Sandbox E2E proof steps (worker submit through verdict) are in
-`docs/ops/provider-e2e-playbook.md`.
+Node.js 24 or newer — the local runtime uses the built-in `node:sqlite` module,
+which is unflagged from Node 24. `mise install` reads `.mise.toml`; any Node 24+
+installation works. `./script/cibuild` additionally needs Ruby, which is present
+on GitHub runners and on macOS by default.
 
-## Local Provider Hygiene
+## Contributing and security
 
-- Keep `.env*`, provider callback secrets, and local validation logs out of the repository.
-- Treat `provider-integration-proof.md` as evidence-only; never paste raw tokens or live callback payload secrets into docs.
+[CONTRIBUTING.md](CONTRIBUTING.md) covers the local gate and the conventions.
+[SECURITY.md](SECURITY.md) covers reporting a vulnerability.
 
-## Agent / project context
+## License
 
-- `PROJECT_CONTEXT.md` — durable facts for agents (stack, envs, constraints).
-- `AGENTS.md` — commands, conventions, hub skill references.
-- `pre-commit install` — optional local hook (eslint + file hygiene); not required for CI.
+MIT — see [LICENSE](LICENSE).

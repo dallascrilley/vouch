@@ -21,7 +21,7 @@ describe("Event contract", () => {
   it("defines unique event names and payload bullets for every event", () => {
     const contractPath = resolve(
       process.cwd(),
-      "specs/001-verification-control-plane/contracts/events.md"
+      "contracts/verification-control-plane/events.md"
     );
     const markdown = readFileSync(contractPath, "utf8");
     const eventSections = parseSections(markdown).filter((section) =>

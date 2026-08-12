@@ -2,7 +2,7 @@
 
 Versioned offline fixtures derived from live sandbox proofs. Each bundle captures the
 job setup, provider callback payload, bridge state excerpt, and expected broker outcomes
-so `provider-test-app` can replay the return path without Staging, AWS, or a live bridge.
+so `provider-test-app` can replay the return path without a crowd-work provider, AWS, or a live bridge.
 
 ## Layout
 
@@ -18,7 +18,7 @@ so `provider-test-app` can replay the return path without Staging, AWS, or a liv
 
 ## Adding a bundle from sandbox proof
 
-1. Capture correlation IDs and payloads from `docs/ops/mturk-sandbox-e2e-proof.md` (or a new proof doc).
+1. Capture correlation IDs and payloads from a provider sandbox run.
 2. Create a new directory under `tests/fixtures/provider-return-path/`.
 3. Add JSON files; keep `reference_correlation_ids` in manifest for traceability.
 4. Add or extend `tests/integration/provider-proof-bundle-replay.test.ts`.
