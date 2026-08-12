@@ -17,7 +17,9 @@ export type UnsignedReleaseArtifact = Omit<ReleaseArtifact, "signature">;
 
 // Order-stable digest over the append-only ledger so any replayed event
 // stream can be re-attested against the artifact.
-export function computeLedgerAttestationHash(events: VerdictLedgerEvent[]): string {
+export function computeLedgerAttestationHash(
+  events: VerdictLedgerEvent[]
+): string {
   const hash = createHash("sha256");
   for (const event of events) {
     hash.update(`${event.eventId}|${event.eventType}|${event.payloadHash}\n`);
@@ -51,14 +53,21 @@ export function buildReleaseArtifact(input: {
 
   return {
     ...unsigned,
-    signature: createHmac("sha256", input.signingKey).update(canonicalPayload(unsigned)).digest("hex")
+    signature: createHmac("sha256", input.signingKey)
+      .update(canonicalPayload(unsigned))
+      .digest("hex")
   };
 }
 
-export function verifyReleaseArtifact(artifact: ReleaseArtifact, signingKey: string): boolean {
+export function verifyReleaseArtifact(
+  artifact: ReleaseArtifact,
+  signingKey: string
+): boolean {
   const expected = createHmac("sha256", signingKey)
     .update(canonicalPayload(artifact))
     .digest();
   const provided = Buffer.from(artifact.signature, "hex");
-  return provided.length === expected.length && timingSafeEqual(provided, expected);
+  return (
+    provided.length === expected.length && timingSafeEqual(provided, expected)
+  );
 }

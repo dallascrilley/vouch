@@ -27,7 +27,10 @@ describe("SQLite runtime quickstart", () => {
     const app = buildApp(config);
     await app.ready();
 
-    const inspection = await app.inject({ method: "GET", url: "/runtime/inspection" });
+    const inspection = await app.inject({
+      method: "GET",
+      url: "/runtime/inspection"
+    });
     expect(inspection.statusCode).toBe(200);
 
     const create = await app.inject({
@@ -46,7 +49,12 @@ describe("SQLite runtime quickstart", () => {
         deadline_at: "2026-06-01T00:00:00.000Z",
         idempotency_key: "sqlite-quickstart",
         risk_tier: "low",
-        source: { repository: "repo", commit: "abc123", environment: "local", route: "/quickstart" }
+        source: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/quickstart"
+        }
       }
     });
     const jobId = create.json<{ job_id: string }>().job_id;
@@ -66,7 +74,12 @@ describe("SQLite runtime quickstart", () => {
           }
         ],
         artifact_quality: "sufficient",
-        environment: { repository: "repo", commit: "abc123", environment: "local", route: "/quickstart" }
+        environment: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/quickstart"
+        }
       }
     });
     await app.inject({
@@ -91,11 +104,16 @@ describe("SQLite runtime quickstart", () => {
         job_id: jobId,
         confidence: "high",
         recommended_action: "pass",
-        criterion_results: [{ criterion_id: "quickstart", status: "pass", confidence: "high" }]
+        criterion_results: [
+          { criterion_id: "quickstart", status: "pass", confidence: "high" }
+        ]
       }
     });
 
-    const verdict = await app.inject({ method: "GET", url: `/verification-jobs/${jobId}/verdict` });
+    const verdict = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/verdict`
+    });
     await app.close();
 
     expect(verdict.json()).toMatchObject({

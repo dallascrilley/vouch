@@ -439,7 +439,9 @@ async function fetchJson(url: string, allow404 = false): Promise<unknown> {
     return null;
   }
   if (!response.ok) {
-    throw new Error(`${url} failed: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `${url} failed: ${response.status} ${await response.text()}`
+    );
   }
   return response.json();
 }

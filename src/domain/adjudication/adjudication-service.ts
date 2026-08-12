@@ -47,7 +47,9 @@ export class AdjudicationService {
     const reviewTasks = await this.reviewTaskRepository.findByJobId(job.jobId);
     const reviewTask = reviewTasks.at(0);
     const responses = reviewTask
-      ? await this.responseRepository.findByReviewTaskId(reviewTask.reviewTaskId)
+      ? await this.responseRepository.findByReviewTaskId(
+          reviewTask.reviewTaskId
+        )
       : [];
     const providerIds = [
       ...new Set(
@@ -59,21 +61,29 @@ export class AdjudicationService {
     const providerResponseIds = responses
       .map((response) => response.providerResponseId)
       .filter((value): value is string => Boolean(value));
-    const criterionOutcomes = responses.flatMap((response) => response.criterionResults);
+    const criterionOutcomes = responses.flatMap(
+      (response) => response.criterionResults
+    );
     const maxSeverity = this.maxSeverity(responses);
-    const defectCategory = responses.find((response) => response.defectCategory !== "none")?.defectCategory;
+    const defectCategory = responses.find(
+      (response) => response.defectCategory !== "none"
+    )?.defectCategory;
     const providerSummary =
       providerIds.length > 0
         ? `Adjudication considered provider receipts from ${providerIds.join(", ")}`
         : undefined;
 
     await this.transactionManager.inTransaction(async () => {
-      await this.ledgerService.recordStateTransition(job.state, "adjudication_required", {
-        correlationId: caseFile.adjudicationId,
-        jobId: job.jobId,
-        payloadHash: caseFile.adjudicationId,
-        policyVersion: "v1"
-      });
+      await this.ledgerService.recordStateTransition(
+        job.state,
+        "adjudication_required",
+        {
+          correlationId: caseFile.adjudicationId,
+          jobId: job.jobId,
+          payloadHash: caseFile.adjudicationId,
+          policyVersion: "v1"
+        }
+      );
 
       job.state = "adjudication_required";
       await this.jobService.save(job);
@@ -85,13 +95,17 @@ export class AdjudicationService {
       });
       await this.consensusRepository.markAdjudicated(job.jobId);
 
-      const verdict = await this.verdictService.finalize(job, this.toFinalVerdict(decision), {
-        adjudicationSummary: providerSummary ?? caseFile.decisionNotes,
-        criterionOutcomes,
-        humanConsensusSummary: providerSummary,
-        maxSeverity,
-        retryRecommendation: decision === "retry" ? "retry" : undefined
-      });
+      const verdict = await this.verdictService.finalize(
+        job,
+        this.toFinalVerdict(decision),
+        {
+          adjudicationSummary: providerSummary ?? caseFile.decisionNotes,
+          criterionOutcomes,
+          humanConsensusSummary: providerSummary,
+          maxSeverity,
+          retryRecommendation: decision === "retry" ? "retry" : undefined
+        }
+      );
       await this.feedbackService.emit(job, verdict, {
         defectCategory,
         humanAnnotations: providerResponseIds,

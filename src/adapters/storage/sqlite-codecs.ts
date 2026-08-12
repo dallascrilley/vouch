@@ -4,7 +4,10 @@ export function toTimestamp(value: Date | undefined) {
 
 export function deserializeJson<T>(value: string): T {
   const parsed: unknown = JSON.parse(value, (_key, currentValue: unknown) => {
-    if (typeof currentValue === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(currentValue)) {
+    if (
+      typeof currentValue === "string" &&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(currentValue)
+    ) {
       const date = new Date(currentValue);
       if (!Number.isNaN(date.getTime())) {
         return date;

@@ -3,7 +3,11 @@ import type {
   FinalVerdictRepository,
   VerdictLedgerRepository
 } from "./repositories.js";
-import type { AgentFeedbackSignal, FinalVerdict, VerdictLedgerEvent } from "../../domain/feedback/models.js";
+import type {
+  AgentFeedbackSignal,
+  FinalVerdict,
+  VerdictLedgerEvent
+} from "../../domain/feedback/models.js";
 import { deserializeJson, serializeJson } from "./sqlite-codecs.js";
 import type { SQLiteRuntimeStore } from "./sqlite-runtime-store.js";
 
@@ -17,7 +21,9 @@ export class SQLiteFinalVerdictRepository implements FinalVerdictRepository {
       .prepare("SELECT payload_json FROM final_verdicts WHERE job_id = ?")
       .get(jobId) as Row | undefined;
 
-    return Promise.resolve(row ? deserializeJson<FinalVerdict>(row.payload_json) : null);
+    return Promise.resolve(
+      row ? deserializeJson<FinalVerdict>(row.payload_json) : null
+    );
   }
 
   save(verdict: FinalVerdict) {
@@ -42,7 +48,9 @@ export class SQLiteAgentFeedbackRepository implements AgentFeedbackRepository {
       .prepare("SELECT payload_json FROM feedback_signals WHERE job_id = ?")
       .get(jobId) as Row | undefined;
 
-    return Promise.resolve(row ? deserializeJson<AgentFeedbackSignal>(row.payload_json) : null);
+    return Promise.resolve(
+      row ? deserializeJson<AgentFeedbackSignal>(row.payload_json) : null
+    );
   }
 
   save(signal: AgentFeedbackSignal) {
@@ -69,16 +77,25 @@ export class SQLiteVerdictLedgerRepository implements VerdictLedgerRepository {
          VALUES (?, ?, ?, ?)
          ON CONFLICT(event_id) DO NOTHING`
       )
-      .run(event.eventId, event.jobId, event.occurredAt.toISOString(), serializeJson(event));
+      .run(
+        event.eventId,
+        event.jobId,
+        event.occurredAt.toISOString(),
+        serializeJson(event)
+      );
 
     return Promise.resolve();
   }
 
   listByJobId(jobId: string) {
     const rows = this.store.db
-      .prepare("SELECT payload_json FROM ledger_events WHERE job_id = ? ORDER BY occurred_at, rowid")
+      .prepare(
+        "SELECT payload_json FROM ledger_events WHERE job_id = ? ORDER BY occurred_at, rowid"
+      )
       .all(jobId) as Row[];
 
-    return Promise.resolve(rows.map((row) => deserializeJson<VerdictLedgerEvent>(row.payload_json)));
+    return Promise.resolve(
+      rows.map((row) => deserializeJson<VerdictLedgerEvent>(row.payload_json))
+    );
   }
 }

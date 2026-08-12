@@ -1,5 +1,8 @@
 import type { HumanResponse } from "./models.js";
-import type { HumanResponseRepository, HumanReviewTaskRepository } from "../../adapters/storage/repositories.js";
+import type {
+  HumanResponseRepository,
+  HumanReviewTaskRepository
+} from "../../adapters/storage/repositories.js";
 import type { TransactionManager } from "../../adapters/storage/transaction-manager.js";
 import type { JobService } from "../jobs/job-service.js";
 import type { LedgerService } from "../ledger/ledger-service.js";
@@ -22,7 +25,9 @@ export class ResponseValidationService {
       throw new Error("At least one criterion result is required");
     }
 
-    const reviewTask = await this.reviewTaskRepository.findById(response.reviewTaskId);
+    const reviewTask = await this.reviewTaskRepository.findById(
+      response.reviewTaskId
+    );
     if (!reviewTask) {
       throw new Error(`Human review task not found: ${response.reviewTaskId}`);
     }
@@ -36,12 +41,16 @@ export class ResponseValidationService {
       // Additional responses for a task that already moved the job into
       // human_responses_received are appended without a self-transition.
       if (job.state !== "human_responses_received") {
-        await this.ledgerService.recordStateTransition(job.state, "human_responses_received", {
-          correlationId: response.responseId,
-          jobId: job.jobId,
-          payloadHash: response.responseId,
-          policyVersion: "v1"
-        });
+        await this.ledgerService.recordStateTransition(
+          job.state,
+          "human_responses_received",
+          {
+            correlationId: response.responseId,
+            jobId: job.jobId,
+            payloadHash: response.responseId,
+            policyVersion: "v1"
+          }
+        );
 
         job.state = "human_responses_received";
         await this.jobService.save(job);

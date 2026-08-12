@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { buildProviderTestApp, createProviderEligibleJob } from "../helpers/provider-test-app.js";
+import {
+  buildProviderTestApp,
+  createProviderEligibleJob
+} from "../helpers/provider-test-app.js";
 
 type CallbackBody = {
   auto_advanced: boolean;
@@ -24,7 +27,10 @@ async function createProviderTask(app: FastifyInstance, jobId: string) {
       task_template: "provider-template"
     }
   });
-  return taskResponse.json<{ provider_task_id: string; review_task_id: string }>();
+  return taskResponse.json<{
+    provider_task_id: string;
+    review_task_id: string;
+  }>();
 }
 
 function callbackPayload(
@@ -40,7 +46,8 @@ function callbackPayload(
   return {
     provider_id: "real-provider",
     provider_task_id: providerTaskId,
-    provider_response_id: overrides.provider_response_id ?? `response-${crypto.randomUUID()}`,
+    provider_response_id:
+      overrides.provider_response_id ?? `response-${crypto.randomUUID()}`,
     reviewer_pseudonymous_id: "provider-reviewer",
     overall_verdict: overrides.overall_verdict ?? "unclear",
     criterion_results: [
@@ -99,7 +106,10 @@ describe("provider pairwise tie-break", () => {
     const secondBody = secondCallback.json<CallbackBody>();
 
     expect(secondCallback.statusCode).toBe(202);
-    expect(secondBody).toMatchObject({ auto_advanced: false, pairwise_queued: true });
+    expect(secondBody).toMatchObject({
+      auto_advanced: false,
+      pairwise_queued: true
+    });
     expect(secondBody.pairwise_review_task_id).toBeTruthy();
     expect(secondBody.pairwise_provider_task_id).toBeTruthy();
 
@@ -116,7 +126,9 @@ describe("provider pairwise tie-break", () => {
     });
     const body = inspection.json<{ ledger: Array<{ eventType: string }> }>();
     expect(
-      body.ledger.some((event) => event.eventType === "verification.provider.pairwise_queued")
+      body.ledger.some(
+        (event) => event.eventType === "verification.provider.pairwise_queued"
+      )
     ).toBe(true);
   });
 
@@ -142,7 +154,8 @@ describe("provider pairwise tie-break", () => {
         severity: "S4"
       })
     });
-    const pairwiseProviderTaskId = splitCallback.json<CallbackBody>().pairwise_provider_task_id;
+    const pairwiseProviderTaskId =
+      splitCallback.json<CallbackBody>().pairwise_provider_task_id;
     expect(pairwiseProviderTaskId).toBeTruthy();
 
     const tieBreakCallback = await app.inject({
@@ -196,7 +209,10 @@ describe("provider pairwise tie-break", () => {
     });
     const severeBody = severeCallback.json<CallbackBody>();
 
-    expect(severeBody).toMatchObject({ auto_advanced: false, pairwise_queued: false });
+    expect(severeBody).toMatchObject({
+      auto_advanced: false,
+      pairwise_queued: false
+    });
 
     // The severe-minority path stays on manual consensus -> adjudication.
     const consensusResponse = await app.inject({

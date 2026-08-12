@@ -9,6 +9,10 @@ export class ProviderCapabilityRegistry {
   }
 
   findForPool(pool: ReviewerPoolType) {
-    return this.profiles.find((profile) => profile.supportedPoolTypes.includes(pool)) ?? null;
+    return (
+      this.profiles.find((profile) =>
+        profile.supportedPoolTypes.includes(pool)
+      ) ?? null
+    );
   }
 }

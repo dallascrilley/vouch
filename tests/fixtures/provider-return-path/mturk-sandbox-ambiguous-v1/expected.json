@@ -17,7 +17,12 @@
   },
   "ledger": {
     "contains_event_types": [],
-    "contains_states": ["human_responses_received", "consensus_running", "adjudication_required", "agent_retry_requested"],
+    "contains_states": [
+      "human_responses_received",
+      "consensus_running",
+      "adjudication_required",
+      "agent_retry_requested"
+    ],
     "min_event_count": 3
   }
 }

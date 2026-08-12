@@ -16,13 +16,19 @@ export async function startWorkers() {
   await app.ready();
 
   const queueStore = app.services.queueStore;
-  const recoveredClaims = await queueStore.requeueExpired(config.queueClaimTtlSeconds, new Date());
+  const recoveredClaims = await queueStore.requeueExpired(
+    config.queueClaimTtlSeconds,
+    new Date()
+  );
   let processedClaims = 0;
   let failedClaims = 0;
 
   if (config.localProviderMode === "simulated") {
     while (true) {
-      const claim = await queueStore.claimNext(localQueueJobNames.providerDispatch, new Date());
+      const claim = await queueStore.claimNext(
+        localQueueJobNames.providerDispatch,
+        new Date()
+      );
       if (!claim) {
         break;
       }
@@ -44,7 +50,11 @@ export async function startWorkers() {
         // Do not let one bad message abort the whole drain. Dead-letter once the
         // retry budget is spent; otherwise leave it claimed for requeueExpired.
         app.log.error(
-          { claimId: claim.claimId, attemptCount: claim.attemptCount, err: error },
+          {
+            claimId: claim.claimId,
+            attemptCount: claim.attemptCount,
+            err: error
+          },
           "provider dispatch claim failed"
         );
         if (claim.attemptCount >= MAX_CLAIM_ATTEMPTS) {
@@ -105,7 +115,10 @@ export async function runWorkerLoop(pollIntervalMs = 1000) {
     while (!stopping) {
       let drained = 0;
       if (config.localProviderMode === "simulated") {
-        const claim = await queueStore.claimNext(localQueueJobNames.providerDispatch, new Date());
+        const claim = await queueStore.claimNext(
+          localQueueJobNames.providerDispatch,
+          new Date()
+        );
         if (claim) {
           drained += 1;
           try {
@@ -114,15 +127,21 @@ export async function runWorkerLoop(pollIntervalMs = 1000) {
               app.services.responseValidationService,
               reviewTask
             );
-            await app.services.providerWorkflowService.maybeAutoAdvanceAfterIngest({
-              deduplicated: false,
-              response: simulated,
-              reviewTaskId: reviewTask.reviewTaskId
-            });
+            await app.services.providerWorkflowService.maybeAutoAdvanceAfterIngest(
+              {
+                deduplicated: false,
+                response: simulated,
+                reviewTaskId: reviewTask.reviewTaskId
+              }
+            );
             await queueStore.markCompleted(claim.claimId);
           } catch (error) {
             app.log.error(
-              { claimId: claim.claimId, attemptCount: claim.attemptCount, err: error },
+              {
+                claimId: claim.claimId,
+                attemptCount: claim.attemptCount,
+                err: error
+              },
               "provider dispatch claim failed"
             );
             if (claim.attemptCount >= MAX_CLAIM_ATTEMPTS) {

@@ -128,9 +128,7 @@ export class SQLiteProviderTaskMappingRepository implements ProviderTaskMappingR
   }
 }
 
-export class SQLiteProviderResponseReceiptRepository
-  implements ProviderResponseReceiptRepository
-{
+export class SQLiteProviderResponseReceiptRepository implements ProviderResponseReceiptRepository {
   constructor(private readonly store: SQLiteProviderStateStore) {}
 
   findByDedupeKey(dedupeKey: string) {

@@ -4,8 +4,14 @@ import type {
   HumanResponseRepository,
   HumanReviewTaskRepository
 } from "./repositories.js";
-import type { AdjudicationCase, ConsensusResult } from "../../domain/consensus/models.js";
-import type { HumanResponse, HumanReviewTask } from "../../domain/human-review/models.js";
+import type {
+  AdjudicationCase,
+  ConsensusResult
+} from "../../domain/consensus/models.js";
+import type {
+  HumanResponse,
+  HumanReviewTask
+} from "../../domain/human-review/models.js";
 import { deserializeJson, serializeJson } from "./sqlite-codecs.js";
 import type { SQLiteRuntimeStore } from "./sqlite-runtime-store.js";
 
@@ -16,18 +22,26 @@ export class SQLiteHumanReviewTaskRepository implements HumanReviewTaskRepositor
 
   findById(reviewTaskId: string) {
     const row = this.store.db
-      .prepare("SELECT payload_json FROM human_review_tasks WHERE review_task_id = ?")
+      .prepare(
+        "SELECT payload_json FROM human_review_tasks WHERE review_task_id = ?"
+      )
       .get(reviewTaskId) as Row | undefined;
 
-    return Promise.resolve(row ? deserializeJson<HumanReviewTask>(row.payload_json) : null);
+    return Promise.resolve(
+      row ? deserializeJson<HumanReviewTask>(row.payload_json) : null
+    );
   }
 
   findByJobId(jobId: string) {
     const rows = this.store.db
-      .prepare("SELECT payload_json FROM human_review_tasks WHERE job_id = ? ORDER BY review_task_id")
+      .prepare(
+        "SELECT payload_json FROM human_review_tasks WHERE job_id = ? ORDER BY review_task_id"
+      )
       .all(jobId) as Row[];
 
-    return Promise.resolve(rows.map((row) => deserializeJson<HumanReviewTask>(row.payload_json)));
+    return Promise.resolve(
+      rows.map((row) => deserializeJson<HumanReviewTask>(row.payload_json))
+    );
   }
 
   save(task: HumanReviewTask) {
@@ -50,10 +64,14 @@ export class SQLiteHumanResponseRepository implements HumanResponseRepository {
 
   findByReviewTaskId(reviewTaskId: string) {
     const rows = this.store.db
-      .prepare("SELECT payload_json FROM human_responses WHERE review_task_id = ? ORDER BY response_id")
+      .prepare(
+        "SELECT payload_json FROM human_responses WHERE review_task_id = ? ORDER BY response_id"
+      )
       .all(reviewTaskId) as Row[];
 
-    return Promise.resolve(rows.map((row) => deserializeJson<HumanResponse>(row.payload_json)));
+    return Promise.resolve(
+      rows.map((row) => deserializeJson<HumanResponse>(row.payload_json))
+    );
   }
 
   save(response: HumanResponse) {
@@ -79,7 +97,9 @@ export class SQLiteConsensusResultRepository implements ConsensusResultRepositor
       .prepare("SELECT payload_json FROM consensus_results WHERE job_id = ?")
       .get(jobId) as Row | undefined;
 
-    return Promise.resolve(row ? deserializeJson<ConsensusResult>(row.payload_json) : null);
+    return Promise.resolve(
+      row ? deserializeJson<ConsensusResult>(row.payload_json) : null
+    );
   }
 
   markAdjudicated(jobId: string) {
@@ -92,7 +112,8 @@ export class SQLiteConsensusResultRepository implements ConsensusResultRepositor
     }
 
     const result = deserializeJson<ConsensusResult>(current.payload_json);
-    result.adjudicationTrigger = result.adjudicationTrigger ?? "manual_adjudication";
+    result.adjudicationTrigger =
+      result.adjudicationTrigger ?? "manual_adjudication";
     return this.save(result);
   }
 
@@ -118,7 +139,9 @@ export class SQLiteAdjudicationCaseRepository implements AdjudicationCaseReposit
       .prepare("SELECT payload_json FROM adjudication_cases WHERE job_id = ?")
       .get(jobId) as Row | undefined;
 
-    return Promise.resolve(row ? deserializeJson<AdjudicationCase>(row.payload_json) : null);
+    return Promise.resolve(
+      row ? deserializeJson<AdjudicationCase>(row.payload_json) : null
+    );
   }
 
   save(caseFile: AdjudicationCase) {

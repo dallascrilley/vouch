@@ -73,7 +73,9 @@ type BuildAppOptions = {
 };
 
 class InMemoryProviderConfigRepository implements ProviderConfigRepository {
-  constructor(private readonly configs = new Map<string, ProviderAdapterConfig>()) {}
+  constructor(
+    private readonly configs = new Map<string, ProviderAdapterConfig>()
+  ) {}
 
   get(providerId: string) {
     return Promise.resolve(this.configs.get(providerId) ?? null);
@@ -91,7 +93,9 @@ class InMemoryProviderTaskMappingRepository implements ProviderTaskMappingReposi
 
   findByProviderTaskId(providerTaskId: string) {
     const reviewTaskId = this.taskIds.get(providerTaskId);
-    return Promise.resolve(reviewTaskId ? this.mappings.get(reviewTaskId) ?? null : null);
+    return Promise.resolve(
+      reviewTaskId ? (this.mappings.get(reviewTaskId) ?? null) : null
+    );
   }
 
   findByReviewTaskId(reviewTaskId: string) {
@@ -105,9 +109,7 @@ class InMemoryProviderTaskMappingRepository implements ProviderTaskMappingReposi
   }
 }
 
-class InMemoryProviderResponseReceiptRepository
-  implements ProviderResponseReceiptRepository
-{
+class InMemoryProviderResponseReceiptRepository implements ProviderResponseReceiptRepository {
   private readonly receipts = new Map<string, ProviderResponseReceipt>();
 
   findByDedupeKey(dedupeKey: string) {
@@ -172,7 +174,9 @@ function resolveConfig(input?: RuntimeConfig | BuildAppOptions): {
   };
 }
 
-export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstance {
+export function buildApp(
+  input?: RuntimeConfig | BuildAppOptions
+): FastifyInstance {
   const { config, env, fetchImpl } = resolveConfig(input);
   validateRuntimeConfig(config);
 
@@ -271,16 +275,22 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
 
   const providerConfigRepository = new InMemoryProviderConfigRepository();
   void providerConfigRepository.save(providerConfig);
-  const providerConfigService = new ProviderConfigService(providerConfigRepository);
+  const providerConfigService = new ProviderConfigService(
+    providerConfigRepository
+  );
 
   let providerStateStore: SQLiteProviderStateStore | undefined;
-  const providerMappingRepository: ProviderTaskMappingRepository = config.providerStateDbPath
-    ? ((providerStateStore = new SQLiteProviderStateStore(config.providerStateDbPath)),
-      new SQLiteProviderTaskMappingRepository(providerStateStore))
-    : new InMemoryProviderTaskMappingRepository();
-  const providerReceiptRepository: ProviderResponseReceiptRepository = providerStateStore
-    ? new SQLiteProviderResponseReceiptRepository(providerStateStore)
-    : new InMemoryProviderResponseReceiptRepository();
+  const providerMappingRepository: ProviderTaskMappingRepository =
+    config.providerStateDbPath
+      ? ((providerStateStore = new SQLiteProviderStateStore(
+          config.providerStateDbPath
+        )),
+        new SQLiteProviderTaskMappingRepository(providerStateStore))
+      : new InMemoryProviderTaskMappingRepository();
+  const providerReceiptRepository: ProviderResponseReceiptRepository =
+    providerStateStore
+      ? new SQLiteProviderResponseReceiptRepository(providerStateStore)
+      : new InMemoryProviderResponseReceiptRepository();
 
   const providerMappingService = new ProviderTaskMappingService(
     providerMappingRepository,
@@ -351,7 +361,9 @@ export function buildApp(input?: RuntimeConfig | BuildAppOptions): FastifyInstan
       local_provider_mode: config.localProviderMode,
       provider_enabled: providerConfig.enabled,
       provider_id: providerConfig.providerId,
-      required_companion: providerConfig.enabled ? "dispatch worker (npm run dev:worker)" : null,
+      required_companion: providerConfig.enabled
+        ? "dispatch worker (npm run dev:worker)"
+        : null,
       status: "ok"
     };
   });

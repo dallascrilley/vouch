@@ -42,7 +42,8 @@ describe("US2 provider simulation", () => {
             criticality: "critical",
             criterion_id: "provider-sim",
             evidence_requirements: ["screenshot"],
-            human_visible_text: "The provider simulation should return a response"
+            human_visible_text:
+              "The provider simulation should return a response"
           }
         ],
         budget_policy: {
@@ -135,10 +136,12 @@ describe("US2 provider simulation", () => {
 
     // The worker auto-advances a unanimous simulated response all the way to a
     // final verdict, so `npm run review --wait` is never left polling forever.
-    expect(inspectionResponse.json<{ job: { state: string } }>()).toMatchObject({
-      job: {
-        state: "final_pass"
+    expect(inspectionResponse.json<{ job: { state: string } }>()).toMatchObject(
+      {
+        job: {
+          state: "final_pass"
+        }
       }
-    });
+    );
   });
 });

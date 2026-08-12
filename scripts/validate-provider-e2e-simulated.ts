@@ -43,7 +43,12 @@ async function main() {
         deadline_at: "2026-06-01T00:00:00.000Z",
         idempotency_key: `sim-e2e-${Date.now()}`,
         risk_tier: "medium",
-        source: { repository: "repo", commit: "local", environment: "local", route: "/e2e" }
+        source: {
+          repository: "repo",
+          commit: "local",
+          environment: "local",
+          route: "/e2e"
+        }
       }
     });
     const jobId = json<{ job_id: string }>(create).job_id;
@@ -63,7 +68,12 @@ async function main() {
             }
           ],
           artifact_quality: "sufficient",
-          environment: { repository: "repo", commit: "local", environment: "local", route: "/e2e" }
+          environment: {
+            repository: "repo",
+            commit: "local",
+            environment: "local",
+            route: "/e2e"
+          }
         }
       ],
       [
@@ -111,7 +121,9 @@ async function main() {
         provider_response_id: `sim-${Date.now()}`,
         reviewer_pseudonymous_id: "sim-reviewer",
         overall_verdict: "pass",
-        criterion_results: [{ criterion_id: "e2e-check", status: "pass", confidence: "high" }],
+        criterion_results: [
+          { criterion_id: "e2e-check", status: "pass", confidence: "high" }
+        ],
         defect_category: "none",
         evidence_note: "Simulated pass",
         severity: "S4",
@@ -131,7 +143,9 @@ async function main() {
       throw new Error(`callback did not auto-advance: ${callback.body}`);
     }
     if (feedbackBody.final_verdict !== "pass") {
-      throw new Error(`expected pass verdict, got ${JSON.stringify(feedbackBody)}`);
+      throw new Error(
+        `expected pass verdict, got ${JSON.stringify(feedbackBody)}`
+      );
     }
 
     console.log(

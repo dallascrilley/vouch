@@ -27,11 +27,18 @@ export class FeedbackService {
       feedbackId: `feedback_${job.jobId}`,
       jobId: job.jobId,
       finalVerdict: verdict.finalVerdict,
-      agentNextAction: deriveAgentNextActionFromVerdict(verdict.finalVerdict, options.retryAllowed),
+      agentNextAction: deriveAgentNextActionFromVerdict(
+        verdict.finalVerdict,
+        options.retryAllowed
+      ),
       failedCriteria: verdict.criterionOutcomes
-        .filter((criterion) => criterion.status === "fail" || criterion.status === "unclear")
+        .filter(
+          (criterion) =>
+            criterion.status === "fail" || criterion.status === "unclear"
+        )
         .map((criterion) => criterion.criterionId),
-      severity: verdict.maxSeverity === "none" ? undefined : verdict.maxSeverity,
+      severity:
+        verdict.maxSeverity === "none" ? undefined : verdict.maxSeverity,
       defectCategory: options.defectCategory,
       evidencePointers: verdict.evidenceRefs,
       humanAnnotations: options.humanAnnotations ?? [],

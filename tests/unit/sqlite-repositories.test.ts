@@ -68,7 +68,8 @@ describe("sqlite repositories", () => {
 
     const second = createSQLiteRuntimeRepositories(databasePath);
     const persistedJob = await second.jobRepository.findById("job-1");
-    const persistedVerdict = await second.finalVerdictRepository.findByJobId("job-1");
+    const persistedVerdict =
+      await second.finalVerdictRepository.findByJobId("job-1");
     second.store.close();
 
     expect(persistedJob?.idempotencyKey).toBe("same-key");
@@ -88,15 +89,24 @@ describe("sqlite repositories", () => {
       claimId: "claim-1",
       jobId: "job-1",
       jobName: "self-verification",
-      payloadJson: "{\"jobId\":\"job-1\"}",
+      payloadJson: '{"jobId":"job-1"}',
       state: "queued"
     });
 
-    const claimed = await queueStore.claimNext("self-verification", new Date("2026-06-01T00:00:10.000Z"));
+    const claimed = await queueStore.claimNext(
+      "self-verification",
+      new Date("2026-06-01T00:00:10.000Z")
+    );
     expect(claimed?.state).toBe("claimed");
 
-    const requeued = await queueStore.requeueExpired(5, new Date("2026-06-01T00:00:20.000Z"));
-    const reclaimed = await queueStore.claimNext("self-verification", new Date("2026-06-01T00:00:21.000Z"));
+    const requeued = await queueStore.requeueExpired(
+      5,
+      new Date("2026-06-01T00:00:20.000Z")
+    );
+    const reclaimed = await queueStore.claimNext(
+      "self-verification",
+      new Date("2026-06-01T00:00:21.000Z")
+    );
     repositories.store.close();
 
     expect(requeued).toBe(1);

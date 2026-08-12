@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { buildProviderTestApp, createProviderEligibleJob } from "../helpers/provider-test-app.js";
+import {
+  buildProviderTestApp,
+  createProviderEligibleJob
+} from "../helpers/provider-test-app.js";
 
 async function createProviderTask(app: FastifyInstance, jobId: string) {
   const taskResponse = await app.inject({
@@ -17,7 +20,10 @@ async function createProviderTask(app: FastifyInstance, jobId: string) {
       task_template: "provider-template"
     }
   });
-  return taskResponse.json<{ provider_task_id: string; review_task_id: string }>();
+  return taskResponse.json<{
+    provider_task_id: string;
+    review_task_id: string;
+  }>();
 }
 
 function callbackPayload(
@@ -124,8 +130,9 @@ describe("stuck-state subscription API", () => {
         severity: "S4"
       })
     });
-    const pairwiseReviewTaskId = splitCallback.json<{ pairwise_review_task_id: string }>()
-      .pairwise_review_task_id;
+    const pairwiseReviewTaskId = splitCallback.json<{
+      pairwise_review_task_id: string;
+    }>().pairwise_review_task_id;
 
     const stuckResponse = await app.inject({
       method: "GET",

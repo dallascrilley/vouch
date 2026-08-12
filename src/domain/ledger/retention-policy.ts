@@ -13,6 +13,9 @@ const retentionDays: Record<RetentionCategory, number> = {
   "aggregate-metrics": 365
 };
 
-export function computeRetentionExpiry(category: RetentionCategory, createdAt: Date) {
+export function computeRetentionExpiry(
+  category: RetentionCategory,
+  createdAt: Date
+) {
   return new Date(createdAt.getTime() + retentionDays[category] * dayInMs);
 }

@@ -25,13 +25,19 @@ export class ArtifactService {
     }
 
     await this.transactionManager.inTransaction(async () => {
-      await this.ledgerService.recordStateTransition(job.state, "artifacts_collected", {
-        artifactHashes: manifest.rawArtifacts.map((artifact) => artifact.contentHash),
-        correlationId: manifest.manifestId,
-        jobId: job.jobId,
-        payloadHash: manifest.manifestId,
-        policyVersion: "v1"
-      });
+      await this.ledgerService.recordStateTransition(
+        job.state,
+        "artifacts_collected",
+        {
+          artifactHashes: manifest.rawArtifacts.map(
+            (artifact) => artifact.contentHash
+          ),
+          correlationId: manifest.manifestId,
+          jobId: job.jobId,
+          payloadHash: manifest.manifestId,
+          policyVersion: "v1"
+        }
+      );
 
       job.state = "artifacts_collected";
       job.artifactManifestId = manifest.manifestId;

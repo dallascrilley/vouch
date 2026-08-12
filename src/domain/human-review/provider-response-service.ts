@@ -28,9 +28,13 @@ export class ProviderResponseService {
   ) {}
 
   async ingest(payload: ProviderCallbackPayload) {
-    const mapping = await this.mappingService.findByProviderTaskId(payload.provider_task_id);
+    const mapping = await this.mappingService.findByProviderTaskId(
+      payload.provider_task_id
+    );
     if (!mapping) {
-      throw new Error(`Provider task mapping not found: ${payload.provider_task_id}`);
+      throw new Error(
+        `Provider task mapping not found: ${payload.provider_task_id}`
+      );
     }
 
     // Reconcile the claimed provider identity against the mapping so a caller
@@ -51,7 +55,8 @@ export class ProviderResponseService {
       receivedAt: new Date(),
       dedupeKey
     };
-    const { receipt: storedReceipt, deduplicated } = await this.mappingService.recordReceipt(receipt);
+    const { receipt: storedReceipt, deduplicated } =
+      await this.mappingService.recordReceipt(receipt);
 
     // Replayed callbacks (same provider_id:provider_response_id) must not be
     // reprocessed — that would create duplicate responses and duplicate ledger
@@ -70,7 +75,8 @@ export class ProviderResponseService {
       reviewTaskId: mapping.reviewTaskId,
       providerId: payload.provider_id,
       providerResponseId: payload.provider_response_id,
-      providerAssignmentRef: payload.provider_assignment_ref ?? mapping.providerAssignmentScope,
+      providerAssignmentRef:
+        payload.provider_assignment_ref ?? mapping.providerAssignmentScope,
       reviewerPseudonymousId: payload.reviewer_pseudonymous_id,
       overallVerdict: payload.overall_verdict,
       criterionResults: payload.criterion_results.map((criterion) => ({

@@ -1,5 +1,8 @@
 import { loadDefaultProviderConfig } from "../src/config/policies.js";
-import { buildLocalProviderValidationProfile, validateProviderConfig } from "../src/config/provider-config.js";
+import {
+  buildLocalProviderValidationProfile,
+  validateProviderConfig
+} from "../src/config/provider-config.js";
 
 const config = loadDefaultProviderConfig(process.env);
 const validation = validateProviderConfig(config);

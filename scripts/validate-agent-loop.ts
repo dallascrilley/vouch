@@ -50,7 +50,9 @@ async function waitForHealth(baseUrl: string, timeoutMs: number) {
     }
     await sleep(200);
   }
-  throw new Error(`Broker did not become healthy at ${baseUrl} within ${timeoutMs}ms`);
+  throw new Error(
+    `Broker did not become healthy at ${baseUrl} within ${timeoutMs}ms`
+  );
 }
 
 function sleep(ms: number) {
@@ -94,7 +96,9 @@ async function killProcess(child: ChildProcess | undefined, label: string) {
   if (!child?.pid || child.exitCode !== null) {
     return;
   }
-  const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
+  const exited = new Promise<void>((resolve) =>
+    child.once("exit", () => resolve())
+  );
   signalGroup(child, "SIGTERM");
   const timedOut = await Promise.race([
     exited.then(() => false),
@@ -182,7 +186,9 @@ function parseReviewStdout(stdout: string): ReviewResult {
       }
     }
   }
-  throw new Error(`review CLI stdout did not contain complete JSON:\n${stdout}`);
+  throw new Error(
+    `review CLI stdout did not contain complete JSON:\n${stdout}`
+  );
 }
 
 async function main() {

@@ -11,9 +11,14 @@ export type QueueMessage<TPayload> = {
 };
 
 export interface QueuePublisher {
-  publish<TPayload>(jobName: QueueJobName, message: QueueMessage<TPayload>): Promise<void>;
+  publish<TPayload>(
+    jobName: QueueJobName,
+    message: QueueMessage<TPayload>
+  ): Promise<void>;
 }
 
 export interface QueueWorker<TPayload> {
-  start(handler: (message: QueueMessage<TPayload>) => Promise<void>): Promise<void>;
+  start(
+    handler: (message: QueueMessage<TPayload>) => Promise<void>
+  ): Promise<void>;
 }

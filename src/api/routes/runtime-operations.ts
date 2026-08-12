@@ -35,7 +35,8 @@ export function authorizeOperator(
   if (!expected) {
     if (app.services.runtimeConfig.nodeEnv === "production") {
       reply.code(503).send({
-        message: "Runtime inspection is disabled: set RUNTIME_OPERATOR_TOKEN to enable it"
+        message:
+          "Runtime inspection is disabled: set RUNTIME_OPERATOR_TOKEN to enable it"
       });
       return false;
     }
@@ -63,44 +64,67 @@ export function registerRuntimeOperationsRoutes(app: FastifyInstance) {
     };
   });
 
-  app.get<{ Params: { jobId: string } }>("/runtime/inspection/jobs/:jobId", async (request, reply) => {
-    if (!authorizeOperator(app, request, reply)) {
-      return reply;
-    }
+  app.get<{ Params: { jobId: string } }>(
+    "/runtime/inspection/jobs/:jobId",
+    async (request, reply) => {
+      if (!authorizeOperator(app, request, reply)) {
+        return reply;
+      }
 
-    app.services.metrics.increment("broker.runtime.inspection_job.requests");
+      app.services.metrics.increment("broker.runtime.inspection_job.requests");
 
-    const { jobId } = request.params;
-    const job = await app.services.jobService.get(jobId);
+      const { jobId } = request.params;
+      const job = await app.services.jobService.get(jobId);
 
-    if (!job) {
-      return reply.code(404).send({ message: "Job not found" });
-    }
+      if (!job) {
+        return reply.code(404).send({ message: "Job not found" });
+      }
 
-    const [privacy, selfVerification, reviewTasks, consensus, adjudication, verdict, feedback, ledger] =
-      await Promise.all([
-        app.services.runtimeRepositories.privacyClassificationRepository.findByJobId(jobId),
-        app.services.runtimeRepositories.selfVerificationResultRepository.findByJobId(jobId),
-        app.services.runtimeRepositories.humanReviewTaskRepository.findByJobId(jobId),
-        app.services.runtimeRepositories.consensusResultRepository.findByJobId(jobId),
-        app.services.runtimeRepositories.adjudicationCaseRepository.findByJobId(jobId),
-        app.services.runtimeRepositories.finalVerdictRepository.findByJobId(jobId),
+      const [
+        privacy,
+        selfVerification,
+        reviewTasks,
+        consensus,
+        adjudication,
+        verdict,
+        feedback,
+        ledger
+      ] = await Promise.all([
+        app.services.runtimeRepositories.privacyClassificationRepository.findByJobId(
+          jobId
+        ),
+        app.services.runtimeRepositories.selfVerificationResultRepository.findByJobId(
+          jobId
+        ),
+        app.services.runtimeRepositories.humanReviewTaskRepository.findByJobId(
+          jobId
+        ),
+        app.services.runtimeRepositories.consensusResultRepository.findByJobId(
+          jobId
+        ),
+        app.services.runtimeRepositories.adjudicationCaseRepository.findByJobId(
+          jobId
+        ),
+        app.services.runtimeRepositories.finalVerdictRepository.findByJobId(
+          jobId
+        ),
         app.services.runtimeRepositories.feedbackRepository.findByJobId(jobId),
         app.services.runtimeRepositories.ledgerRepository.listByJobId(jobId)
       ]);
 
-    return {
-      adjudication,
-      consensus,
-      feedback,
-      job,
-      ledger,
-      privacy,
-      review_tasks: reviewTasks,
-      self_verification: selfVerification,
-      verdict
-    };
-  });
+      return {
+        adjudication,
+        consensus,
+        feedback,
+        job,
+        ledger,
+        privacy,
+        review_tasks: reviewTasks,
+        self_verification: selfVerification,
+        verdict
+      };
+    }
+  );
 
   app.get("/runtime/metrics", (request, reply) => {
     if (!authorizeOperator(app, request, reply)) {

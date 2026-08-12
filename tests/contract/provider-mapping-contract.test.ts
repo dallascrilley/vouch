@@ -12,7 +12,10 @@ describe("provider mapping persistence contract", () => {
   let providerSqlitePath: string;
 
   beforeEach(async () => {
-    providerSqlitePath = join(mkdtempSync(join(tmpdir(), "provider-state-")), "provider-state.sqlite");
+    providerSqlitePath = join(
+      mkdtempSync(join(tmpdir(), "provider-state-")),
+      "provider-state.sqlite"
+    );
     app = buildApp({
       env: {
         ...process.env,
@@ -51,9 +54,10 @@ describe("provider mapping persistence contract", () => {
     });
 
     const payload = taskResponse.json();
-    const mapping = await app.services.providerMappingService.findByProviderTaskId(
-      payload.provider_task_id as string
-    );
+    const mapping =
+      await app.services.providerMappingService.findByProviderTaskId(
+        payload.provider_task_id as string
+      );
 
     expect(payload.dispatch_status).toBe("dispatched");
     expect(mapping).toMatchObject({
@@ -79,13 +83,13 @@ describe("provider mapping persistence contract", () => {
     });
     await app.ready();
 
-    const persisted = await app.services.providerMappingService.findByProviderTaskId(
-      payload.provider_task_id as string
-    );
+    const persisted =
+      await app.services.providerMappingService.findByProviderTaskId(
+        payload.provider_task_id as string
+      );
     expect(persisted).toMatchObject({
       providerId: "real-provider",
       reviewTaskId: payload.review_task_id
     });
   });
 });
-

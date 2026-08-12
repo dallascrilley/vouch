@@ -49,7 +49,12 @@ describe("US2 queue recovery", () => {
         deadline_at: "2026-06-01T00:00:00.000Z",
         idempotency_key: "queue-recovery",
         risk_tier: "low",
-        source: { repository: "repo", commit: "abc123", environment: "local", route: "/queue-recovery" }
+        source: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/queue-recovery"
+        }
       }
     });
     const jobId = create.json<{ job_id: string }>().job_id;
@@ -69,7 +74,12 @@ describe("US2 queue recovery", () => {
           }
         ],
         artifact_quality: "sufficient",
-        environment: { repository: "repo", commit: "abc123", environment: "local", route: "/queue-recovery" }
+        environment: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/queue-recovery"
+        }
       }
     });
     await app.inject({
@@ -100,10 +110,16 @@ describe("US2 queue recovery", () => {
     });
     const reviewTaskId = task.json<{ review_task_id: string }>().review_task_id;
 
-    const claimed = await app.services.queueStore.claimNext(localQueueJobNames.providerDispatch, new Date());
+    const claimed = await app.services.queueStore.claimNext(
+      localQueueJobNames.providerDispatch,
+      new Date()
+    );
     expect(claimed?.jobId).toBe(jobId);
 
-    await app.services.queueStore.requeueExpired(1, new Date((claimed?.claimedAt ?? new Date()).getTime() + 2_000));
+    await app.services.queueStore.requeueExpired(
+      1,
+      new Date((claimed?.claimedAt ?? new Date()).getTime() + 2_000)
+    );
     await app.close();
 
     process.env.RUNTIME_ARTIFACT_ROOT = config.artifactRoot;
@@ -117,9 +133,10 @@ describe("US2 queue recovery", () => {
 
     const restarted = buildApp(config);
     await restarted.ready();
-    const responses = await restarted.services.runtimeRepositories.humanResponseRepository.findByReviewTaskId(
-      reviewTaskId
-    );
+    const responses =
+      await restarted.services.runtimeRepositories.humanResponseRepository.findByReviewTaskId(
+        reviewTaskId
+      );
     await restarted.close();
 
     expect(responses).toHaveLength(1);

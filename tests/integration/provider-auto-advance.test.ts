@@ -1,7 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { buildProviderTestApp, createProviderEligibleJob } from "../helpers/provider-test-app.js";
+import {
+  buildProviderTestApp,
+  createProviderEligibleJob
+} from "../helpers/provider-test-app.js";
 
 describe("provider auto-advance", () => {
   let app: FastifyInstance;
@@ -30,7 +33,10 @@ describe("provider auto-advance", () => {
         task_template: "provider-template"
       }
     });
-    const taskPayload = taskResponse.json<{ provider_task_id: string; review_task_id: string }>();
+    const taskPayload = taskResponse.json<{
+      provider_task_id: string;
+      review_task_id: string;
+    }>();
 
     const callbackResponse = await app.inject({
       method: "POST",
@@ -41,7 +47,9 @@ describe("provider auto-advance", () => {
         provider_response_id: "auto-advance-pass",
         reviewer_pseudonymous_id: "provider-reviewer",
         overall_verdict: "pass",
-        criterion_results: [{ criterion_id: "managed-check", status: "pass", confidence: "high" }],
+        criterion_results: [
+          { criterion_id: "managed-check", status: "pass", confidence: "high" }
+        ],
         defect_category: "none",
         evidence_note: "Pass path should auto-advance.",
         severity: "S4",
@@ -89,7 +97,9 @@ describe("provider auto-advance", () => {
         provider_response_id: "auto-advance-ledger",
         reviewer_pseudonymous_id: "provider-reviewer",
         overall_verdict: "pass",
-        criterion_results: [{ criterion_id: "managed-check", status: "pass", confidence: "high" }],
+        criterion_results: [
+          { criterion_id: "managed-check", status: "pass", confidence: "high" }
+        ],
         defect_category: "none",
         evidence_note: "Pass path should auto-advance.",
         severity: "S4",
@@ -109,9 +119,11 @@ describe("provider auto-advance", () => {
 
     expect(body.consensus).toBeNull();
     expect(body.adjudication).toBeNull();
-    expect(body.ledger.some((event) => event.eventType === "verification.provider.auto_resolved")).toBe(
-      true
-    );
+    expect(
+      body.ledger.some(
+        (event) => event.eventType === "verification.provider.auto_resolved"
+      )
+    ).toBe(true);
   });
 
   it("does not auto-advance unclear callbacks", async () => {
@@ -140,7 +152,13 @@ describe("provider auto-advance", () => {
         provider_response_id: "auto-advance-unclear",
         reviewer_pseudonymous_id: "provider-reviewer",
         overall_verdict: "unclear",
-        criterion_results: [{ criterion_id: "managed-check", status: "unclear", confidence: "medium" }],
+        criterion_results: [
+          {
+            criterion_id: "managed-check",
+            status: "unclear",
+            confidence: "medium"
+          }
+        ],
         defect_category: "layout",
         evidence_note: "Unclear should stay manual.",
         severity: "S2",

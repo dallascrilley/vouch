@@ -116,14 +116,19 @@ async function main() {
   rmSync(runtimeRoot, { force: true, recursive: true });
 
   if (inspection.statusCode !== 200) {
-    throw new Error(`Runtime inspection failed with status ${inspection.statusCode}`);
+    throw new Error(
+      `Runtime inspection failed with status ${inspection.statusCode}`
+    );
   }
 
   const body = inspection.json<{
     job: { state: string };
     verdict?: { finalVerdict: string };
   }>();
-  if (body.job.state !== "final_pass" || body.verdict?.finalVerdict !== "pass") {
+  if (
+    body.job.state !== "final_pass" ||
+    body.verdict?.finalVerdict !== "pass"
+  ) {
     throw new Error("Runtime validation did not persist a final pass verdict");
   }
 

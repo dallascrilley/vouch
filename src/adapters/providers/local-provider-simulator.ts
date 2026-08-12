@@ -1,11 +1,16 @@
-import type { HumanResponse, HumanReviewTask } from "../../domain/human-review/models.js";
+import type {
+  HumanResponse,
+  HumanReviewTask
+} from "../../domain/human-review/models.js";
 
 type SimulatedResponseInput = {
   confidence?: HumanResponse["confidence"];
   reviewTask: HumanReviewTask;
 };
 
-export function simulateProviderResponse(input: SimulatedResponseInput): HumanResponse {
+export function simulateProviderResponse(
+  input: SimulatedResponseInput
+): HumanResponse {
   const now = new Date();
 
   return {
@@ -18,7 +23,8 @@ export function simulateProviderResponse(input: SimulatedResponseInput): HumanRe
       status: "pass"
     })),
     defectCategory: "none",
-    evidenceNote: "Local provider simulation generated a deterministic pass response.",
+    evidenceNote:
+      "Local provider simulation generated a deterministic pass response.",
     overallVerdict: "pass",
     providerId: "local-provider-simulator",
     providerResponseId: `simulated_${input.reviewTask.reviewTaskId}`,

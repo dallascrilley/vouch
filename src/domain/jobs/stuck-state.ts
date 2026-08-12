@@ -52,9 +52,13 @@ export function deriveStuckState(input: {
     };
   }
 
-  const pairwiseTask = reviewTasks.find((task) => task.taskTemplate === PAIRWISE_TASK_TEMPLATE) ?? null;
+  const pairwiseTask =
+    reviewTasks.find((task) => task.taskTemplate === PAIRWISE_TASK_TEMPLATE) ??
+    null;
 
-  if (ledger.some((event) => event.eventType === "verification.budget.blocked")) {
+  if (
+    ledger.some((event) => event.eventType === "verification.budget.blocked")
+  ) {
     return {
       stuck: true,
       stuckReason: "budget_blocked",
@@ -64,7 +68,8 @@ export function deriveStuckState(input: {
   }
 
   const consensusEscalated =
-    job.state === "consensus_running" && Boolean(consensus?.adjudicationTrigger);
+    job.state === "consensus_running" &&
+    Boolean(consensus?.adjudicationTrigger);
 
   if (job.state === "adjudication_required" || consensusEscalated) {
     return {
@@ -84,9 +89,12 @@ export function deriveStuckState(input: {
     };
   }
 
-  const distinctVerdicts = new Set(responses.map((response) => response.overallVerdict));
+  const distinctVerdicts = new Set(
+    responses.map((response) => response.overallVerdict)
+  );
   const hasAmbiguousSignal =
-    responses.some((response) => response.overallVerdict === "unclear") || distinctVerdicts.size > 1;
+    responses.some((response) => response.overallVerdict === "unclear") ||
+    distinctVerdicts.size > 1;
 
   if (responses.length > 0 && hasAmbiguousSignal) {
     return {

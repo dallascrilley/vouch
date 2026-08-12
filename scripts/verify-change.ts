@@ -96,8 +96,7 @@ async function main(): Promise<void> {
   }
 
   const repository =
-    git(["rev-parse", "--show-toplevel"]).split("/").pop() ??
-    "quorum";
+    git(["rev-parse", "--show-toplevel"]).split("/").pop() ?? "quorum";
   const branch = git(["rev-parse", "--abbrev-ref", "HEAD"]) || undefined;
   const commit = git(["rev-parse", "HEAD"]) || "unknown";
   const runId = `${commit.slice(0, 12)}-${Date.now()}`;

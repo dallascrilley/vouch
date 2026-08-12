@@ -99,7 +99,9 @@ describe("US1 fail-closed privacy outcome", () => {
     });
 
     expect(verdictResponse.json().final_verdict).toBe("fail_closed");
-    expect(feedbackResponse.json().policy_constraints).toEqual(["regulated data detected"]);
+    expect(feedbackResponse.json().policy_constraints).toEqual([
+      "regulated data detected"
+    ]);
     expect(jobResponse.json().state).toBe("fail_closed");
   });
 });

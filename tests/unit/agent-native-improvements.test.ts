@@ -74,12 +74,15 @@ describe("agent-native improvements", () => {
       method: "GET",
       url: "/verification-jobs/job-metrics-test/feedback"
     });
-    const metrics = await app.inject({ method: "GET", url: "/runtime/metrics" });
+    const metrics = await app.inject({
+      method: "GET",
+      url: "/runtime/metrics"
+    });
     expect(metrics.statusCode).toBe(200);
     const body: { increments: Array<{ name: string }> } = metrics.json();
-    expect(body.increments.some((entry) => entry.name === "broker.health.requests")).toBe(
-      true
-    );
+    expect(
+      body.increments.some((entry) => entry.name === "broker.health.requests")
+    ).toBe(true);
     await app.close();
   });
 

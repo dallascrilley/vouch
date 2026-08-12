@@ -1,4 +1,7 @@
-import type { ArtifactRef, SanitizedPackageRef } from "../../domain/artifacts/models.js";
+import type {
+  ArtifactRef,
+  SanitizedPackageRef
+} from "../../domain/artifacts/models.js";
 
 export type ArtifactPayload = {
   contentType: string;
@@ -8,6 +11,9 @@ export type ArtifactPayload = {
 export interface ArtifactStore {
   putArtifact(ref: ArtifactRef, payload: ArtifactPayload): Promise<void>;
   getArtifact(artifactId: string): Promise<ArtifactPayload | null>;
-  putSanitizedPackage(ref: SanitizedPackageRef, payload: ArtifactPayload): Promise<void>;
+  putSanitizedPackage(
+    ref: SanitizedPackageRef,
+    payload: ArtifactPayload
+  ): Promise<void>;
   getSanitizedPackage(packageId: string): Promise<ArtifactPayload | null>;
 }

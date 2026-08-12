@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { deliverProviderCallback, isThrottlingErrorMessage, nextPollBackoffMs, type BridgeTaskRecord } from "../../scripts/lib/provider-bridge.js";
+import {
+  deliverProviderCallback,
+  isThrottlingErrorMessage,
+  nextPollBackoffMs,
+  type BridgeTaskRecord
+} from "../../scripts/lib/provider-bridge.js";
 
 describe("provider bridge common helpers", () => {
   it("delivers a mock second-provider callback using the shared retry and receipt state", async () => {
@@ -33,9 +38,11 @@ describe("provider bridge common helpers", () => {
   });
 
   it("detects AWS throttling error messages", () => {
-    expect(isThrottlingErrorMessage("ThrottlingException on list-assignments-for-hit")).toBe(
-      true
-    );
+    expect(
+      isThrottlingErrorMessage(
+        "ThrottlingException on list-assignments-for-hit"
+      )
+    ).toBe(true);
     expect(isThrottlingErrorMessage("connection reset")).toBe(false);
   });
 
@@ -58,7 +65,9 @@ describe("provider bridge common helpers", () => {
   it("marks delivery complete and records delivery lag once all expected assignments are delivered", async () => {
     const task = makeTask();
     const fetchImpl = vi.fn<typeof fetch>(() =>
-      Promise.resolve(new Response(JSON.stringify({ accepted: true }), { status: 202 }))
+      Promise.resolve(
+        new Response(JSON.stringify({ accepted: true }), { status: 202 })
+      )
     );
 
     const result = await deliverProviderCallback({
@@ -85,7 +94,9 @@ describe("provider bridge common helpers", () => {
   it("leaves delivery incomplete while assignments are still expected", async () => {
     const task = makeTask();
     const fetchImpl = vi.fn<typeof fetch>(() =>
-      Promise.resolve(new Response(JSON.stringify({ accepted: true }), { status: 202 }))
+      Promise.resolve(
+        new Response(JSON.stringify({ accepted: true }), { status: 202 })
+      )
     );
 
     await deliverProviderCallback({
@@ -108,7 +119,9 @@ describe("provider bridge common helpers", () => {
 
   it("dead-letters a provider response when broker callback retries are exhausted", async () => {
     const task = makeTask();
-    const fetchImpl = vi.fn<typeof fetch>(() => Promise.resolve(new Response("unavailable", { status: 503 })));
+    const fetchImpl = vi.fn<typeof fetch>(() =>
+      Promise.resolve(new Response("unavailable", { status: 503 }))
+    );
     const save = vi.fn();
 
     const first = await deliverProviderCallback({
@@ -136,8 +149,16 @@ describe("provider bridge common helpers", () => {
       workerId: "mock_worker_123"
     });
 
-    expect(first).toMatchObject({ attempts: 1, deadLettered: false, delivered: false });
-    expect(second).toMatchObject({ attempts: 2, deadLettered: true, delivered: false });
+    expect(first).toMatchObject({
+      attempts: 1,
+      deadLettered: false,
+      delivered: false
+    });
+    expect(second).toMatchObject({
+      attempts: 2,
+      deadLettered: true,
+      delivered: false
+    });
     expect(task.callbackAttempts).toEqual({ mock_response_123: 2 });
     expect(task.deliveredAssignmentIds).toEqual([]);
     expect(task.deadLetterAssignments).toEqual([

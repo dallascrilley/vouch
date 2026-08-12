@@ -16,10 +16,13 @@ export type RuntimeConfig = {
 const DEFAULT_PORT = 3000;
 const DEFAULT_QUEUE_CLAIM_TTL_SECONDS = 300;
 
-export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConfig {
+export function loadRuntimeConfig(
+  env: NodeJS.ProcessEnv = process.env
+): RuntimeConfig {
   const portValue = env.PORT ?? `${DEFAULT_PORT}`;
   const port = Number.parseInt(portValue, 10);
-  const queueClaimTtlValue = env.RUNTIME_QUEUE_CLAIM_TTL_SECONDS ?? `${DEFAULT_QUEUE_CLAIM_TTL_SECONDS}`;
+  const queueClaimTtlValue =
+    env.RUNTIME_QUEUE_CLAIM_TTL_SECONDS ?? `${DEFAULT_QUEUE_CLAIM_TTL_SECONDS}`;
   const queueClaimTtlSeconds = Number.parseInt(queueClaimTtlValue, 10);
 
   if (!Number.isFinite(port) || port <= 0) {
@@ -27,12 +30,17 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Runtime
   }
 
   if (!Number.isFinite(queueClaimTtlSeconds) || queueClaimTtlSeconds <= 0) {
-    throw new Error(`Invalid RUNTIME_QUEUE_CLAIM_TTL_SECONDS value: ${queueClaimTtlValue}`);
+    throw new Error(
+      `Invalid RUNTIME_QUEUE_CLAIM_TTL_SECONDS value: ${queueClaimTtlValue}`
+    );
   }
 
-  const databasePath = env.RUNTIME_SQLITE_PATH ?? (env.VITEST ? ":memory:" : ".runtime/local-runtime.sqlite");
+  const databasePath =
+    env.RUNTIME_SQLITE_PATH ??
+    (env.VITEST ? ":memory:" : ".runtime/local-runtime.sqlite");
   const artifactRoot = env.RUNTIME_ARTIFACT_ROOT ?? ".runtime/artifacts";
-  const localProviderMode = env.LOCAL_PROVIDER_MODE === "disabled" ? "disabled" : "simulated";
+  const localProviderMode =
+    env.LOCAL_PROVIDER_MODE === "disabled" ? "disabled" : "simulated";
 
   return {
     artifactRoot,
@@ -43,7 +51,8 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Runtime
     providerStateDbPath:
       env.PROVIDER_SQLITE_PATH ??
       (env.VITEST ? undefined : ".runtime/provider-state.sqlite"),
-    providerValidationScript: env.PROVIDER_VALIDATION_SCRIPT ?? "npm run validate:provider",
+    providerValidationScript:
+      env.PROVIDER_VALIDATION_SCRIPT ?? "npm run validate:provider",
     queueClaimTtlSeconds,
     runtimeValidationScript: "npm run validate:local-runtime",
     logLevel: env.LOG_LEVEL ?? "info",

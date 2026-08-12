@@ -43,7 +43,12 @@ describe("US3 privacy regression", () => {
         deadline_at: "2026-06-01T00:00:00.000Z",
         idempotency_key: "privacy-regression",
         risk_tier: "regulated",
-        source: { repository: "repo", commit: "abc123", environment: "local", route: "/privacy" }
+        source: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/privacy"
+        }
       }
     });
     const jobId = create.json<{ job_id: string }>().job_id;
@@ -63,7 +68,12 @@ describe("US3 privacy regression", () => {
           }
         ],
         artifact_quality: "sufficient",
-        environment: { repository: "repo", commit: "abc123", environment: "local", route: "/privacy" }
+        environment: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/privacy"
+        }
       }
     });
     await app.inject({
@@ -85,8 +95,14 @@ describe("US3 privacy regression", () => {
 
     const restarted = buildApp(config);
     await restarted.ready();
-    const verdict = await restarted.inject({ method: "GET", url: `/verification-jobs/${jobId}/verdict` });
-    const feedback = await restarted.inject({ method: "GET", url: `/verification-jobs/${jobId}/feedback` });
+    const verdict = await restarted.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/verdict`
+    });
+    const feedback = await restarted.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/feedback`
+    });
     await restarted.close();
 
     expect(verdict.json()).toMatchObject({ final_verdict: "fail_closed" });

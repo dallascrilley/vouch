@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { buildLocalProviderValidationProfile, validateProviderConfig } from "../../src/config/provider-config.js";
+import {
+  buildLocalProviderValidationProfile,
+  validateProviderConfig
+} from "../../src/config/provider-config.js";
 import { loadDefaultProviderConfig } from "../../src/config/policies.js";
 
 describe("provider local validation workflow", () => {

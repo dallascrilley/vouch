@@ -87,7 +87,9 @@ export class SQLiteLocalQueueStore {
 
   markCompleted(claimId: string) {
     this.store.db
-      .prepare("UPDATE local_queue_claims SET state = 'completed' WHERE claim_id = ?")
+      .prepare(
+        "UPDATE local_queue_claims SET state = 'completed' WHERE claim_id = ?"
+      )
       .run(claimId);
 
     return Promise.resolve();
@@ -95,7 +97,9 @@ export class SQLiteLocalQueueStore {
 
   markFailed(claimId: string) {
     this.store.db
-      .prepare("UPDATE local_queue_claims SET state = 'failed' WHERE claim_id = ?")
+      .prepare(
+        "UPDATE local_queue_claims SET state = 'failed' WHERE claim_id = ?"
+      )
       .run(claimId);
 
     return Promise.resolve();

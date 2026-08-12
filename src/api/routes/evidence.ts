@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 
-import type { ArtifactManifest, ArtifactQuality, ArtifactType } from "../../domain/artifacts/models.js";
+import type {
+  ArtifactManifest,
+  ArtifactQuality,
+  ArtifactType
+} from "../../domain/artifacts/models.js";
 import { shouldFallbackProvider } from "../../domain/human-review/provider-routing-policy.js";
 import { dispatchLocalProviderTask } from "../../workers/provider-dispatch-worker.js";
 import type {
@@ -103,10 +107,13 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
 
       try {
         await app.services.artifactService.attach(manifest);
-        return reply.code(202).send({ manifest_id: manifest.manifestId, job_id: manifest.jobId });
+        return reply
+          .code(202)
+          .send({ manifest_id: manifest.manifestId, job_id: manifest.jobId });
       } catch (error) {
         return reply.code(400).send({
-          message: error instanceof Error ? error.message : "Invalid artifact manifest"
+          message:
+            error instanceof Error ? error.message : "Invalid artifact manifest"
         });
       }
     }
@@ -129,10 +136,15 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
           auditRecordId: request.body.audit_record_id
         });
 
-        return reply.code(202).send({ classification_id: request.body.classification_id });
+        return reply
+          .code(202)
+          .send({ classification_id: request.body.classification_id });
       } catch (error) {
         return reply.code(422).send({
-          message: error instanceof Error ? error.message : "Invalid privacy classification"
+          message:
+            error instanceof Error
+              ? error.message
+              : "Invalid privacy classification"
         });
       }
     }
@@ -183,12 +195,14 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
               );
 
               const fallbackDecision = shouldFallbackProvider({
-                health: app.services.providerOperationsService.getHealthSnapshot(),
+                health:
+                  app.services.providerOperationsService.getHealthSnapshot(),
                 preferredProviderId: app.services.providerConfig.providerId
               });
 
               if (!fallbackDecision.fallback) {
-                const dispatchResult = await app.services.providerDispatchWorker.dispatch(task);
+                const dispatchResult =
+                  await app.services.providerDispatchWorker.dispatch(task);
                 task.providerTaskRef = dispatchResult.providerTaskId;
                 task.state = "dispatched";
                 await app.services.humanReviewTaskService.save(task);
@@ -196,7 +210,11 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
               }
             } catch (dispatchError) {
               request.log.error(
-                { err: dispatchError, jobId: task.jobId, reviewTaskId: task.reviewTaskId },
+                {
+                  err: dispatchError,
+                  jobId: task.jobId,
+                  reviewTaskId: task.reviewTaskId
+                },
                 "self-verification escalation dispatch failed; task left queued"
               );
             }
@@ -211,11 +229,13 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
               app.services.responseValidationService,
               task
             );
-            await app.services.providerWorkflowService.maybeAutoAdvanceAfterIngest({
-              deduplicated: false,
-              response: simulated,
-              reviewTaskId: task.reviewTaskId
-            });
+            await app.services.providerWorkflowService.maybeAutoAdvanceAfterIngest(
+              {
+                deduplicated: false,
+                response: simulated,
+                reviewTaskId: task.reviewTaskId
+              }
+            );
           }
         }
 
@@ -227,7 +247,10 @@ export function registerEvidenceRoutes(app: FastifyInstance) {
         });
       } catch (error) {
         return reply.code(400).send({
-          message: error instanceof Error ? error.message : "Invalid self-verification result"
+          message:
+            error instanceof Error
+              ? error.message
+              : "Invalid self-verification result"
         });
       }
     }

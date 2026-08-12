@@ -31,7 +31,12 @@ describe("US3 feedback regression contract", () => {
         deadline_at: "2026-06-01T00:00:00.000Z",
         idempotency_key: "feedback-regression",
         risk_tier: "low",
-        source: { repository: "repo", commit: "abc123", environment: "local", route: "/feedback" }
+        source: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/feedback"
+        }
       }
     });
     const jobId = create.json<{ job_id: string }>().job_id;
@@ -51,7 +56,12 @@ describe("US3 feedback regression contract", () => {
           }
         ],
         artifact_quality: "sufficient",
-        environment: { repository: "repo", commit: "abc123", environment: "local", route: "/feedback" }
+        environment: {
+          repository: "repo",
+          commit: "abc123",
+          environment: "local",
+          route: "/feedback"
+        }
       }
     });
     await app.inject({
@@ -76,13 +86,21 @@ describe("US3 feedback regression contract", () => {
         job_id: jobId,
         confidence: "medium",
         recommended_action: "retry",
-        criterion_results: [{ criterion_id: "feedback", status: "unclear", confidence: "medium" }],
+        criterion_results: [
+          { criterion_id: "feedback", status: "unclear", confidence: "medium" }
+        ],
         failure_categories: ["flaky-ui"]
       }
     });
 
-    const verdict = await app.inject({ method: "GET", url: `/verification-jobs/${jobId}/verdict` });
-    const feedback = await app.inject({ method: "GET", url: `/verification-jobs/${jobId}/feedback` });
+    const verdict = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/verdict`
+    });
+    const feedback = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/feedback`
+    });
 
     expect(verdict.json()).toMatchObject({
       final_verdict: "retry",
