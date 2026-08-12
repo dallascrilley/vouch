@@ -57,31 +57,55 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Long-lived children (API, worker) run `tsx`, which itself spawns a node
+// child. Signalling only the direct child leaves that grandchild alive, its
+// stdio pipes open, and this process unable to exit — which hangs CI forever.
+// So detach each one into its own process group and signal the whole group.
 function spawnProcess(
   command: string,
   args: string[],
-  env: NodeJS.ProcessEnv
+  env: NodeJS.ProcessEnv,
+  options: { detached?: boolean } = {}
 ): ChildProcess {
   return spawn(command, args, {
     cwd: ROOT,
+    detached: options.detached ?? false,
     env: { ...process.env, ...env },
     stdio: ["ignore", "pipe", "pipe"]
   });
 }
 
-async function killProcess(child: ChildProcess | undefined, label: string) {
-  if (!child?.pid || child.killed) {
+function signalGroup(child: ChildProcess, signal: NodeJS.Signals) {
+  if (!child.pid) {
     return;
   }
-  child.kill("SIGTERM");
-  await Promise.race([
-    new Promise<void>((resolve) => child.once("exit", () => resolve())),
-    sleep(3000).then(() => {
-      if (!child.killed) {
-        child.kill("SIGKILL");
-      }
-    })
-  ]).catch(() => undefined);
+  try {
+    process.kill(-child.pid, signal);
+  } catch {
+    try {
+      child.kill(signal);
+    } catch {
+      // already gone
+    }
+  }
+}
+
+async function killProcess(child: ChildProcess | undefined, label: string) {
+  if (!child?.pid || child.exitCode !== null) {
+    return;
+  }
+  const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
+  signalGroup(child, "SIGTERM");
+  const timedOut = await Promise.race([
+    exited.then(() => false),
+    sleep(3000).then(() => true)
+  ]);
+  if (timedOut) {
+    signalGroup(child, "SIGKILL");
+    await Promise.race([exited, sleep(2000)]);
+  }
+  child.stdout?.destroy();
+  child.stderr?.destroy();
   if (child.exitCode === null && !child.killed) {
     console.error(`warn: ${label} did not exit cleanly`);
   }
@@ -181,7 +205,9 @@ async function main() {
   let worker: ChildProcess | undefined;
 
   try {
-    api = spawnProcess("npx", ["tsx", "src/api/server.ts"], runtimeEnv);
+    api = spawnProcess("npx", ["tsx", "src/api/server.ts"], runtimeEnv, {
+      detached: true
+    });
 
     api.stderr?.on("data", (chunk: Buffer | string) => {
       const line = appendChunk("", chunk);
@@ -192,7 +218,9 @@ async function main() {
 
     await waitForHealth(baseUrl, 15_000);
     await sleep(500);
-    worker = spawnProcess("npx", ["tsx", "src/workers/index.ts"], runtimeEnv);
+    worker = spawnProcess("npx", ["tsx", "src/workers/index.ts"], runtimeEnv, {
+      detached: true
+    });
 
     worker.stderr?.on("data", (chunk: Buffer | string) => {
       const line = appendChunk("", chunk);
@@ -237,7 +265,13 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    // Exit explicitly: a stray handle from a spawned child must never leave
+    // this harness hanging instead of reporting a result.
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  });

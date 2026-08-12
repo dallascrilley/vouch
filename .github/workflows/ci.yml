@@ -13,6 +13,8 @@ jobs:
   verify:
     name: verify + offline harnesses
     runs-on: ubuntu-latest
+    # A harness that spawns servers must fail loudly rather than hang a runner.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
         with:
