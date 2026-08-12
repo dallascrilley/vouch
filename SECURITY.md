@@ -17,7 +17,7 @@ This project is pre-1.0. Only the default branch receives security fixes.
 
 ## Security-relevant configuration
 
-Quorum handles artifacts that may contain sensitive material, so a few settings
+Vouch handles artifacts that may contain sensitive material, so a few settings
 are not optional in a real deployment:
 
 | Variable                                                               | Why it matters                                                                                                                           |

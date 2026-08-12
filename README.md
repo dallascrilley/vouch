@@ -1,4 +1,4 @@
-# Vouch — human review as an API
+![Vouch — Human review as an API.](docs/brand/lockup.png)
 
 Agents submit work. Real reviewers return a consensus verdict.
 
@@ -12,6 +12,9 @@ agent POSTs a verification job with artifacts, Vouch gates the evidence for
 privacy, routes what machines cannot settle to human reviewers, aggregates their
 answers into a consensus verdict, adjudicates disagreement, and hands the agent
 back a machine-readable next action and repair hints.
+
+> **Formerly Quorum.** The npm package name may still be `quorum`; user-facing copy
+> uses **Vouch**. See [docs/brand/BRAND.md](docs/brand/BRAND.md) for the brand kit.
 
 ## Provenance
 

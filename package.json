@@ -2,7 +2,7 @@
   "name": "quorum",
   "version": "0.1.0",
   "private": true,
-  "description": "Human review as an API: agents submit work, real reviewers return a consensus verdict.",
+  "description": "Vouch — human review as an API: agents submit work, real reviewers return a consensus verdict.",
   "license": "MIT",
   "author": "Dallas Crilley <dallas@dallascrilley.com>",
   "homepage": "https://github.com/dallascrilley/quorum#readme",

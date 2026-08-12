@@ -7,6 +7,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- **Rebranded to Vouch** (formerly Quorum). User-facing copy and brand assets live
+  in `docs/brand/`; the npm package name remains `quorum` for now.
 - **Renamed to Quorum.** The project was previously the repository
   `DallasCrilleyMarTech/review-qa-broker` and the package
   `ai-human-review-broker`. It is now `dallascrilley/quorum` and the package
