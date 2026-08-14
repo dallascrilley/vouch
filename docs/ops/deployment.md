@@ -24,7 +24,8 @@ docker run -d --name broker \
   vouch:latest
 ```
 
-- `GET /health` is unauthenticated and used by the container `HEALTHCHECK`.
+- `GET /health` requires `x-operator-token` when `RUNTIME_OPERATOR_TOKEN` is
+  configured; the container `HEALTHCHECK` supplies that header.
 - The SQLite databases and artifact tree live under `/data` (declared as a
   volume) so state survives container restarts.
 - The process handles `SIGTERM`/`SIGINT` and closes the HTTP server and SQLite
