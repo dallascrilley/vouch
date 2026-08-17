@@ -26,7 +26,6 @@ Thumbs.db
 .specify/
 .todos/
 .compound-engineering/
-AGENTS.md
 CLAUDE.md
 /STATUS.md
 /TODO.md
@@ -35,7 +34,6 @@ CLAUDE.md
 /NOTES.md
 /SCRATCH.md
 /PROJECT_CONTEXT.md
-/LAUNCH_CRITERIA.md
 /initial.md
 /goalplan.md
 /handoff.md
