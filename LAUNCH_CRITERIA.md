@@ -8,11 +8,29 @@ machines cannot settle.
 Core path: POST a verification job → privacy gate → self-verification →
 human review → consensus → machine-readable next action.
 
+## Measurement (2026-08-17)
+
+Ran on pin MAIN `0d3aeeb` with existing `node_modules` only. No `npm ci`,
+no Docker, no live MTurk. MAIN stayed clean.
+
+- `npm run validate:agent-loop` → `agent_next_action: pass`,
+  `status: agent loop validation passed`
+- `npm run validate:local-runtime` → `local runtime validation passed`
+- `npm run validate:provider-e2e` → `status: simulated provider e2e passed`,
+  `final_verdict: pass`
+- `npm run validate:provider-proof-bundle` →
+  `status: provider proof-bundle replay passed` (ambiguous/fail/pass bundles)
+- `npm run validate:pi-extension` →
+  `status: pi extension validation passed`, `simulated: true`
+
+Did not run `npm test`, `docker build`, or live crowd. V7 stays planned
+until a container run is measured. Live crowd and repo rename stay holds.
+
 - id: V1
   feature: Offline agent-loop harness returns an actionable verdict
   status: met
 - id: V2
-  feature: Four offline harnesses exist (local-runtime, provider-e2e, proof-bundle, agent-loop)
+  feature: Four offline harnesses passed on current HEAD (local-runtime, provider-e2e, proof-bundle, agent-loop)
   status: met
 - id: V3
   feature: Privacy gate fails closed on secret, regulated, or failed-redaction evidence
@@ -28,7 +46,7 @@ human review → consensus → machine-readable next action.
   status: met
 - id: V7
   feature: Container image runs the self-hosted broker
-  status: met
+  status: planned
 - id: V8
   feature: This repository has a parseable launch contract
   status: met
