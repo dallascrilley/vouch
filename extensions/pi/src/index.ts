@@ -15,7 +15,7 @@ import { PiReviewClient, ReviewHandleRegistry } from "./review-client.js";
 import {
   registerSessionLifecycle,
   SessionReviewTracker,
-  terminalReview
+  terminalRecord
 } from "./session.js";
 import { registerReviewCommand, ReviewUi } from "./ui.js";
 import { GoLiveManager, hasAwsCli, registerGoLiveCommand } from "./go-live.js";
@@ -93,8 +93,7 @@ export function createPiExtension(
     clearRuntimeEnvFile: () => supervisor.clearRuntimeEnvFile(),
     configureRuntimeEnvFile: (path) => supervisor.setRuntimeEnvFile(path),
     dataDir,
-    inFlight: () =>
-      client.list().some((record) => !terminalReview(record.envelope)),
+    inFlight: () => client.list().some((record) => !terminalRecord(record)),
     restartBroker: () => supervisor.restart(),
     startBridge: () => supervisor.startBridge()
   });

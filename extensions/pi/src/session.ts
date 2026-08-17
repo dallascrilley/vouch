@@ -45,6 +45,25 @@ export function terminalReview(envelope: ReviewEnvelope | undefined): boolean {
   );
 }
 
+function deadlineElapsed(record: ReviewHandleRecord): boolean {
+  return Boolean(
+    record.deadlineAt && Date.parse(record.deadlineAt) <= Date.now()
+  );
+}
+
+export function terminalRecord(record: ReviewHandleRecord): boolean {
+  return terminalReview(record.envelope) || deadlineElapsed(record);
+}
+
+function expireAmbientReview(envelope: ReviewEnvelope): ReviewEnvelope {
+  return {
+    ...envelope,
+    blockingReasons: ["review deadline elapsed while Pi was closed"],
+    expired: true,
+    status: "not_reviewed"
+  };
+}
+
 function staleEnvelope(
   envelope: ReviewEnvelope,
   record: ReviewHandleRecord,
@@ -117,7 +136,10 @@ export class SessionReviewTracker {
     const records = this.options.client.list();
     for (const record of records) {
       let envelope = record.envelope;
-      if (!terminalReview(envelope)) {
+      if (envelope?.status === "ambient" && deadlineElapsed(record)) {
+        envelope = expireAmbientReview(envelope);
+        this.options.registry.update(record.idempotencyKey, envelope);
+      } else if (!terminalReview(envelope)) {
         try {
           envelope = await this.options.client.status(record.handle, {
             brokerBaseUrl: context.brokerBaseUrl,
@@ -136,18 +158,7 @@ export class SessionReviewTracker {
       }
 
       if (!envelope || record.surfacedAt) continue;
-      if (envelope.status === "ambient" && record.deadlineAt) {
-        if (Date.parse(record.deadlineAt) <= Date.now()) {
-          envelope = {
-            ...envelope,
-            blockingReasons: ["review deadline elapsed while Pi was closed"],
-            expired: true
-          };
-          this.options.registry.update(record.idempotencyKey, envelope);
-        } else {
-          continue;
-        }
-      }
+      if (envelope.status === "ambient") continue;
 
       const surfaced = staleEnvelope(
         envelope,
@@ -171,7 +182,7 @@ export class SessionReviewTracker {
 
   async onSessionStart(ctx: ExtensionContext): Promise<void> {
     const records = this.options.client.list();
-    const inFlight = records.some((record) => !terminalReview(record.envelope));
+    const inFlight = records.some((record) => !terminalRecord(record));
     let connection = {
       baseUrl: "http://127.0.0.1:31337",
       operatorToken: undefined as string | undefined
