@@ -338,14 +338,13 @@ export function buildApp(
       )
     : undefined;
 
-  app.decorate("services", {
+  const services: AppServices = {
     adjudicationService,
     artifactService,
     consensusService,
     feedbackRepository: repositories.feedbackRepository,
     humanReviewTaskService,
     jobService,
-    ledgerService,
     metrics,
     privacyGate,
     providerConfig,
@@ -363,7 +362,8 @@ export function buildApp(
     selfVerificationService,
     transactionManager,
     verdictRepository: repositories.finalVerdictRepository
-  });
+  };
+  app.decorate("services", services);
 
   // The spawned broker is a local control plane, not an open localhost API.
   // Provider callbacks authenticate with their separate shared secret and are
