@@ -274,6 +274,32 @@ describe("security regressions", () => {
       ).toBe(false);
     });
 
+    it("a pool omitted from allowed_reviewer_routes leaves no task and does not advance the job", async () => {
+      // evaluateExternalizationPolicy allows managed on a non-billing
+      // internal_low job. The classification allowlist is a second gate, and
+      // assertProviderDispatchAllowed still enforces it after createOrGet.
+      // Checking only the general policy before persist therefore strands the
+      // job in external_review_queued when the requested pool is missing from
+      // allowed_reviewer_routes — including the OpenAPI-optional default [].
+      const jobId = await createClassifiedJob(app, {
+        decision: "allowed",
+        route: "/demo",
+        allowedReviewerRoutes: ["internal"]
+      });
+
+      const blocked = await createTask(app, jobId);
+      expect(blocked.statusCode).toBe(403);
+      expect(blocked.json().message).toContain(
+        "Provider dispatch is not allowed for route: managed"
+      );
+
+      const job = await app.inject({
+        method: "GET",
+        url: `/verification-jobs/${jobId}`
+      });
+      expect(job.json().state).toBe("privacy_classified");
+    });
+
     it("blocks self-verification escalation to the managed pool on a billing route", async () => {
       // The domain layer picks "managed" for a human_review escalation with
       // no pre-check of its own, so this exercises the authoritative
