@@ -317,5 +317,5 @@ And one smaller cleanup: replace the structural sniff in `resolveConfig`
   It is coherent as-is.
 - Anything about the persistence boundary — see
   [0001](0001-persistence-boundary.md). The two RFCs meet at exactly one point:
-  whatever `createRuntime` looks like, it is where a Postgres adapter set would
-  be selected.
+  the composition root's runtime factory is where a Postgres adapter set would
+  eventually be selected.
