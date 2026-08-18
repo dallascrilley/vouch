@@ -61,3 +61,16 @@ plug into the same dispatch/callback contract without changing broker core
 concepts. Broker dispatch worker construction is config-driven when
 `PROVIDER_ENABLED=true`; it is not gated to MTurk or the staging
 `real-provider` ID.
+
+## HIT recovery assignment count
+
+After an ambiguous `create-hit` (the HIT may already exist), the MTurk bridge
+must keep polling for the original assignment count.
+`recoveredHitMaxAssignments` reads `pricing.max_assignments` from a `v: 1`
+task template. It does **not** use process-wide `MTURK_MAX_ASSIGNMENTS` (often
+`1`) when the envelope is structured. A medium-risk 3-assignment HIT recovered
+that way would stop after the first delivery and drop the remaining paid
+reviews. Legacy free-text templates still use the bridge default.
+
+Code: `scripts/lib/mturk-bridge.ts` (`recoveredHitMaxAssignments`).
+Tests: `tests/unit/mturk-bridge.test.ts`.
