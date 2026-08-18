@@ -55,18 +55,18 @@ loop forever.
 
 ## Configuration
 
-| Variable                          | Default                       | Purpose                                   |
-| --------------------------------- | ----------------------------- | ----------------------------------------- |
-| `PORT`                            | `3000`                        | HTTP listen port                          |
-| `NODE_ENV`                        | `production` (image)          | Runtime environment                       |
-| `RUNTIME_SQLITE_PATH`             | `/data/local-runtime.sqlite`  | Structured state DB                       |
-| `PROVIDER_SQLITE_PATH`            | `/data/provider-state.sqlite` | Provider state DB                         |
-| `RUNTIME_ARTIFACT_ROOT`           | `/data/artifacts`             | Artifact + inspection tree                |
-| `RUNTIME_QUEUE_CLAIM_TTL_SECONDS` | `300`                         | Queue claim visibility timeout            |
-| `LOG_LEVEL`                       | `info`                        | Pino log level                            |
-| `RUNTIME_OPERATOR_TOKEN`          | _(unset)_                     | Operator token; required in production    |
-| `LOCAL_PROVIDER_MODE`             | `simulated`                   | `simulated` or `disabled`                 |
-| `VOUCH_REAL_SPEND_CEILING_USD`    | _(unset)_                     | Cumulative real-dispatch cap (USD)        |
+| Variable                          | Default                       | Purpose                                |
+| --------------------------------- | ----------------------------- | -------------------------------------- |
+| `PORT`                            | `3000`                        | HTTP listen port                       |
+| `NODE_ENV`                        | `production` (image)          | Runtime environment                    |
+| `RUNTIME_SQLITE_PATH`             | `/data/local-runtime.sqlite`  | Structured state DB                    |
+| `PROVIDER_SQLITE_PATH`            | `/data/provider-state.sqlite` | Provider state DB                      |
+| `RUNTIME_ARTIFACT_ROOT`           | `/data/artifacts`             | Artifact + inspection tree             |
+| `RUNTIME_QUEUE_CLAIM_TTL_SECONDS` | `300`                         | Queue claim visibility timeout         |
+| `LOG_LEVEL`                       | `info`                        | Pino log level                         |
+| `RUNTIME_OPERATOR_TOKEN`          | _(unset)_                     | Operator token; required in production |
+| `LOCAL_PROVIDER_MODE`             | `simulated`                   | `simulated` or `disabled`              |
+| `VOUCH_REAL_SPEND_CEILING_USD`    | _(unset)_                     | Cumulative real-dispatch cap (USD)     |
 
 ### Security-relevant configuration
 

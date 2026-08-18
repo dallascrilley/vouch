@@ -6,8 +6,8 @@ exceed the cap fails closed and does **not** fall back to a simulated verdict.
 
 ## Environment
 
-| Variable | Default | Constraint |
-| --- | --- | --- |
+| Variable                       | Default        | Constraint                                              |
+| ------------------------------ | -------------- | ------------------------------------------------------- |
 | `VOUCH_REAL_SPEND_CEILING_USD` | unset (no cap) | If set, must be a finite number `> 0` or startup throws |
 
 Pi `/vouch-go-live` writes this into `~/.vouch/pi/live.env`. Docker and
@@ -34,12 +34,12 @@ envelope with `pricing`.
 `SpendCeiling` opens `vouch_spend_reservations` on the **runtime** SQLite
 database (`RUNTIME_SQLITE_PATH`), not `sqlite-migrations.ts`:
 
-| Column | Role |
-| --- | --- |
+| Column            | Role                                                 |
+| ----------------- | ---------------------------------------------------- |
 | `idempotency_key` | primary key; retries with the same key reuse the row |
-| `job_id` | must match on replay |
-| `amount_usd` | must match on replay |
-| `created_at` | ISO timestamp |
+| `job_id`          | must match on replay                                 |
+| `amount_usd`      | must match on replay                                 |
+| `created_at`      | ISO timestamp                                        |
 
 Replay with the same key, job, and amount is allowed even when the ceiling is
 already full. A key reused with a different job or amount throws. Over-ceiling

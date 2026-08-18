@@ -38,14 +38,14 @@ The shipped broker is a **SQLite-first local runtime**, not an in-memory
 prototype. `src/api/app.ts` wires `createSQLiteRuntimeRepositories` and a
 filesystem artifact store.
 
-| Surface | Shipped implementation |
-| --- | --- |
-| Job / privacy / review / ledger state | `RUNTIME_SQLITE_PATH` (`node:sqlite`) |
-| Provider task mappings and receipts | `PROVIDER_SQLITE_PATH` (in-memory only when that path is unset, which tests do) |
-| Real-dispatch spend reservations | `vouch_spend_reservations` in the runtime DB |
-| Queue | `SQLiteLocalQueueStore` in the runtime DB |
-| Artifacts | `RUNTIME_ARTIFACT_ROOT` on disk |
-| Metrics | `InMemoryMetricsRecorder` (no OpenTelemetry export) |
+| Surface                               | Shipped implementation                                                          |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| Job / privacy / review / ledger state | `RUNTIME_SQLITE_PATH` (`node:sqlite`)                                           |
+| Provider task mappings and receipts   | `PROVIDER_SQLITE_PATH` (in-memory only when that path is unset, which tests do) |
+| Real-dispatch spend reservations      | `vouch_spend_reservations` in the runtime DB                                    |
+| Queue                                 | `SQLiteLocalQueueStore` in the runtime DB                                       |
+| Artifacts                             | `RUNTIME_ARTIFACT_ROOT` on disk                                                 |
+| Metrics                               | `InMemoryMetricsRecorder` (no OpenTelemetry export)                             |
 
 PostgreSQL, pg-boss, S3, and OTel adapters are **not** implemented. See
 [`runtime-target.md`](runtime-target.md) for shipped vs production-target and
