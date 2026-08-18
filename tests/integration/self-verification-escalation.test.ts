@@ -247,5 +247,38 @@ describe("self-verification escalation to human review", () => {
         release_gate_effect: "allow"
       });
     });
+
+    it("dispatches the escalation package when a real spend ceiling is set", async () => {
+      await app.close();
+      app = buildProviderTestApp({
+        env: { VOUCH_REAL_SPEND_CEILING_USD: "5" }
+      });
+      await app.ready();
+
+      const jobId = await createProviderEligibleJob(app);
+      const selfVerification = await app.inject({
+        method: "POST",
+        url: `/verification-jobs/${jobId}/self-verification-results`,
+        payload: {
+          result_id: `result-${crypto.randomUUID()}`,
+          job_id: jobId,
+          confidence: "low",
+          recommended_action: "human_review",
+          criterion_results: [
+            {
+              criterion_id: "managed-check",
+              status: "unclear",
+              confidence: "low"
+            }
+          ],
+          failure_categories: ["managed-ambiguous"]
+        }
+      });
+      const body = selfVerification.json<SelfVerificationResponse>();
+
+      expect(selfVerification.statusCode).toBe(202);
+      expect(body.escalated).toBe(true);
+      expect(body.provider_task_id).toBeTruthy();
+    });
   });
 });

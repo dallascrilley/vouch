@@ -17,6 +17,7 @@ import {
   parseAssignmentApprovalPolicy,
   parseQualificationRequirements,
   QUESTION_XML_MAX_CHARS,
+  recoveredHitMaxAssignments,
   resolveDispatchPricing,
   saveBridgeState,
   summarizeBridgeState,
@@ -259,7 +260,14 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
     });
   }
   if (recoveredHitId) {
-    persistMturkTask(recoveredHitId, request.body, config.maxAssignments);
+    persistMturkTask(
+      recoveredHitId,
+      request.body,
+      recoveredHitMaxAssignments({
+        config,
+        taskTemplate: request.body.task_template
+      })
+    );
     return reply.code(202).send({
       provider_assignment_scope: request.body.reviewer_pool,
       provider_task_id: recoveredHitId

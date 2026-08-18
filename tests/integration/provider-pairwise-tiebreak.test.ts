@@ -309,4 +309,66 @@ describe("provider pairwise tie-break", () => {
       pairwise_queued: false
     });
   });
+
+  it("dispatches the pairwise micro-task when a real spend ceiling is set", async () => {
+    await app.close();
+    app = buildProviderTestApp({
+      env: { VOUCH_REAL_SPEND_CEILING_USD: "5" }
+    });
+    await app.ready();
+
+    const jobId = await createProviderEligibleJob(app);
+    const taskResponse = await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${jobId}/human-review-tasks`,
+      payload: {
+        criterion_ids: ["managed-check"],
+        deadline_at: "2026-06-01T00:00:00.000Z",
+        idempotency_key: `pairwise-ceiling-${jobId}`,
+        provider_adapter: "real-provider",
+        quality_policy: "provider-managed",
+        reviewer_pool: "managed",
+        sanitized_package_id: "managed-package",
+        task_template: JSON.stringify({
+          v: 1,
+          instructions: "Check the managed screenshot.",
+          params: { criteria: [{ id: "managed-check", statement: "Passes" }] },
+          pricing: { max_assignments: 3, reward: "0.10" },
+          template_id: "binary_screenshot_check"
+        })
+      }
+    });
+    const taskPayload = taskResponse.json<{
+      provider_task_id: string;
+      review_task_id: string;
+    }>();
+
+    await app.inject({
+      method: "POST",
+      url: "/provider-callback",
+      payload: callbackPayload(taskPayload.provider_task_id, {
+        overall_verdict: "unclear",
+        status: "unclear"
+      })
+    });
+    const splitCallback = await app.inject({
+      method: "POST",
+      url: "/provider-callback",
+      payload: callbackPayload(taskPayload.provider_task_id, {
+        overall_verdict: "pass",
+        status: "pass",
+        confidence: "high",
+        severity: "S4"
+      })
+    });
+
+    expect(splitCallback.statusCode).toBe(202);
+    expect(splitCallback.json<CallbackBody>()).toMatchObject({
+      auto_advanced: false,
+      pairwise_queued: true
+    });
+    expect(
+      splitCallback.json<CallbackBody>().pairwise_provider_task_id
+    ).toBeTruthy();
+  });
 });

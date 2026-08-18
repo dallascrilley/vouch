@@ -12,6 +12,7 @@ import {
   parseAssignmentApprovalPolicy,
   parseAnswerXml,
   parseQualificationRequirements,
+  recoveredHitMaxAssignments,
   saveBridgeState,
   summarizeBridgeState,
   validateBridgeSafety
@@ -502,6 +503,31 @@ describe("mturk bridge helpers", () => {
       "MTURK_MIN_EXPIRATION_SECONDS must be a positive number",
       "MTURK_MIN_AUTO_APPROVAL_DELAY_SECONDS must be a positive number"
     ]);
+  });
+});
+
+describe("recoveredHitMaxAssignments", () => {
+  const config = { maxAssignments: 1 };
+
+  it("uses structured envelope pricing instead of the bridge default", () => {
+    expect(
+      recoveredHitMaxAssignments({
+        config,
+        taskTemplate: JSON.stringify({
+          v: 1,
+          pricing: { max_assignments: 3, reward: "0.10" }
+        })
+      })
+    ).toBe(3);
+  });
+
+  it("falls back to the bridge default for legacy templates", () => {
+    expect(
+      recoveredHitMaxAssignments({
+        config,
+        taskTemplate: "Check the staged screenshot."
+      })
+    ).toBe(1);
   });
 });
 

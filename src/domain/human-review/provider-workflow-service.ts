@@ -13,6 +13,50 @@ import type { TransactionManager } from "../../adapters/storage/transaction-mana
 
 export const PAIRWISE_TASK_TEMPLATE = "pairwise-tie-break";
 
+const PAIRWISE_TIE_BREAK_ASSIGNMENTS = 1;
+const PAIRWISE_TIE_BREAK_FALLBACK_REWARD = "0.05";
+
+export function isPairwiseTieBreakTemplate(taskTemplate: string): boolean {
+  if (taskTemplate === PAIRWISE_TASK_TEMPLATE) {
+    return true;
+  }
+  try {
+    const parsed = JSON.parse(taskTemplate) as {
+      pairwise_tie_break?: unknown;
+      v?: unknown;
+    };
+    return parsed.v === 1 && parsed.pairwise_tie_break === true;
+  } catch {
+    return false;
+  }
+}
+
+export function buildPairwiseTieBreakTemplate(sourceTemplate: string): string {
+  return JSON.stringify({
+    v: 1,
+    pairwise_tie_break: true,
+    pricing: {
+      max_assignments: PAIRWISE_TIE_BREAK_ASSIGNMENTS,
+      reward: sourceReward(sourceTemplate)
+    }
+  });
+}
+
+function sourceReward(taskTemplate: string): string {
+  try {
+    const parsed = JSON.parse(taskTemplate) as {
+      pricing?: { reward?: unknown };
+      v?: unknown;
+    };
+    if (parsed.v === 1 && typeof parsed.pricing?.reward === "string") {
+      return parsed.pricing.reward;
+    }
+  } catch {
+    // Legacy opaque templates have no structured pricing.
+  }
+  return PAIRWISE_TIE_BREAK_FALLBACK_REWARD;
+}
+
 const SEVERE_SEVERITIES: ReadonlySet<HumanResponse["severity"]> = new Set([
   "S0",
   "S1"
@@ -181,7 +225,7 @@ export class ProviderWorkflowService {
 
     // A tie-break task never spawns another tie-break; its split resolves
     // through the manual consensus/adjudication path.
-    if (reviewTask.taskTemplate === PAIRWISE_TASK_TEMPLATE) {
+    if (isPairwiseTieBreakTemplate(reviewTask.taskTemplate)) {
       return notQueued;
     }
 
@@ -216,8 +260,8 @@ export class ProviderWorkflowService {
         job.jobId
       );
       if (
-        existingTasks.some(
-          (task) => task.taskTemplate === PAIRWISE_TASK_TEMPLATE
+        existingTasks.some((task) =>
+          isPairwiseTieBreakTemplate(task.taskTemplate)
         )
       ) {
         return notQueued;
@@ -231,7 +275,7 @@ export class ProviderWorkflowService {
         qualityPolicy: reviewTask.qualityPolicy,
         reviewerPool: reviewTask.reviewerPool,
         sanitizedPackageId: reviewTask.sanitizedPackageId,
-        taskTemplate: PAIRWISE_TASK_TEMPLATE
+        taskTemplate: buildPairwiseTieBreakTemplate(reviewTask.taskTemplate)
       });
 
       await this.ledgerService.recordProviderPairwiseQueued({

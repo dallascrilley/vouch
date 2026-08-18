@@ -1,7 +1,7 @@
 import type { ConsensusResult } from "../consensus/models.js";
 import type { VerdictLedgerEvent } from "../feedback/models.js";
 import type { HumanResponse, HumanReviewTask } from "../human-review/models.js";
-import { PAIRWISE_TASK_TEMPLATE } from "../human-review/provider-workflow-service.js";
+import { isPairwiseTieBreakTemplate } from "../human-review/provider-workflow-service.js";
 import type { VerificationJob } from "./models.js";
 
 export type StuckReason =
@@ -53,7 +53,7 @@ export function deriveStuckState(input: {
   }
 
   const pairwiseTask =
-    reviewTasks.find((task) => task.taskTemplate === PAIRWISE_TASK_TEMPLATE) ??
+    reviewTasks.find((task) => isPairwiseTieBreakTemplate(task.taskTemplate)) ??
     null;
 
   if (

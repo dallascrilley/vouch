@@ -5,6 +5,7 @@ import { buildApp } from "../../src/api/app.js";
 
 export type ProviderTestAppOptions = {
   dispatchMode?: "api" | "mock";
+  env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
   ingestionMode?: "callback" | "poll";
   operatorToken?: string;
@@ -22,7 +23,8 @@ export function buildProviderTestApp(options: ProviderTestAppOptions = {}) {
       PROVIDER_CALLBACK_BASE_URL: "http://localhost:3000",
       PROVIDER_SHARED_SECRET: "top-secret",
       RUNTIME_OPERATOR_TOKEN:
-        options.operatorToken ?? process.env.RUNTIME_OPERATOR_TOKEN
+        options.operatorToken ?? process.env.RUNTIME_OPERATOR_TOKEN,
+      ...options.env
     },
     fetchImpl: options.fetchImpl ?? vi.fn()
   });

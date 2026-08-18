@@ -349,6 +349,34 @@ export function resolveDispatchPricing(input: {
   return { errors, maxAssignments, reward };
 }
 
+// Recovery must use the HIT's original assignment count, not the process-wide
+// default. A medium-risk envelope can legally create a 3-assignment HIT while
+// MTURK_MAX_ASSIGNMENTS stays 1; persisting the default would stop polling
+// after the first delivery and drop the remaining reviews.
+export function recoveredHitMaxAssignments(input: {
+  config: Pick<BridgeSafetyConfig, "maxAssignments">;
+  taskTemplate: string;
+}): number {
+  try {
+    const parsed = JSON.parse(input.taskTemplate) as {
+      pricing?: { max_assignments?: unknown };
+      v?: unknown;
+    };
+    const maxAssignments = parsed.pricing?.max_assignments;
+    if (
+      parsed.v === 1 &&
+      typeof maxAssignments === "number" &&
+      Number.isInteger(maxAssignments) &&
+      maxAssignments > 0
+    ) {
+      return maxAssignments;
+    }
+  } catch {
+    // Fall back to the bridge default when the template is not structured.
+  }
+  return input.config.maxAssignments;
+}
+
 function isPositiveNumber(value: number) {
   return Number.isFinite(value) && value > 0;
 }
