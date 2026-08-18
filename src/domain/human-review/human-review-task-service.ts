@@ -19,6 +19,53 @@ type CreateHumanReviewTaskInput = {
   visualEvidence?: VisualEvidence;
 };
 
+// An idempotency key identifies exactly one review task. Replaying it with
+// different parameters used to return the original task and silently ignore
+// the mismatch, which let a caller assert one reviewer pool while a different
+// pool was already stored and dispatched.
+//
+// deadlineAt and visualEvidence are deliberately excluded: a legitimate
+// dispatch retry may carry a refreshed deadline, and evidence is addressed by
+// the sanitized package id that is compared here.
+function assertReplayMatches(
+  input: CreateHumanReviewTaskInput,
+  existing: HumanReviewTask
+): void {
+  const mismatched: string[] = [];
+  if (input.jobId !== existing.jobId) mismatched.push("job_id");
+  if (input.reviewerPool !== existing.reviewerPool) {
+    mismatched.push("reviewer_pool");
+  }
+  if (input.sanitizedPackageId !== existing.sanitizedPackageId) {
+    mismatched.push("sanitized_package_id");
+  }
+  if (input.taskTemplate !== existing.taskTemplate) {
+    mismatched.push("task_template");
+  }
+  if (input.qualityPolicy !== existing.qualityPolicy) {
+    mismatched.push("quality_policy");
+  }
+  if (
+    input.providerAdapter !== undefined &&
+    input.providerAdapter !== existing.providerAdapter
+  ) {
+    mismatched.push("provider_adapter");
+  }
+  const requested = [...input.criterionIds].sort();
+  const stored = [...existing.criterionIds].sort();
+  if (
+    requested.length !== stored.length ||
+    requested.some((criterionId, index) => criterionId !== stored[index])
+  ) {
+    mismatched.push("criterion_ids");
+  }
+  if (mismatched.length > 0) {
+    throw new Error(
+      `Human review task idempotency key was replayed with different parameters: ${mismatched.join(", ")}`
+    );
+  }
+}
+
 export class HumanReviewTaskService {
   constructor(
     private readonly reviewTaskRepository: HumanReviewTaskRepository,
@@ -64,7 +111,10 @@ export class HumanReviewTaskService {
         const existing = await this.reviewTaskRepository.findByIdempotencyKey(
           input.idempotencyKey
         );
-        if (existing) return { created: false, task: existing };
+        if (existing) {
+          assertReplayMatches(input, existing);
+          return { created: false, task: existing };
+        }
       }
       await this.ledgerService.recordStateTransition(job.state, queueState, {
         correlationId: `review-task:${input.jobId}`,

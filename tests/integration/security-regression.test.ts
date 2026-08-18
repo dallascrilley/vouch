@@ -267,6 +267,31 @@ describe("security regressions", () => {
       expect(replay.json().reviewer_pool).not.toBe("managed");
     });
 
+    it("rejects an idempotency replay that changes a task-identifying parameter", async () => {
+      const jobId = await createClassifiedJob(app, { decision: "allowed" });
+      const idempotencyKey = crypto.randomUUID();
+
+      const first = await createTask(app, jobId, { idempotencyKey });
+      expect(first.statusCode).toBe(202);
+
+      const replay = await app.inject({
+        method: "POST",
+        url: `/verification-jobs/${jobId}/human-review-tasks`,
+        payload: {
+          criterion_ids: ["managed-check"],
+          deadline_at: "2026-06-01T00:00:00.000Z",
+          idempotency_key: idempotencyKey,
+          provider_adapter: "real-provider",
+          quality_policy: "provider-managed",
+          reviewer_pool: "managed",
+          sanitized_package_id: "a-different-package",
+          task_template: "provider-template"
+        }
+      });
+      expect(replay.statusCode).toBe(403);
+      expect(replay.json().message).toContain("sanitized_package_id");
+    });
+
     it("blocks managed-pool dispatch for billing routes even if the client asserts allowed", async () => {
       const jobId = await createClassifiedJob(app, {
         decision: "allowed",
