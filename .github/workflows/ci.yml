@@ -47,6 +47,8 @@ jobs:
         run: npm run validate:agent-loop
       - name: Offline harness — Pi extension
         run: npm run validate:pi-extension
+      - name: Offline harness — privacy gate
+        run: npm run validate:privacy-gate
       - name: Markdown link check
         if: steps.changes.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
         uses: lycheeverse/lychee-action@v2
