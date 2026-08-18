@@ -157,8 +157,8 @@ Each phase is independently shippable and independently revertible.
 ## Open, and deliberately deferred
 
 - Whether production is a goal before the `live-crowd` hold clears at all. If
-  it is not, phase 1 is still worth doing (it is a correctness fix) and phases
-  2–5 can wait.
+  it is not, phases 1–5 can wait; the accepted transaction boundary remains
+  future-facing documentation and does not require implementation now.
 - Whether to add the `pg` dependency back now or at phase 2. Adding it early
   makes phase 2 a smaller diff; leaving it out keeps the dependency surface
   honest about what actually runs.
