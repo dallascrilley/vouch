@@ -29,13 +29,13 @@ pool.
 
 ## Policy (`evaluateExternalizationPolicy`)
 
-| Condition | Result |
-| --- | --- |
-| `redaction_status` is `failed` or `insufficient_confidence` | `blocked_fail_closed` |
-| `data_class` is `regulated_or_secret` and pool is not `internal` | `blocked_fail_closed` |
-| `data_class` is `sensitive_internal` and pool is `public_crowd` | `managed_only` (blocked) |
-| route starts with `/billing` and pool is not `internal` | `internal_only` (blocked) |
-| otherwise | `allowed` |
+| Condition                                                        | Result                    |
+| ---------------------------------------------------------------- | ------------------------- |
+| `redaction_status` is `failed` or `insufficient_confidence`      | `blocked_fail_closed`     |
+| `data_class` is `regulated_or_secret` and pool is not `internal` | `blocked_fail_closed`     |
+| `data_class` is `sensitive_internal` and pool is `public_crowd`  | `managed_only` (blocked)  |
+| route starts with `/billing` and pool is not `internal`          | `internal_only` (blocked) |
+| otherwise                                                        | `allowed`                 |
 
 Failed redaction is forced fail-closed even when the client sends
 `externalization_decision: allowed`.
