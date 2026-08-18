@@ -55,7 +55,7 @@ object carrying the verdict, the unresolved criteria, and repair hints.
 ## Verify it yourself, offline
 
 The reason to trust any of the above is that you can reproduce it on a laptop
-with no accounts, no API keys, and no network calls. Five harnesses drive the
+with no accounts, no API keys, and no network calls. Six harnesses drive the
 real service through the real review loop against simulated reviewers, and the
 unit and contract suite covers the rest.
 
@@ -68,17 +68,19 @@ npm run validate:provider-e2e             # dispatch -> callback -> auto-advance
 npm run validate:provider-proof-bundle    # replay captured provider return-paths
 npm run validate:agent-loop               # API + worker + CLI, full round trip
 npm run validate:pi-extension             # Pi loader + loopback broker + simulated human_review
+npm run validate:privacy-gate             # policy rejections: regulated, billing route, failed redaction
 ```
 
 Each harness exits non-zero on failure and prints a JSON receipt on success:
 
-| Command                                  | What it proves                                                                                                                                                  | Success output                                    |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `npm run validate:local-runtime`         | Job intake, artifact attach, privacy gate, and self-verification survive a real SQLite runtime; inspection endpoints report the job.                            | `local runtime validation passed`                 |
-| `npm run validate:provider-e2e`          | A provider task is dispatched, a signed callback is ingested, consensus auto-advances, and the job reaches a `pass` verdict.                                    | `"status": "simulated provider e2e passed"`       |
-| `npm run validate:provider-proof-bundle` | Recorded provider return-paths (pass, ambiguous, fail) replay to the same broker outcomes, so return-path regressions are caught without a live crowd platform. | `"status": "provider proof-bundle replay passed"` |
-| `npm run validate:agent-loop`            | The full agent path: spawn the API and dispatch worker, run the `review` CLI with `--wait`, and assert exit `0` with `agent_next_action: pass`.                 | `"status": "agent loop validation passed"`        |
-| `npm run validate:pi-extension`          | Pi loads `extensions/pi`, a loopback broker supervisor starts, and a simulated `human_review` settles.                                                          | `"status": "pi extension validation passed"`      |
+| Command                                  | What it proves                                                                                                                                                                                  | Success output                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `npm run validate:local-runtime`         | Job intake, artifact attach, privacy gate, and self-verification survive a real SQLite runtime; inspection endpoints report the job.                                                            | `local runtime validation passed`                 |
+| `npm run validate:provider-e2e`          | A provider task is dispatched, a signed callback is ingested, consensus auto-advances, and the job reaches a `pass` verdict.                                                                    | `"status": "simulated provider e2e passed"`       |
+| `npm run validate:provider-proof-bundle` | Recorded provider return-paths (pass, ambiguous, fail) replay to the same broker outcomes, so return-path regressions are caught without a live crowd platform.                                 | `"status": "provider proof-bundle replay passed"` |
+| `npm run validate:agent-loop`            | The full agent path: spawn the API and dispatch worker, run the `review` CLI with `--wait`, and assert exit `0` with `agent_next_action: pass`.                                                 | `"status": "agent loop validation passed"`        |
+| `npm run validate:pi-extension`          | Pi loads `extensions/pi`, a loopback broker supervisor starts, and a simulated `human_review` settles.                                                                                          | `"status": "pi extension validation passed"`      |
+| `npm run validate:privacy-gate`          | The rejection paths: regulated evidence and billing routes are refused a managed pool without advancing the job, failed redaction fails closed, and an allowed classification still dispatches. | `"status": "privacy gate validation passed"`      |
 
 `npm run verify` runs lint, typecheck, and tests _through_ the service itself:
 the checks become acceptance criteria on a verification job, and the resulting

@@ -50,6 +50,7 @@
     "validate:agent-loop": "tsx scripts/validate-agent-loop.ts",
     "validate:provider-proof-bundle": "tsx scripts/validate-provider-proof-bundle.ts",
     "validate:pi-extension": "tsx scripts/validate-pi-extension.ts",
+    "validate:privacy-gate": "tsx scripts/validate-privacy-gate.ts",
     "verify": "tsx scripts/verify-change.ts"
   },
   "dependencies": {

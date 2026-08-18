@@ -14,7 +14,7 @@ edit when the gate changes.
 3. `npm run format` — `prettier --check .`
 4. `npm run verify` — lint, type-check, tests through the self-verification gate
 5. OpenAPI 3.1 contract check
-6. Five offline harnesses: `validate:local-runtime`, `validate:provider-e2e`, `validate:provider-proof-bundle`, `validate:agent-loop`, `validate:pi-extension`
+6. Six offline harnesses: `validate:local-runtime`, `validate:provider-e2e`, `validate:provider-proof-bundle`, `validate:agent-loop`, `validate:pi-extension`, `validate:privacy-gate`
 7. Markdown link check (lychee) — **only when doc paths change** (`**/*.md`, `docs/**`, `contracts/**`) or on `workflow_dispatch`
 
 `run_cibuild` is authoritative for the install/gate half. `npm run format`

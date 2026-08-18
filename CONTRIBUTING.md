@@ -43,6 +43,7 @@ npm run validate:provider-e2e
 npm run validate:provider-proof-bundle
 npm run validate:agent-loop
 npm run validate:pi-extension
+npm run validate:privacy-gate
 ```
 
 ## Conventions
