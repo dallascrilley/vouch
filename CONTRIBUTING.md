@@ -22,13 +22,17 @@ on GitHub runners and on macOS by default.
 npm test                    # vitest: contract, integration, and unit suites
 npm run lint                # eslint
 npm run build               # tsc --noEmit
+npm run format              # prettier --check . (does not rewrite files)
 ./script/cibuild            # exactly what CI runs
 ```
 
 `script/cibuild` is the single source of truth for CI, so local and CI cannot
-drift. It runs `npm ci`, `npm run build:js`, `npm run verify`, and the OpenAPI
-version check. `npm run verify` routes lint, typecheck, and tests through the
-service's own self-verification lifecycle and gates on the resulting verdict.
+drift. Read `run_cibuild` in `script/lib/profile.sh` for the exact step list —
+do not add gate commands only in `.github/workflows/ci.yml`. `npm run verify`
+routes lint, typecheck, and tests through the service's own self-verification
+lifecycle; it does **not** run Prettier. Fix format drift with
+`npx prettier --write <path>`. See
+[docs/ops/ci.md](docs/ops/ci.md) for the `.gitignore` ignore pitfall.
 
 Before opening a pull request that touches the review loop, run the offline
 harnesses too:

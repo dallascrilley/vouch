@@ -55,7 +55,7 @@ object carrying the verdict, the unresolved criteria, and repair hints.
 ## Verify it yourself, offline
 
 The reason to trust any of the above is that you can reproduce it on a laptop
-with no accounts, no API keys, and no network calls. Four harnesses drive the
+with no accounts, no API keys, and no network calls. Five harnesses drive the
 real service through the real review loop against simulated reviewers, and the
 unit and contract suite covers the rest.
 
@@ -67,6 +67,7 @@ npm run validate:local-runtime            # SQLite persistence + inspection endp
 npm run validate:provider-e2e             # dispatch -> callback -> auto-advance -> pass verdict
 npm run validate:provider-proof-bundle    # replay captured provider return-paths
 npm run validate:agent-loop               # API + worker + CLI, full round trip
+npm run validate:pi-extension             # Pi loader + loopback broker + simulated human_review
 ```
 
 Each harness exits non-zero on failure and prints a JSON receipt on success:
@@ -77,11 +78,14 @@ Each harness exits non-zero on failure and prints a JSON receipt on success:
 | `npm run validate:provider-e2e`          | A provider task is dispatched, a signed callback is ingested, consensus auto-advances, and the job reaches a `pass` verdict.                                    | `"status": "simulated provider e2e passed"`       |
 | `npm run validate:provider-proof-bundle` | Recorded provider return-paths (pass, ambiguous, fail) replay to the same broker outcomes, so return-path regressions are caught without a live crowd platform. | `"status": "provider proof-bundle replay passed"` |
 | `npm run validate:agent-loop`            | The full agent path: spawn the API and dispatch worker, run the `review` CLI with `--wait`, and assert exit `0` with `agent_next_action: pass`.                 | `"status": "agent loop validation passed"`        |
+| `npm run validate:pi-extension`          | Pi loads `extensions/pi`, a loopback broker supervisor starts, and a simulated `human_review` settles.                                                          | `"status": "pi extension validation passed"`      |
 
 `npm run verify` runs lint, typecheck, and tests _through_ the service itself:
 the checks become acceptance criteria on a verification job, and the resulting
 verdict decides whether the change is allowed. `./script/cibuild` is what CI
-runs, and it calls `verify`.
+runs, and it calls `verify`. `npm run format` (`prettier --check .`) is a
+separate check — it does not rewrite files, and `verify` does not run it. See
+[docs/ops/ci.md](docs/ops/ci.md).
 
 ## Use it from Pi
 

@@ -13,6 +13,7 @@
 <!-- How was this verified? Paste command + result. `script/cibuild` should pass. -->
 
 - [ ] `script/cibuild` passes locally
+- [ ] `npm run format` (`prettier --check .`) is clean
 - [ ] Added/updated tests for the change
 - [ ] Docs updated (README / docs/) if behavior changed
 
