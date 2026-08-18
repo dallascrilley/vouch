@@ -23,13 +23,17 @@ The commissioning request must include:
 `externalization_decision` is a client hint. The broker overwrites fail-closed
 classifications and re-checks policy at dispatch against the **stored**
 task `reviewerPool`. Reusing `idempotency_key` with a different
-`reviewer_pool` is rejected (#38); it never rewrites the task, and the gate
-uses the stored pool regardless. Jobs that request a non-internal pool with `agent_run_id` also need
+`reviewer_pool` never rewrites the task, and the gate uses the stored pool
+regardless. Jobs that request a non-internal pool with `agent_run_id` also need
 the server-held go-live grant. See [`privacy-gate.md`](privacy-gate.md).
 
 Real-provider dispatch with `VOUCH_REAL_SPEND_CEILING_USD` set requires a `v: 1`
 `task_template` pricing object and a task `idempotency_key`. See
-[`docs/ops/spend-ceiling.md`](../ops/spend-ceiling.md).
+[`docs/ops/spend-ceiling.md`](../ops/spend-ceiling.md). Replaying that key
+with a different job, pool, package, template, quality policy, provider
+adapter, or criterion set is rejected (403); a matching replay returns the
+stored task. See
+[`human-review-task-idempotency.md`](human-review-task-idempotency.md).
 
 ## Completion Response
 

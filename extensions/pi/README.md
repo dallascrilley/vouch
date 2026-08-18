@@ -86,6 +86,11 @@ manual operator walkthrough with valid AWS/MTurk setup; CI never spends money.
   `idempotency_key`, or an exceeded `VOUCH_REAL_SPEND_CEILING_USD` returns
   `not_reviewed` — never a simulated pass. Details:
   [`docs/ops/spend-ceiling.md`](../../docs/ops/spend-ceiling.md).
+- **Broker task keys.** The extension registry is still the client-side
+  duplicate-dispatch guard. If a caller reuses a broker `idempotency_key`
+  with different identifying fields, the broker 403s rather than attaching
+  to the original task. See
+  [`docs/architecture/human-review-task-idempotency.md`](../../docs/architecture/human-review-task-idempotency.md).
 - **Expired ambient reviews.** Deadline-elapsed handles are
   `status: "not_reviewed"` with `expired: true` so go-live does not treat them
   as in-flight.
