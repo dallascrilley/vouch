@@ -22,12 +22,14 @@ async function createClassifiedJob(
     redactionStatus?: string;
     decision?: string;
     route?: string;
+    allowedReviewerRoutes?: string[];
   } = {}
 ) {
   const dataClass = options.dataClass ?? "internal_low";
   const redactionStatus = options.redactionStatus ?? "completed";
   const decision = options.decision ?? "allowed";
   const route = options.route ?? "/managed";
+  const allowedReviewerRoutes = options.allowedReviewerRoutes ?? ["managed"];
 
   const createResponse = await app.inject({
     method: "POST",
@@ -88,7 +90,7 @@ async function createClassifiedJob(
       artifact_manifest_id: "manifest-managed",
       data_class: dataClass,
       redaction_status: redactionStatus,
-      allowed_reviewer_routes: ["managed"],
+      allowed_reviewer_routes: allowedReviewerRoutes,
       policy_version: "v1",
       externalization_decision: decision,
       audit_record_id: "audit-managed"
@@ -98,7 +100,11 @@ async function createClassifiedJob(
   return jobId;
 }
 
-function createTask(app: App, jobId: string) {
+function createTask(
+  app: App,
+  jobId: string,
+  overrides: { reviewerPool?: string; idempotencyKey?: string } = {}
+) {
   return app.inject({
     method: "POST",
     url: `/verification-jobs/${jobId}/human-review-tasks`,
@@ -107,9 +113,12 @@ function createTask(app: App, jobId: string) {
       deadline_at: "2026-06-01T00:00:00.000Z",
       provider_adapter: "real-provider",
       quality_policy: "provider-managed",
-      reviewer_pool: "managed",
+      reviewer_pool: overrides.reviewerPool ?? "managed",
       sanitized_package_id: "managed-package",
-      task_template: "provider-template"
+      task_template: "provider-template",
+      ...(overrides.idempotencyKey
+        ? { idempotency_key: overrides.idempotencyKey }
+        : {})
     }
   });
 }
@@ -226,6 +235,61 @@ describe("security regressions", () => {
       });
       const response = await createTask(app, jobId);
       expect(response.statusCode).toBe(403);
+    });
+
+    it("blocks a replayed idempotency key that asserts a different pool than the stored task", async () => {
+      // The gate recomputes the policy from request.body.reviewer_pool, but
+      // dispatch uses the stored task's reviewerPool. createOrGet returns an
+      // existing task by idempotency key without checking that the requested
+      // pool matches, so the two can diverge on the replay path.
+      const jobId = await createClassifiedJob(app, {
+        decision: "allowed",
+        route: "/billing/invoices",
+        allowedReviewerRoutes: ["managed", "internal"]
+      });
+      const idempotencyKey = crypto.randomUUID();
+
+      // Managed on a billing route is blocked -- but the task is persisted
+      // before the gate runs.
+      const blocked = await createTask(app, jobId, {
+        reviewerPool: "managed",
+        idempotencyKey
+      });
+      expect(blocked.statusCode).toBe(403);
+
+      // Replay the same key asserting "internal", which the billing rule
+      // permits. The stored task is still managed.
+      const replay = await createTask(app, jobId, {
+        reviewerPool: "internal",
+        idempotencyKey
+      });
+      expect(replay.statusCode).toBe(403);
+      expect(replay.json().reviewer_pool).not.toBe("managed");
+    });
+
+    it("rejects an idempotency replay that changes a task-identifying parameter", async () => {
+      const jobId = await createClassifiedJob(app, { decision: "allowed" });
+      const idempotencyKey = crypto.randomUUID();
+
+      const first = await createTask(app, jobId, { idempotencyKey });
+      expect(first.statusCode).toBe(202);
+
+      const replay = await app.inject({
+        method: "POST",
+        url: `/verification-jobs/${jobId}/human-review-tasks`,
+        payload: {
+          criterion_ids: ["managed-check"],
+          deadline_at: "2026-06-01T00:00:00.000Z",
+          idempotency_key: idempotencyKey,
+          provider_adapter: "real-provider",
+          quality_policy: "provider-managed",
+          reviewer_pool: "managed",
+          sanitized_package_id: "a-different-package",
+          task_template: "provider-template"
+        }
+      });
+      expect(replay.statusCode).toBe(403);
+      expect(replay.json().message).toContain("sanitized_package_id");
     });
 
     it("blocks managed-pool dispatch for billing routes even if the client asserts allowed", async () => {

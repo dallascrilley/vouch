@@ -127,9 +127,14 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
           app.services.providerConfig?.enabled &&
           reviewTask.providerAdapter === app.services.providerConfig.providerId
         ) {
+          // Gate the pool that is actually dispatched, not the one the caller
+          // asserted. createOrGet returns an existing task by idempotency key
+          // without requiring the requested pool to match, so a replay can
+          // assert "internal" while the stored task is still "managed".
+          // evidence.ts and provider-callback.ts already gate task.reviewerPool.
           await app.services.privacyGate.assertProviderDispatchAllowed(
             request.params.jobId,
-            request.body.reviewer_pool
+            reviewTask.reviewerPool
           );
 
           const fallbackDecision = shouldFallbackProvider({
