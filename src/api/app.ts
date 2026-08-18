@@ -172,7 +172,11 @@ function resolveConfig(input?: RuntimeConfig | BuildAppOptions): {
   }
 
   const options = input;
-  const env = options?.env ?? process.env;
+  // Layer the caller's env over the ambient one rather than replacing it. A
+  // partial env used to drop `VITEST`, which silently switched the runtime from
+  // `:memory:` to the on-disk `.runtime/local-runtime.sqlite` that `npm run
+  // verify` and the offline harnesses also use.
+  const env = options?.env ? { ...process.env, ...options.env } : process.env;
   return {
     config: options?.config ?? loadRuntimeConfig(env),
     env,
