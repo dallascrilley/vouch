@@ -27,7 +27,11 @@ See [`privacy-gate.md`](privacy-gate.md).
 
 Real-provider dispatch with `VOUCH_REAL_SPEND_CEILING_USD` set requires a `v: 1`
 `task_template` pricing object and a task `idempotency_key`. See
-[`docs/ops/spend-ceiling.md`](../ops/spend-ceiling.md).
+[`docs/ops/spend-ceiling.md`](../ops/spend-ceiling.md). Replaying that key
+with a different job, pool, package, template, quality policy, provider
+adapter, or criterion set is rejected (403); a matching replay returns the
+stored task. See
+[`human-review-task-idempotency.md`](human-review-task-idempotency.md).
 
 ## Completion Response
 

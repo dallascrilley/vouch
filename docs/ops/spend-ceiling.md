@@ -87,6 +87,12 @@ already full. A key reused with a different job or amount throws. Over-ceiling
 **new** keys return `allowed: false` and the route surfaces an error such as
 `Real spend ceiling reached; operator confirmation required`.
 
+Human-review **task** keys are a separate ledger. Replaying
+`idempotency_key` on `POST .../human-review-tasks` with a different
+identifying field (pool, package, criteria, template, quality policy, or
+adapter) is 403; see
+[`human-review-task-idempotency.md`](../architecture/human-review-task-idempotency.md).
+
 Human-review dispatch requires `idempotency_key` on the task body whenever the
 ceiling is set. Pairwise and self-verification follow-ups use
 `review-task:<reviewTaskId>`. Failed dispatch (except an ambiguous

@@ -110,7 +110,7 @@ paths:
         "202":
           description: Human review task queued
         "403":
-          description: Privacy policy blocks requested reviewer route
+          description: Privacy policy blocks the reviewer route, real-spend reservation is refused, or idempotency_key was reused with different task-identifying parameters
   /human-review-tasks/{reviewTaskId}/responses:
     post:
       summary: Ingest a normalized human review response

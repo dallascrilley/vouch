@@ -14,7 +14,10 @@
 `docs/architecture/agent-review-contract.md` defines the agent-facing
 commissioning and completion fields for autonomous self-verification loops.
 Privacy classification is not client-authoritative; see
-[`privacy-gate.md`](privacy-gate.md). Real-provider cost is capped by
+[`privacy-gate.md`](privacy-gate.md). Human-review task `idempotency_key`
+replays that change identifying fields are rejected; see
+[`human-review-task-idempotency.md`](human-review-task-idempotency.md).
+Real-provider cost is capped by
 [`docs/ops/spend-ceiling.md`](../ops/spend-ceiling.md).
 
 ## Main Modules
