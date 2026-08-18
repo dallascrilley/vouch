@@ -146,7 +146,7 @@ Vouch has the hard parts built — a typed one-call client, a structured feedbac
 <!-- ce-section: work-relationships -->
 ### How This Work Fits Together
 
-This plan owns the packaging piece of the agent-native verification stack from [docs/ideation/2026-08-12-vouch-expansion-ideation.html](../ideation/2026-08-12-vouch-expansion-ideation.html) (idea 1). The breakdown below is the current understanding, not a committed roadmap.
+This plan owns the packaging piece of the agent-native verification stack laid out in an internal ideation document (idea 1), which is not published in this repository. The breakdown below is the current understanding, not a committed roadmap.
 
 - **Verdict precedent cache** — enables cheap repeat verification; can proceed independently; shares the `contentHash` and source-context fields already persisted.
 - **Provisional settlement + reversal event** — depends on this plan (the tool surface makes latency pressure real); still to decide: reversal semantics for already-acted-on verdicts.
@@ -406,7 +406,7 @@ The sandbox MTurk path (F3, AE-level for R12/R17) is verified manually at go-liv
 
 ### Sources / Research
 
-- [docs/ideation/2026-08-12-vouch-expansion-ideation.html](../ideation/2026-08-12-vouch-expansion-ideation.html) — ranked ideation this direction came from (idea 1; market prior art: Tendem/Toloka, HITL MCP servers, framework approval gates).
+- Internal ideation document, not published in this repository — ranked ideation this direction came from (idea 1; market prior art: Tendem/Toloka, HITL MCP servers, framework approval gates).
 - Pi extension API — `https://raw.githubusercontent.com/badlogic/pi-mono/main/packages/coding-agent/docs/extensions.md` (registerTool/registerCommand/ctx.ui/session events; factory rules), `https://pi.dev` (current docs), npm `@earendil-works/pi-coding-agent` (current scope; `@mariozechner/*` deprecated). `pi-ask-user` (github.com/edlsh/pi-ask-user) — third-party prior art for human-input extension UX.
 - `src/api/app.ts` (`buildApp` — builds but never listens), `src/api/server.ts` (listen + signal handlers), `scripts/lib/broker-transport.ts` (in-process test transport precedent).
 - `src/config/runtime.ts` (PORT default 3000; `LOCAL_PROVIDER_MODE` default simulated; SQLite paths).
