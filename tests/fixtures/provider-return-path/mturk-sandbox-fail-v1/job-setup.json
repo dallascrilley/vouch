@@ -16,7 +16,7 @@
     "deadline_at": "2026-06-01T00:00:00.000Z",
     "risk_tier": "medium",
     "source": {
-      "repository": "quorum",
+      "repository": "vouch",
       "commit": "fail-sim",
       "environment": "staging",
       "route": "/mturk-visual-hero-cta"

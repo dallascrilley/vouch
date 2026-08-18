@@ -154,4 +154,41 @@ describe("agent review client one-call flow", () => {
       viewport: "unspecified"
     });
   });
+
+  it("fails closed when an agent-controlled external review claims public data", async () => {
+    const address = app.server.address() as AddressInfo;
+    await expect(
+      requestHumanReview({
+        agentControlled: true,
+        brokerBaseUrl: `http://127.0.0.1:${address.port}`,
+        criteria: [
+          {
+            criterionId: "hero-cta-no-overlap",
+            criticality: "major",
+            humanVisibleText:
+              "The orange CTA does not overlap the hero headline."
+          }
+        ],
+        dataClass: "public",
+        reviewerPool: "managed",
+        screenshot: {
+          caption: "Hero at 1440x900",
+          path: join(tempDir, "shot.png")
+        },
+        template: {
+          instructions: "Look at the screenshot and answer the question.",
+          params: {
+            criteria: [
+              {
+                id: "hero-cta-no-overlap",
+                statement: "The orange CTA does not overlap the hero headline."
+              }
+            ]
+          },
+          template_id: "binary_screenshot_check",
+          v: 1
+        }
+      })
+    ).rejects.toMatchObject({ status: 403 });
+  });
 });

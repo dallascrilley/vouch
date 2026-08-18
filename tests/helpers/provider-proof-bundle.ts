@@ -154,8 +154,12 @@ export async function seedJobFromProofBundle(
     privacy_classification: privacy,
     human_review_task: task
   } = bundle.jobSetup;
+  const headers = app.services.runtimeConfig.operatorToken
+    ? { "x-operator-token": app.services.runtimeConfig.operatorToken }
+    : undefined;
 
   const createResponse = await app.inject({
+    headers,
     method: "POST",
     url: "/verification-jobs",
     payload: {
@@ -169,6 +173,7 @@ export async function seedJobFromProofBundle(
   const jobId = createResponse.json<{ job_id: string }>().job_id;
 
   const artifactResponse = await app.inject({
+    headers,
     method: "POST",
     url: `/verification-jobs/${jobId}/artifacts`,
     payload: {
@@ -187,6 +192,7 @@ export async function seedJobFromProofBundle(
   }
 
   const privacyResponse = await app.inject({
+    headers,
     method: "POST",
     url: `/verification-jobs/${jobId}/privacy-classification`,
     payload: {
@@ -200,6 +206,7 @@ export async function seedJobFromProofBundle(
   }
 
   const taskResponse = await app.inject({
+    headers,
     method: "POST",
     url: `/verification-jobs/${jobId}/human-review-tasks`,
     payload: task
@@ -231,6 +238,9 @@ export async function replayProviderProofBundle(
   options: { operatorToken?: string; sharedSecret?: string } = {}
 ): Promise<ProviderProofReplayResult> {
   const seeded = await seedJobFromProofBundle(app, bundle);
+  const headers = app.services.runtimeConfig.operatorToken
+    ? { "x-operator-token": app.services.runtimeConfig.operatorToken }
+    : undefined;
 
   const callbackResponse = await app.inject({
     method: "POST",
@@ -244,6 +254,7 @@ export async function replayProviderProofBundle(
 
   if (bundle.expected.feedback_before_adjudication) {
     const pendingFeedbackResponse = await app.inject({
+      headers,
       method: "GET",
       url: `/verification-jobs/${seeded.jobId}/feedback`
     });
@@ -259,6 +270,7 @@ export async function replayProviderProofBundle(
 
   if (bundle.adjudicationFlow) {
     const consensusResponse = await app.inject({
+      headers,
       method: "POST",
       url: `/verification-jobs/${seeded.jobId}/consensus`,
       payload: {
@@ -271,6 +283,7 @@ export async function replayProviderProofBundle(
     }
 
     const adjudicationResponse = await app.inject({
+      headers,
       method: "POST",
       url: `/verification-jobs/${seeded.jobId}/adjudications`,
       payload: bundle.adjudicationFlow.adjudication
@@ -281,11 +294,13 @@ export async function replayProviderProofBundle(
   }
 
   const feedbackResponse = await app.inject({
+    headers,
     method: "GET",
     url: `/verification-jobs/${seeded.jobId}/feedback`
   });
 
   const verdictResponse = await app.inject({
+    headers,
     method: "GET",
     url: `/verification-jobs/${seeded.jobId}/verdict`
   });

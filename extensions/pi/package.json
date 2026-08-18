@@ -1,0 +1,21 @@
+{
+  "name": "@dallascrilley/vouch-pi-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pi extension for Vouch human review",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  }
+}

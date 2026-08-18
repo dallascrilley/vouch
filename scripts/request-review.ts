@@ -205,10 +205,12 @@ async function main() {
   }));
 
   const result = await requestHumanReview({
+    agentControlled: true,
     agentRunId: values["agent-run-id"],
     brokerBaseUrl,
     criteria,
     dataClass: values["data-class"],
+    operatorToken: process.env.RUNTIME_OPERATOR_TOKEN,
     pollIntervalMs,
     providerAdapter: values.provider,
     reviewerPool: values.pool,

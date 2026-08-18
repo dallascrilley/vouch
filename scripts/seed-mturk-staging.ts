@@ -142,7 +142,7 @@ async function main() {
       source: {
         commit: "mturk-staging",
         environment: "staging",
-        repository: "quorum",
+        repository: "vouch",
         route: testCase.route
       }
     });
@@ -155,7 +155,7 @@ async function main() {
         environment: {
           commit: "mturk-staging",
           environment: "staging",
-          repository: "quorum",
+          repository: "vouch",
           route: testCase.route
         },
         job_id: createPayload.job_id,

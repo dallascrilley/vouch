@@ -41,7 +41,7 @@ async function main() {
       source: {
         commit: "validation",
         environment: "local",
-        repository: "quorum",
+        repository: "vouch",
         route: "/validation"
       }
     }
@@ -58,7 +58,7 @@ async function main() {
       environment: {
         commit: "validation",
         environment: "local",
-        repository: "quorum",
+        repository: "vouch",
         route: "/validation"
       },
       job_id: jobId,

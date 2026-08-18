@@ -52,6 +52,7 @@ export interface SelfVerificationResultRepository {
 
 export interface HumanReviewTaskRepository {
   findById(reviewTaskId: string): Promise<HumanReviewTask | null>;
+  findByIdempotencyKey(idempotencyKey: string): Promise<HumanReviewTask | null>;
   findByJobId(jobId: string): Promise<HumanReviewTask[]>;
   save(task: HumanReviewTask): Promise<void>;
 }

@@ -9,6 +9,10 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
   verify:
     name: verify + offline harnesses
@@ -41,14 +45,17 @@ jobs:
         run: npm run validate:provider-proof-bundle
       - name: Offline harness — agent loop
         run: npm run validate:agent-loop
+      - name: Offline harness — Pi extension
+        run: npm run validate:pi-extension
       - name: Markdown link check
         if: steps.changes.outputs.docs == 'true' || github.event_name == 'workflow_dispatch'
         uses: lycheeverse/lychee-action@v2
         with:
-          # Self-referencing github.com URLs are excluded: they 404 for
-          # unauthenticated checkers while the repository is private.
+          # Self-referencing github.com URLs are excluded: the CI badge and
+          # workflow links intermittently fail the checker with an HTTP/2
+          # protocol error even though they resolve fine in a browser.
           args: >-
             --no-progress
-            --exclude '^https://github\.com/dallascrilley/quorum'
+            --exclude '^https://github\.com/dallascrilley/vouch'
             README.md CONTRIBUTING.md SECURITY.md CHANGELOG.md
             docs/**/*.md contracts/**/*.md

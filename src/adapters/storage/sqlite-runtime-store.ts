@@ -15,6 +15,7 @@ export class SQLiteRuntimeStore implements TransactionManager {
     }
 
     this.db = new DatabaseSync(path);
+    this.db.exec("PRAGMA busy_timeout = 5000;");
     applySqliteMigrations(this.db);
   }
 

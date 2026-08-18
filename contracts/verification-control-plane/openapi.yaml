@@ -1,11 +1,13 @@
 openapi: 3.1.0
 info:
   title: Verification Control Plane API
-  version: 0.1.0
+  version: 0.2.0
   description: Provider-neutral API for evidence intake, verification lifecycle, human review, adjudication, verdicts, and agent feedback.
 servers:
   - url: https://verification-control-plane.example.test
     description: Placeholder staging endpoint for contract validation
+security:
+  - operatorTokenAuth: []
 paths:
   /verification-jobs:
     post:
@@ -188,9 +190,21 @@ paths:
           description: Feedback not available
   /health:
     get:
-      summary: Liveness and runtime capability hints
+      summary: Authenticated broker health and optional supervisor proof
       operationId: getHealth
       tags: [runtime]
+      security: []
+      parameters:
+        - name: x-health-challenge
+          in: header
+          required: false
+          schema:
+            type: string
+          description: >-
+            A fresh nonce. When present, the response includes a health_proof
+            HMAC bound to this challenge; the endpoint remains publicly
+            reachable so a supervisor can prove it is speaking to the
+            expected broker without sending the operator token.
       responses:
         "200":
           description: Service is healthy
@@ -198,6 +212,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthResponse"
+        "401":
+          description: Missing or invalid operator token
+        "503":
+          description: Operator authentication is not configured in production
   /runtime/inspection:
     get:
       summary: Runtime filesystem and database layout (operator)
@@ -270,6 +288,12 @@ paths:
         "404":
           description: Artifact not available
 components:
+  securitySchemes:
+    operatorTokenAuth:
+      type: apiKey
+      in: header
+      name: x-operator-token
+      description: Required for all broker operations except the separately authenticated provider callback.
   parameters:
     jobId:
       name: jobId
@@ -603,6 +627,9 @@ components:
           type: string
         task_template:
           type: string
+        idempotency_key:
+          type: string
+          description: Stable client key used to prevent duplicate paid dispatches
         provider_adapter:
           type: string
         provider_task_ref:
@@ -799,8 +826,13 @@ components:
             type: string
     HealthResponse:
       type: object
-      required: [status]
+      required: [status, broker_version]
       properties:
+        broker_version:
+          type: string
+        health_proof:
+          type: string
+          description: HMAC proof of x-health-challenge when supplied.
         status:
           type: string
         database_path:
@@ -808,7 +840,8 @@ components:
         docs_url:
           type: string
         local_provider_mode:
-          type: boolean
+          type: string
+          enum: [disabled, simulated]
         provider_enabled:
           type: boolean
         provider_id:

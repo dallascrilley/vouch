@@ -7,28 +7,35 @@
 
 ## Palette
 
-| Role | Color | Hex (approx) |
-|------|--------|--------------|
-| Sage (primary) | soft sage green | `#8FAE8B` |
-| Cream | warm off-white | `#F5F0E6` |
-| Charcoal | wordmark / UI text | `#2C2C2C` |
-| Check / accent | deeper sage | `#5E8A5A` |
+| Role           | Color              | Hex (approx) |
+| -------------- | ------------------ | ------------ |
+| Sage (primary) | soft sage green    | `#8FAE8B`    |
+| Cream          | warm off-white     | `#F5F0E6`    |
+| Charcoal       | wordmark / UI text | `#2C2C2C`    |
+| Check / accent | deeper sage        | `#5E8A5A`    |
 
 ## Assets
 
-| File | Use |
-|------|-----|
-| `primary.png` | Main mark (top-down huddle + seal) |
-| `avatar.png` | GitHub org / repo avatar |
-| `favicon.png` | Simplified 32px-friendly cut |
-| `lockup.png` | README / site header (mark + wordmark) |
-| `splash.png` | Social / OG preview |
+| File          | Use                                    |
+| ------------- | -------------------------------------- |
+| `primary.png` | Main mark (top-down huddle + seal)     |
+| `avatar.png`  | GitHub org / repo avatar               |
+| `favicon.png` | Simplified 32px-friendly cut           |
+| `lockup.png`  | README / site header (mark + wordmark) |
+| `splash.png`  | Social / OG preview                    |
 
 ## Naming
 
 - Product name: **Vouch**
-- Repo may still be `quorum` until a rename; user-facing copy should say Vouch.
-- Avoid "quorum" in new marketing copy except migration notes.
+- Repository, npm package, and Docker image are all `vouch`.
+- Avoid "quorum" in new marketing copy except migration notes. `quorum_state`
+  and related consensus fields stay as domain terms, not branding.
+
+## Provenance
+
+The five PNGs are the canonical Vouch marks imported from the local
+`vouch-brand-kit.tar.gz` archive. The archive's `hero-source.png` concept source
+is intentionally not shipped here, and no Shipwright assets are included.
 
 ## Do / don't
 

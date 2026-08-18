@@ -29,7 +29,10 @@ async function main() {
   process.on("SIGTERM", () => shutdown("SIGTERM"));
   process.on("SIGINT", () => shutdown("SIGINT"));
 
-  await server.listen({ host: "0.0.0.0", port: config.port });
+  await server.listen({
+    host: process.env.RUNTIME_HOST ?? "0.0.0.0",
+    port: config.port
+  });
   return server;
 }
 

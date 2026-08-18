@@ -37,11 +37,17 @@ async function getFreePort(): Promise<number> {
   });
 }
 
-async function waitForHealth(baseUrl: string, timeoutMs: number) {
+async function waitForHealth(
+  baseUrl: string,
+  timeoutMs: number,
+  operatorToken: string
+) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(`${baseUrl}/health`);
+      const response = await fetch(`${baseUrl}/health`, {
+        headers: { "x-operator-token": operatorToken }
+      });
       if (response.ok) {
         return;
       }
@@ -127,6 +133,7 @@ function appendChunk(buffer: string, chunk: unknown): string {
 
 async function runReviewCli(input: {
   baseUrl: string;
+  operatorToken: string;
   screenshotPath: string;
 }): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
@@ -151,7 +158,7 @@ async function runReviewCli(input: {
         "1",
         "--wait"
       ],
-      {}
+      { RUNTIME_OPERATOR_TOKEN: input.operatorToken }
     );
 
     let stdout = "";
@@ -204,6 +211,7 @@ async function main() {
     LOG_LEVEL: "error",
     PORT: String(port),
     RUNTIME_ARTIFACT_ROOT: join(tempDir, "artifacts"),
+    RUNTIME_OPERATOR_TOKEN: "agent-loop-test-token",
     RUNTIME_SQLITE_PATH: sqlitePath
   };
 
@@ -222,7 +230,7 @@ async function main() {
       }
     });
 
-    await waitForHealth(baseUrl, 15_000);
+    await waitForHealth(baseUrl, 15_000, runtimeEnv.RUNTIME_OPERATOR_TOKEN);
     await sleep(500);
     worker = spawnProcess("npx", ["tsx", "src/workers/index.ts"], runtimeEnv, {
       detached: true
@@ -237,7 +245,11 @@ async function main() {
 
     await sleep(500);
 
-    const review = await runReviewCli({ baseUrl, screenshotPath });
+    const review = await runReviewCli({
+      baseUrl,
+      operatorToken: runtimeEnv.RUNTIME_OPERATOR_TOKEN,
+      screenshotPath
+    });
     if (review.exitCode !== 0) {
       throw new Error(
         `review CLI exited ${review.exitCode}\nstdout:\n${review.stdout}\nstderr:\n${review.stderr}\n` +

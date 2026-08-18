@@ -13,6 +13,7 @@ export type HumanReviewTaskState =
   | "canceled";
 
 export type HumanReviewTask = {
+  idempotencyKey?: string;
   reviewTaskId: Identifier;
   jobId: Identifier;
   criterionIds: Identifier[];
@@ -50,6 +51,7 @@ export type ProviderAdapterConfig = {
   enabled: boolean;
   apiKey?: string;
   sharedSecret?: string;
+  dispatchTimeoutMs?: number;
   fallbackProviderId: string;
 };
 
