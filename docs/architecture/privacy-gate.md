@@ -2,8 +2,8 @@
 
 The privacy gate decides whether evidence may leave the broker. Client-supplied
 `externalization_decision` is not authoritative. The server rewrites fail-closed
-classifications, then re-evaluates policy at dispatch for the concrete reviewer
-pool.
+classifications, then re-evaluates policy at dispatch for the stored task
+`reviewerPool`.
 
 ## Intent
 
@@ -24,8 +24,33 @@ pool.
 4. A `blocked_fail_closed` decision emits a terminal `fail_closed` verdict and
    feedback with `retry_allowed: false`.
 5. Later dispatch calls `assertProviderDispatchAllowed`, which **recomputes**
-   `evaluateExternalizationPolicy` for the reviewer pool being used. A stored
-   client decision is not enough.
+   `evaluateExternalizationPolicy` for the reviewer pool on the **stored
+   task**. A stored client decision is not enough, and neither is the pool
+   asserted on the current request body.
+
+## Dispatch pool
+
+`assertProviderDispatchAllowed(jobId, providerRoute)` evaluates policy for
+`providerRoute`. Every real-provider dispatch must pass the pool that
+`providerDispatchWorker.dispatch` will actually send:
+
+| Call site                     | File                                  | Pool passed to the gate   |
+| ----------------------------- | ------------------------------------- | ------------------------- |
+| `POST .../human-review-tasks` | `src/api/routes/human-review.ts`      | `reviewTask.reviewerPool` |
+| Self-verification escalation  | `src/api/routes/evidence.ts`          | `task.reviewerPool`       |
+| Pairwise follow-up            | `src/api/routes/provider-callback.ts` | `task.reviewerPool`       |
+
+Do not substitute `request.body.reviewer_pool`.
+`HumanReviewTaskService.createOrGet` resolves `idempotency_key` to the
+existing row **without requiring the requested pool to match**, so a replay
+can assert `internal` while the stored task is still `managed`. On a first
+create the two values are the same; the divergence is the replay path.
+
+`createOrGet` runs **before** the gate. A 403 still leaves a queued task.
+Replaying the same key with a pool the billing rule would permit must still
+403 when the stored pool is `managed`. Regression:
+`tests/integration/security-regression.test.ts` ("blocks a replayed
+idempotency key that asserts a different pool than the stored task").
 
 ## Policy (`evaluateExternalizationPolicy`)
 
@@ -82,8 +107,18 @@ path does not return `database_path`. The full health document still requires
 
 - Honest `--data-class` on the CLI still matters, but the gate will block
   restricted classes even if the client asks for `allowed`.
-- `allowed_reviewer_routes` must include the dispatch pool **and** the
-  recomputed policy must allow that pool.
+- `allowed_reviewer_routes` must include the **stored** dispatch pool **and**
+  the recomputed policy must allow that pool. A replay body that names a
+  permitted pool does not rewrite the task.
+- Do not treat a 403 from `POST .../human-review-tasks` as "no task exists".
+  The row is committed first; a later replay with the same
+  `idempotency_key` retries dispatch of that stored task.
+- `createOrGet` also ignores other mismatched replay fields
+  (`criterion_ids`, `sanitized_package_id`, `provider_adapter`). Gating the
+  stored pool closes the privacy bypass; it does not make idempotency a
+  full request-equality check. Contrast the spend ledger, which does reject
+  a reused key with a different job or amount
+  ([`docs/ops/spend-ceiling.md`](../ops/spend-ceiling.md)).
 - Enabling `PROVIDER_ENABLED=true` without `LOCAL_PROVIDER_MODE=disabled`
   blocks agent external review. Use `/vouch-go-live` rather than toggling one
   variable.
@@ -92,4 +127,6 @@ path does not return `database_path`. The full health document still requires
 
 Code: `src/domain/privacy/privacy-gate.ts`,
 `src/domain/privacy/externalization-policy.ts`,
-`src/domain/privacy/health-proof.ts`.
+`src/domain/privacy/health-proof.ts`,
+`src/domain/human-review/human-review-task-service.ts`,
+`src/api/routes/human-review.ts`.

@@ -9,14 +9,20 @@
 - Provider outages causing stale or partial review states
 - A client asserting `externalization_decision: allowed` for evidence the
   server must not ship
+- A client replaying an `idempotency_key` with a different `reviewer_pool`
+  than the stored task, so the gate would allow a pool the dispatch will not
+  use
 
 ## Current Controls
 
 - Externalization policy blocks regulated or failed-redaction evidence
 - Server overwrites client `externalization_decision` when redaction is
   `failed` or `insufficient_confidence`
-- Dispatch re-evaluates policy for the concrete reviewer pool
-  (`assertProviderDispatchAllowed`); the stored client decision is not enough
+- Dispatch re-evaluates policy for the **stored** task `reviewerPool`
+  (`assertProviderDispatchAllowed` in `human-review.ts`, `evidence.ts`, and
+  `provider-callback.ts`). The pool asserted on the current request body is
+  not enough: `createOrGet` returns an existing task by `idempotency_key`
+  without requiring that pool to match
 - Agent external review requires the server-held go-live grant
   (`LOCAL_PROVIDER_MODE=disabled` with `PROVIDER_ENABLED=true` for live
   providers). See [`docs/architecture/privacy-gate.md`](../architecture/privacy-gate.md)
@@ -44,3 +50,9 @@
 - Provider config in the composition root is still an in-memory map; task
   mappings persist only when `PROVIDER_SQLITE_PATH` is set (default on
   non-test runs)
+- `createOrGet` still ignores mismatched replay fields other than the
+  idempotency key (`criterion_ids`, `sanitized_package_id`,
+  `provider_adapter`). Gating the stored pool closes the billing-route
+  bypass; it is not a full idempotency-equality contract
+- The gate runs after `createOrGet` commits. A blocked first attempt still
+  leaves a queued task; operators should not assume 403 means no row
