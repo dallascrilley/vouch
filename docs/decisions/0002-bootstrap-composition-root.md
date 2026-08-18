@@ -1,11 +1,15 @@
 # 0002. Thin app bootstrap composition root
 
-- **Status:** proposed
+- **Status:** accepted for option A; options B and C remain open
 - **Date:** 2026-08-18
 
 Answers the RFC requested in issue #2. Written against `460b66b`.
-Proposed, not accepted: the choice between options B and A-only is a cost
-call, and it is the repo owner's.
+
+**Option A was implemented in #48**, under standing authorization to move
+low-risk work forward, on the grounds recorded below: it is behavior-preserving
+and was verified as such. The choice to go further — option B's `createRuntime`
+surface — was _not_ made here and remains the repo owner's; nothing in #48
+forecloses it, and A is a strict prerequisite either way.
 
 ## Context
 
@@ -263,6 +267,28 @@ with keeping `AppServices` a single checked type (finding 1).
 ## Recommendation
 
 **Do A now; adopt B only if a concrete need for a Fastify-free graph appears.**
+
+> **Implemented (#48).** `src/api/app.ts` went from 424 lines to 211 and now
+> constructs nothing: `createRuntimeStores`, `createDomainServices`,
+> `createProviderStack`, and `registerRoutes` each own one layer under
+> `src/api/composition/`. Every one of `app.ts`'s remaining domain imports is
+> `import type` — the lint rule flagged them automatically once the `new`
+> expressions moved out, which is a fair mechanical check that the extraction
+> was complete.
+>
+> Verified behavior-preserving by fingerprinting the built app before and
+> after — every decorated service and its concrete class, every repository in
+> the bundle, the resolved runtime and provider config, the selected provider
+> repositories, and the full Fastify route table — across three
+> configurations (default, provider-enabled, provider-enabled with a provider
+> sqlite path). 189 assertions, byte-for-byte identical. The durable half of
+> that check is now `tests/unit/composition.test.ts`.
+>
+> Two deliberate non-changes, so the extraction stayed mechanical: the
+> duplicated `PROVIDER_ENABLED` derivation in finding 2 is preserved verbatim
+> (with a comment pointing here), and construction order is unchanged, so an
+> invalid provider config still throws _after_ the SQLite store is opened
+> rather than before.
 
 A is nearly free, carries no behavioral risk, and delivers the thing issue #2
 actually complains about — "every new service touches this file" becomes
