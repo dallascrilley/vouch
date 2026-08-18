@@ -276,11 +276,10 @@ describe("security regressions", () => {
 
     it("a pool omitted from allowed_reviewer_routes leaves no task and does not advance the job", async () => {
       // evaluateExternalizationPolicy allows managed on a non-billing
-      // internal_low job. The classification allowlist is a second gate, and
-      // assertProviderDispatchAllowed still enforces it after createOrGet.
-      // Checking only the general policy before persist therefore strands the
-      // job in external_review_queued when the requested pool is missing from
-      // allowed_reviewer_routes — including the OpenAPI-optional default [].
+      // internal_low job. The classification allowlist is a second gate.
+      // Checking only the general policy before persist stranded the job in
+      // external_review_queued when the requested pool was missing from a
+      // non-empty allowed_reviewer_routes list.
       const jobId = await createClassifiedJob(app, {
         decision: "allowed",
         route: "/demo",

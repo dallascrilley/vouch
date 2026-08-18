@@ -95,10 +95,9 @@ export class PrivacyGate {
   //
   // Silent when no classification exists yet: those callers are gated at
   // dispatch instead. This does not replace assertProviderDispatchAllowed,
-  // which remains authoritative because it gates the *stored* pool. Both
-  // the recomputed policy and the stored allowedReviewerRoutes must permit
-  // the pool — the allowlist is the second dispatch gate, so skipping it
-  // here would still persist a task that dispatch immediately rejects.
+  // which remains authoritative because it gates the *stored* pool. A
+  // non-empty allowedReviewerRoutes list is enforced here too: skipping it
+  // would persist a task that dispatch immediately rejects.
   async assertRequestedPoolAllowed(
     jobId: string,
     requestedPool: ReviewerPoolType
@@ -109,7 +108,18 @@ export class PrivacyGate {
     if (!classification) return;
     const job = await this.jobService.get(jobId);
     if (!job) return;
-    this.assertPoolPermitted(classification, job.source.route, requestedPool);
+    this.assertPolicyAllows(classification, job.source.route, requestedPool);
+    // Dispatch also fail-closes on an empty allowlist, but that field is
+    // optional and omitted by simulated/local callers. Only an explicit
+    // mismatch is safe to reject here without changing those flows.
+    if (
+      classification.allowedReviewerRoutes.length > 0 &&
+      !classification.allowedReviewerRoutes.includes(requestedPool)
+    ) {
+      throw new PrivacyPolicyError(
+        `Provider dispatch is not allowed for route: ${requestedPool}`
+      );
+    }
   }
 
   async assertProviderDispatchAllowed(
@@ -134,25 +144,18 @@ export class PrivacyGate {
     // and the job's recorded route, rather than trusting the stored
     // (originally client-supplied) decision. An empty route would skip the
     // /billing internal-only rule.
-    this.assertPoolPermitted(classification, job.source.route, providerRoute);
+    this.assertPolicyAllows(classification, job.source.route, providerRoute);
 
-    return classification;
-  }
-
-  private assertPoolPermitted(
-    classification: PrivacyClassification,
-    route: string,
-    reviewerPool: ReviewerPoolType
-  ): void {
-    this.assertPolicyAllows(classification, route, reviewerPool);
     if (
       classification.allowedReviewerRoutes.length === 0 ||
-      !classification.allowedReviewerRoutes.includes(reviewerPool)
+      !classification.allowedReviewerRoutes.includes(providerRoute)
     ) {
       throw new PrivacyPolicyError(
-        `Provider dispatch is not allowed for route: ${reviewerPool}`
+        `Provider dispatch is not allowed for route: ${providerRoute}`
       );
     }
+
+    return classification;
   }
 
   private assertPolicyAllows(
