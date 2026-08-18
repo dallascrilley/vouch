@@ -1,131 +1,45 @@
 import Fastify, { type FastifyInstance } from "fastify";
-import { createHealthProof } from "../domain/privacy/health-proof.js";
 
-import { internalReviewerCapability } from "../adapters/providers/internal-reviewer-adapter.js";
-import {
-  publicProviderCapability,
-  realProviderCapability
-} from "../adapters/providers/public-provider-adapter.js";
-import { RealProviderAdapter } from "../adapters/providers/real-provider-adapter.js";
-import {
-  SQLiteProviderResponseReceiptRepository,
-  SQLiteProviderStateStore,
-  SQLiteProviderTaskMappingRepository
-} from "../adapters/storage/provider-sqlite-repositories.js";
+import type { Metrics } from "../adapters/observability/observability.js";
 import type {
   AgentFeedbackRepository,
-  FinalVerdictRepository,
-  ProviderConfigRepository,
-  ProviderResponseReceiptRepository,
-  ProviderTaskMappingRepository
+  FinalVerdictRepository
 } from "../adapters/storage/repositories.js";
-import {
-  createSQLiteRuntimeRepositories,
+import type {
   SQLiteLocalQueueStore,
-  type SQLiteRuntimeRepositories
+  SQLiteRuntimeRepositories
 } from "../adapters/storage/sqlite-repositories.js";
 import type { TransactionManager } from "../adapters/storage/transaction-manager.js";
-import { AdjudicationService } from "../domain/adjudication/adjudication-service.js";
-import { ArtifactService } from "../domain/artifacts/artifact-service.js";
-import { ConsensusService } from "../domain/consensus/consensus-service.js";
-import { FeedbackService } from "../domain/feedback/feedback-service.js";
-import { VerdictService } from "../domain/feedback/verdict-service.js";
-import { HumanReviewTaskService } from "../domain/human-review/human-review-task-service.js";
-import type {
-  ProviderAdapterConfig,
-  ProviderResponseReceipt,
-  ProviderTaskMapping
-} from "../domain/human-review/models.js";
-import { ProviderCapabilityRegistry } from "../domain/human-review/provider-capability-registry.js";
-import { ProviderConfigService } from "../domain/human-review/provider-config-service.js";
-import { ProviderOperationsService } from "../domain/human-review/provider-operations-service.js";
-import { ProviderResponseService } from "../domain/human-review/provider-response-service.js";
-import { ProviderTaskMappingService } from "../domain/human-review/provider-task-mapping-service.js";
-import { ProviderWorkflowService } from "../domain/human-review/provider-workflow-service.js";
-import { ResponseValidationService } from "../domain/human-review/response-validation-service.js";
-import { AcceptanceCriteriaService } from "../domain/jobs/acceptance-criteria-service.js";
-import { JobService } from "../domain/jobs/job-service.js";
-import { LedgerService } from "../domain/ledger/ledger-service.js";
-import { PrivacyGate } from "../domain/privacy/privacy-gate.js";
-import { SelfVerificationService } from "../domain/self-verification/self-verification-service.js";
-import {
-  buildDefaultProviderHealthStates,
-  loadDefaultProviderConfig
-} from "../config/policies.js";
-import { validateProviderConfig } from "../config/provider-config.js";
 import { loadRuntimeConfig, type RuntimeConfig } from "../config/runtime.js";
 import { validateRuntimeConfig } from "../config/runtime-validation.js";
-import { InMemoryMetricsRecorder } from "../adapters/observability/metrics.js";
-import type { Metrics } from "../adapters/observability/observability.js";
-import { ProviderDispatchWorker } from "../workers/provider-dispatch-worker.js";
-import { registerEvidenceRoutes } from "./routes/evidence.js";
-import { registerHumanReviewRoutes } from "./routes/human-review.js";
-import { registerProviderCallbackRoutes } from "./routes/provider-callback.js";
-import { registerReleaseArtifactRoutes } from "./routes/release-artifact.js";
-import {
-  authorizeOperator,
-  registerRuntimeOperationsRoutes
-} from "./routes/runtime-operations.js";
-import { registerStuckStateRoutes } from "./routes/stuck-state.js";
-import { registerVerificationJobRoutes } from "./routes/verification-jobs.js";
-import { registerVerdictFeedbackRoutes } from "./routes/verdict-feedback.js";
-import { SpendCeiling } from "./spend-ceiling.js";
+import type { AdjudicationService } from "../domain/adjudication/adjudication-service.js";
+import type { ArtifactService } from "../domain/artifacts/artifact-service.js";
+import type { ConsensusService } from "../domain/consensus/consensus-service.js";
+import type { HumanReviewTaskService } from "../domain/human-review/human-review-task-service.js";
+import type { ProviderAdapterConfig } from "../domain/human-review/models.js";
+import type { ProviderConfigService } from "../domain/human-review/provider-config-service.js";
+import type { ProviderOperationsService } from "../domain/human-review/provider-operations-service.js";
+import type { ProviderResponseService } from "../domain/human-review/provider-response-service.js";
+import type { ProviderTaskMappingService } from "../domain/human-review/provider-task-mapping-service.js";
+import type { ProviderWorkflowService } from "../domain/human-review/provider-workflow-service.js";
+import type { ResponseValidationService } from "../domain/human-review/response-validation-service.js";
+import type { JobService } from "../domain/jobs/job-service.js";
+import { createHealthProof } from "../domain/privacy/health-proof.js";
+import type { PrivacyGate } from "../domain/privacy/privacy-gate.js";
+import type { SelfVerificationService } from "../domain/self-verification/self-verification-service.js";
+import type { ProviderDispatchWorker } from "../workers/provider-dispatch-worker.js";
+import { createDomainServices } from "./composition/domain-services.js";
+import { createProviderStack } from "./composition/provider-stack.js";
+import { registerRoutes } from "./composition/routes.js";
+import { createRuntimeStores } from "./composition/runtime-stores.js";
+import { authorizeOperator } from "./routes/runtime-operations.js";
+import type { SpendCeiling } from "./spend-ceiling.js";
 
 type BuildAppOptions = {
   config?: RuntimeConfig;
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
 };
-
-class InMemoryProviderConfigRepository implements ProviderConfigRepository {
-  constructor(
-    private readonly configs = new Map<string, ProviderAdapterConfig>()
-  ) {}
-
-  get(providerId: string) {
-    return Promise.resolve(this.configs.get(providerId) ?? null);
-  }
-
-  save(config: ProviderAdapterConfig) {
-    this.configs.set(config.providerId, config);
-    return Promise.resolve();
-  }
-}
-
-class InMemoryProviderTaskMappingRepository implements ProviderTaskMappingRepository {
-  private readonly mappings = new Map<string, ProviderTaskMapping>();
-  private readonly taskIds = new Map<string, string>();
-
-  findByProviderTaskId(providerTaskId: string) {
-    const reviewTaskId = this.taskIds.get(providerTaskId);
-    return Promise.resolve(
-      reviewTaskId ? (this.mappings.get(reviewTaskId) ?? null) : null
-    );
-  }
-
-  findByReviewTaskId(reviewTaskId: string) {
-    return Promise.resolve(this.mappings.get(reviewTaskId) ?? null);
-  }
-
-  save(mapping: ProviderTaskMapping) {
-    this.mappings.set(mapping.reviewTaskId, mapping);
-    this.taskIds.set(mapping.providerTaskId, mapping.reviewTaskId);
-    return Promise.resolve();
-  }
-}
-
-class InMemoryProviderResponseReceiptRepository implements ProviderResponseReceiptRepository {
-  private readonly receipts = new Map<string, ProviderResponseReceipt>();
-
-  findByDedupeKey(dedupeKey: string) {
-    return Promise.resolve(this.receipts.get(dedupeKey) ?? null);
-  }
-
-  save(receipt: ProviderResponseReceipt) {
-    this.receipts.set(receipt.dedupeKey, receipt);
-    return Promise.resolve();
-  }
-}
 
 export type AppServices = {
   adjudicationService: AdjudicationService;
@@ -184,6 +98,11 @@ function resolveConfig(input?: RuntimeConfig | BuildAppOptions): {
   };
 }
 
+/**
+ * Composition root. Each `create*` call below owns one layer of the graph and
+ * lives under `composition/`; this function only orders them and wires the
+ * result onto Fastify. See `docs/decisions/0002-bootstrap-composition-root.md`.
+ */
 export function buildApp(
   input?: RuntimeConfig | BuildAppOptions
 ): FastifyInstance {
@@ -201,171 +120,46 @@ export function buildApp(
     }
   });
 
-  const repositories = createSQLiteRuntimeRepositories(config.databasePath);
-  const spendCeiling = new SpendCeiling(
-    repositories.store.db,
-    config.realSpendCeilingUsd
-  );
-  const queueStore = new SQLiteLocalQueueStore(repositories.store);
-  const transactionManager = repositories.store;
-
-  const metrics = new InMemoryMetricsRecorder();
-  const acceptanceCriteriaService = new AcceptanceCriteriaService();
-  const jobService = new JobService(
-    repositories.jobRepository,
-    repositories.acceptanceCriterionRepository,
-    acceptanceCriteriaService
-  );
-  const ledgerService = new LedgerService(repositories.ledgerRepository);
-  const verdictService = new VerdictService(
-    repositories.finalVerdictRepository,
-    jobService,
-    ledgerService,
-    transactionManager
-  );
-  const feedbackService = new FeedbackService(repositories.feedbackRepository);
-  const artifactService = new ArtifactService(
-    repositories.artifactManifestRepository,
-    jobService,
-    ledgerService,
-    transactionManager
-  );
-  const providerCapabilityRegistry = new ProviderCapabilityRegistry([
-    internalReviewerCapability,
-    publicProviderCapability,
-    realProviderCapability
-  ]);
-  const humanReviewTaskService = new HumanReviewTaskService(
-    repositories.humanReviewTaskRepository,
-    jobService,
-    ledgerService,
-    providerCapabilityRegistry,
-    transactionManager
-  );
-  const responseValidationService = new ResponseValidationService(
-    repositories.humanResponseRepository,
-    repositories.humanReviewTaskRepository,
-    jobService,
-    ledgerService,
-    transactionManager
-  );
-  const consensusService = new ConsensusService(
-    repositories.consensusResultRepository,
-    repositories.humanResponseRepository,
-    repositories.humanReviewTaskRepository,
-    jobService,
-    ledgerService,
-    transactionManager
-  );
-  const adjudicationService = new AdjudicationService(
-    repositories.adjudicationCaseRepository,
-    repositories.consensusResultRepository,
-    repositories.humanResponseRepository,
-    repositories.humanReviewTaskRepository,
-    jobService,
-    ledgerService,
-    verdictService,
-    feedbackService,
-    transactionManager
-  );
-  const privacyGate = new PrivacyGate(
-    repositories.privacyClassificationRepository,
-    jobService,
-    ledgerService,
-    verdictService,
-    feedbackService,
-    transactionManager,
-    config.localProviderMode === "disabled" || env.PROVIDER_ENABLED !== "true"
-  );
-  const selfVerificationService = new SelfVerificationService(
-    repositories.selfVerificationResultRepository,
-    jobService,
-    ledgerService,
-    verdictService,
-    feedbackService,
-    transactionManager,
-    humanReviewTaskService
-  );
-
-  const providerConfig = loadDefaultProviderConfig(env);
-  const providerValidation = validateProviderConfig(providerConfig);
-  if (!providerValidation.valid) {
-    throw new Error(providerValidation.errors.join("; "));
-  }
-
-  const providerConfigRepository = new InMemoryProviderConfigRepository();
-  void providerConfigRepository.save(providerConfig);
-  const providerConfigService = new ProviderConfigService(
-    providerConfigRepository
-  );
-
-  let providerStateStore: SQLiteProviderStateStore | undefined;
-  const providerMappingRepository: ProviderTaskMappingRepository =
-    config.providerStateDbPath
-      ? ((providerStateStore = new SQLiteProviderStateStore(
-          config.providerStateDbPath
-        )),
-        new SQLiteProviderTaskMappingRepository(providerStateStore))
-      : new InMemoryProviderTaskMappingRepository();
-  const providerReceiptRepository: ProviderResponseReceiptRepository =
-    providerStateStore
-      ? new SQLiteProviderResponseReceiptRepository(providerStateStore)
-      : new InMemoryProviderResponseReceiptRepository();
-
-  const providerMappingService = new ProviderTaskMappingService(
-    providerMappingRepository,
-    providerReceiptRepository
-  );
-  const providerOperationsService = new ProviderOperationsService(
-    buildDefaultProviderHealthStates()
-  );
-  const providerResponseService = new ProviderResponseService(
-    providerMappingService,
-    responseValidationService
-  );
-  const providerWorkflowService = new ProviderWorkflowService(
-    jobService,
-    ledgerService,
-    verdictService,
-    feedbackService,
-    repositories.humanReviewTaskRepository,
-    transactionManager,
-    repositories.humanResponseRepository,
-    humanReviewTaskService
-  );
-  const providerDispatchWorker = providerConfig.enabled
-    ? new ProviderDispatchWorker(
-        new RealProviderAdapter(providerConfig, fetchImpl),
-        providerMappingService,
-        providerOperationsService,
-        providerConfig.providerId
-      )
-    : undefined;
+  const stores = createRuntimeStores(config);
+  const domain = createDomainServices({
+    config,
+    env,
+    repositories: stores.repositories,
+    transactionManager: stores.transactionManager
+  });
+  const provider = createProviderStack({
+    config,
+    domain,
+    env,
+    fetchImpl,
+    repositories: stores.repositories,
+    transactionManager: stores.transactionManager
+  });
 
   const services: AppServices = {
-    adjudicationService,
-    artifactService,
-    consensusService,
-    feedbackRepository: repositories.feedbackRepository,
-    humanReviewTaskService,
-    jobService,
-    metrics,
-    privacyGate,
-    providerConfig,
-    providerConfigService,
-    providerDispatchWorker,
-    providerMappingService,
-    providerOperationsService,
-    providerResponseService,
-    providerWorkflowService,
-    queueStore,
-    responseValidationService,
-    spendCeiling,
+    adjudicationService: domain.adjudicationService,
+    artifactService: domain.artifactService,
+    consensusService: domain.consensusService,
+    feedbackRepository: stores.repositories.feedbackRepository,
+    humanReviewTaskService: domain.humanReviewTaskService,
+    jobService: domain.jobService,
+    metrics: domain.metrics,
+    privacyGate: domain.privacyGate,
+    providerConfig: provider.providerConfig,
+    providerConfigService: provider.providerConfigService,
+    providerDispatchWorker: provider.providerDispatchWorker,
+    providerMappingService: provider.providerMappingService,
+    providerOperationsService: provider.providerOperationsService,
+    providerResponseService: provider.providerResponseService,
+    providerWorkflowService: provider.providerWorkflowService,
+    queueStore: stores.queueStore,
+    responseValidationService: domain.responseValidationService,
+    spendCeiling: stores.spendCeiling,
     runtimeConfig: config,
-    runtimeRepositories: repositories,
-    selfVerificationService,
-    transactionManager,
-    verdictRepository: repositories.finalVerdictRepository
+    runtimeRepositories: stores.repositories,
+    selfVerificationService: domain.selfVerificationService,
+    transactionManager: stores.transactionManager,
+    verdictRepository: stores.repositories.finalVerdictRepository
   };
   app.decorate("services", services);
 
@@ -379,8 +173,8 @@ export function buildApp(
   });
 
   app.addHook("onClose", () => {
-    providerStateStore?.close();
-    repositories.store.close();
+    provider.close();
+    stores.close();
   });
 
   app.get("/health", (request, reply) => {
@@ -402,23 +196,16 @@ export function buildApp(
       database_path: config.databasePath,
       docs_url: "docs/architecture/agent-loop-integration.md",
       local_provider_mode: config.localProviderMode,
-      provider_enabled: providerConfig.enabled,
-      provider_id: providerConfig.providerId,
-      required_companion: providerConfig.enabled
+      provider_enabled: provider.providerConfig.enabled,
+      provider_id: provider.providerConfig.providerId,
+      required_companion: provider.providerConfig.enabled
         ? "dispatch worker (npm run dev:worker)"
         : null,
       status: "ok"
     };
   });
 
-  void registerVerificationJobRoutes(app);
-  void registerEvidenceRoutes(app);
-  void registerHumanReviewRoutes(app);
-  void registerVerdictFeedbackRoutes(app);
-  void registerRuntimeOperationsRoutes(app);
-  void registerProviderCallbackRoutes(app);
-  void registerStuckStateRoutes(app);
-  void registerReleaseArtifactRoutes(app);
+  registerRoutes(app);
 
   return app;
 }
