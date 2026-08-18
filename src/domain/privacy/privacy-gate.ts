@@ -90,6 +90,11 @@ export class PrivacyGate {
     jobId: string,
     providerRoute: ReviewerPoolType
   ) {
+    const job = await this.jobService.get(jobId);
+    if (!job) {
+      throw new Error(`Verification job not found: ${jobId}`);
+    }
+
     const classification =
       this.classifications.get(jobId) ??
       (await this.privacyRepository.findByJobId(jobId));
@@ -100,13 +105,14 @@ export class PrivacyGate {
     }
 
     // Authoritative gate: recompute the policy for the concrete reviewer pool
-    // the caller is trying to dispatch to, rather than trusting the stored
-    // (originally client-supplied) decision.
+    // and the job's recorded route, rather than trusting the stored
+    // (originally client-supplied) decision. An empty route would skip the
+    // /billing internal-only rule.
     const policy = evaluateExternalizationPolicy({
       dataClass: classification.dataClass,
       redactionStatus: classification.redactionStatus,
       reviewerPool: providerRoute,
-      route: ""
+      route: job.source.route
     });
     if (!policy.allowed) {
       throw new PrivacyPolicyError(
