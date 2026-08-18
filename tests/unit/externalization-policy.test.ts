@@ -35,6 +35,33 @@ describe("externalization policy", () => {
     });
   });
 
+  it("requires internal review for billing routes", () => {
+    expect(
+      evaluateExternalizationPolicy({
+        dataClass: "internal_low",
+        redactionStatus: "completed",
+        reviewerPool: "managed",
+        route: "/billing/invoices"
+      })
+    ).toEqual({
+      allowed: false,
+      blockedReasons: ["billing routes require internal review"],
+      decision: "internal_only"
+    });
+    expect(
+      evaluateExternalizationPolicy({
+        dataClass: "internal_low",
+        redactionStatus: "completed",
+        reviewerPool: "internal",
+        route: "/billing"
+      })
+    ).toEqual({
+      allowed: true,
+      blockedReasons: [],
+      decision: "allowed"
+    });
+  });
+
   it("fails closed when redaction fails", () => {
     expect(
       evaluateExternalizationPolicy({

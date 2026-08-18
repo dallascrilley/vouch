@@ -21,11 +21,13 @@ async function createClassifiedJob(
     dataClass?: string;
     redactionStatus?: string;
     decision?: string;
+    route?: string;
   } = {}
 ) {
   const dataClass = options.dataClass ?? "internal_low";
   const redactionStatus = options.redactionStatus ?? "completed";
   const decision = options.decision ?? "allowed";
+  const route = options.route ?? "/managed";
 
   const createResponse = await app.inject({
     method: "POST",
@@ -47,7 +49,7 @@ async function createClassifiedJob(
         repository: "repo",
         commit: "abc123",
         environment: "staging",
-        route: "/managed"
+        route
       }
     }
   });
@@ -72,7 +74,7 @@ async function createClassifiedJob(
         repository: "repo",
         commit: "abc123",
         environment: "staging",
-        route: "/managed"
+        route
       }
     }
   });
@@ -224,6 +226,20 @@ describe("security regressions", () => {
       });
       const response = await createTask(app, jobId);
       expect(response.statusCode).toBe(403);
+    });
+
+    it("blocks managed-pool dispatch for billing routes even if the client asserts allowed", async () => {
+      const jobId = await createClassifiedJob(app, {
+        decision: "allowed",
+        route: "/billing/invoices"
+      });
+      const response = await createTask(app, jobId);
+      expect(response.statusCode).toBe(403);
+      expect(response.json()).toMatchObject({
+        message: expect.stringContaining(
+          "billing routes require internal review"
+        )
+      });
     });
   });
 
