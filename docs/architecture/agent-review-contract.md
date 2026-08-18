@@ -21,9 +21,11 @@ The commissioning request must include:
 - Agent correlation: `agent_run_id`, `idempotency_key`, and `source` fields.
 
 `externalization_decision` is a client hint. The broker overwrites fail-closed
-classifications and re-checks policy at dispatch. Jobs that request a
-non-internal pool with `agent_run_id` also need the server-held go-live grant.
-See [`privacy-gate.md`](privacy-gate.md).
+classifications and re-checks policy at dispatch against the **stored**
+task `reviewerPool`. Reusing `idempotency_key` with a different
+`reviewer_pool` is rejected (#38); it never rewrites the task, and the gate
+uses the stored pool regardless. Jobs that request a non-internal pool with `agent_run_id` also need
+the server-held go-live grant. See [`privacy-gate.md`](privacy-gate.md).
 
 Real-provider dispatch with `VOUCH_REAL_SPEND_CEILING_USD` set requires a `v: 1`
 `task_template` pricing object and a task `idempotency_key`. See
