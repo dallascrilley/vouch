@@ -38,17 +38,18 @@ Real-provider cost is capped by
 ## Current Runtime Shape
 
 The shipped broker is a **SQLite-first local runtime**, not an in-memory
-prototype. `src/api/app.ts` wires `createSQLiteRuntimeRepositories` and a
-filesystem artifact store.
+prototype. `src/api/app.ts` wires the SQLite composition root
+(`createRuntimeStores`) and runtime inspection routes. Artifact manifests are
+persisted in SQLite; no blob `ArtifactStore` is wired.
 
-| Surface                               | Shipped implementation                                                          |
-| ------------------------------------- | ------------------------------------------------------------------------------- |
-| Job / privacy / review / ledger state | `RUNTIME_SQLITE_PATH` (`node:sqlite`)                                           |
-| Provider task mappings and receipts   | `PROVIDER_SQLITE_PATH` (in-memory only when that path is unset, which tests do) |
-| Real-dispatch spend reservations      | `vouch_spend_reservations` in the runtime DB                                    |
-| Queue                                 | `SQLiteLocalQueueStore` in the runtime DB                                       |
-| Artifacts                             | `RUNTIME_ARTIFACT_ROOT` on disk                                                 |
-| Metrics                               | `InMemoryMetricsRecorder` (no OpenTelemetry export)                             |
+| Surface                               | Shipped implementation                                                                             |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Job / privacy / review / ledger state | `RUNTIME_SQLITE_PATH` (`node:sqlite`)                                                              |
+| Provider task mappings and receipts   | `PROVIDER_SQLITE_PATH` (in-memory only when that path is unset, which tests do)                    |
+| Real-dispatch spend reservations      | `vouch_spend_reservations` in the runtime DB                                                       |
+| Queue                                 | `SQLiteLocalQueueStore` in the runtime DB                                                          |
+| Artifacts                             | Manifests and refs in SQLite; `RUNTIME_ARTIFACT_ROOT` is validated and inspectable (no blob store) |
+| Metrics                               | `InMemoryMetricsRecorder` (no OpenTelemetry export)                                                |
 
 PostgreSQL, pg-boss, S3, and OTel adapters are **not** implemented. See
 [`runtime-target.md`](runtime-target.md) for shipped vs production-target and
