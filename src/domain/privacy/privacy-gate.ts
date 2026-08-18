@@ -100,7 +100,8 @@ export class PrivacyGate {
   // would persist a task that dispatch immediately rejects.
   async assertRequestedPoolAllowed(
     jobId: string,
-    requestedPool: ReviewerPoolType
+    requestedPool: ReviewerPoolType,
+    options: { requireAllowlist?: boolean } = {}
   ): Promise<void> {
     const classification =
       this.classifications.get(jobId) ??
@@ -109,12 +110,19 @@ export class PrivacyGate {
     const job = await this.jobService.get(jobId);
     if (!job) return;
     this.assertPolicyAllows(classification, job.source.route, requestedPool);
-    // Dispatch also fail-closes on an empty allowlist, but that field is
-    // optional and omitted by simulated/local callers. Only an explicit
-    // mismatch is safe to reject here without changing those flows.
+    // Dispatch fail-closes on an empty allowlist, but that field is optional
+    // and omitted by simulated/local callers, which never reach the dispatch
+    // gate. Rejecting an empty list unconditionally here would break them, so
+    // the caller says whether a real dispatch is actually on the table:
+    // requireAllowlist mirrors the condition guarding the dispatch gate. An
+    // explicit mismatch is always rejected.
+    const emptyAllowlistBlocks =
+      options.requireAllowlist === true &&
+      classification.allowedReviewerRoutes.length === 0;
     if (
-      classification.allowedReviewerRoutes.length > 0 &&
-      !classification.allowedReviewerRoutes.includes(requestedPool)
+      emptyAllowlistBlocks ||
+      (classification.allowedReviewerRoutes.length > 0 &&
+        !classification.allowedReviewerRoutes.includes(requestedPool))
     ) {
       throw new PrivacyPolicyError(
         `Provider dispatch is not allowed for route: ${requestedPool}`

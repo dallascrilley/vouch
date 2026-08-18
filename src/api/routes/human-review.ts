@@ -87,7 +87,11 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
         // rejection would leave a job that can never dispatch.
         await app.services.privacyGate.assertRequestedPoolAllowed(
           request.params.jobId,
-          request.body.reviewer_pool
+          request.body.reviewer_pool,
+          // Only when a real dispatch could follow, matching the condition on
+          // the dispatch gate below. Otherwise an omitted allowlist would
+          // reject simulated callers that never reach that gate.
+          { requireAllowlist: app.services.providerConfig?.enabled === true }
         );
 
         const result = await app.services.humanReviewTaskService.createOrGet({

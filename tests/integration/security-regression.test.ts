@@ -299,6 +299,25 @@ describe("security regressions", () => {
       expect(job.json().state).toBe("privacy_classified");
     });
 
+    it("an empty allowed_reviewer_routes list leaves no task when a provider is enabled", async () => {
+      // Dispatch fail-closes on an empty allowlist, so without a matching
+      // pre-check the task is persisted and the job advanced for a dispatch
+      // that is guaranteed to 403.
+      const jobId = await createClassifiedJob(app, {
+        decision: "allowed",
+        allowedReviewerRoutes: []
+      });
+
+      const blocked = await createTask(app, jobId);
+      expect(blocked.statusCode).toBe(403);
+
+      const job = await app.inject({
+        method: "GET",
+        url: `/verification-jobs/${jobId}`
+      });
+      expect(job.json().state).toBe("privacy_classified");
+    });
+
     it("blocks self-verification escalation to the managed pool on a billing route", async () => {
       // The domain layer picks "managed" for a human_review escalation with
       // no pre-check of its own, so this exercises the authoritative
