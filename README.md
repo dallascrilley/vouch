@@ -113,7 +113,9 @@ npm run review -- \
 Five survey templates ship: yes/no screenshot checks, A/B screenshot compares,
 1–5 rubric ratings, field-extraction checks, and instruction-following checks.
 `--estimate` prices a job without dispatching it; `--resume` and `--status` poll
-a job commissioned earlier. The wire contract is
+a job commissioned earlier. Real-provider dispatch also honors
+`VOUCH_REAL_SPEND_CEILING_USD` when set
+([docs/ops/spend-ceiling.md](docs/ops/spend-ceiling.md)). The wire contract is
 [docs/architecture/agent-review-contract.md](docs/architecture/agent-review-contract.md);
 the integration guide is
 [docs/architecture/agent-loop-integration.md](docs/architecture/agent-loop-integration.md).
@@ -127,11 +129,13 @@ docker run -d -p 3000:3000 -v vouch-data:/data \
   vouch:latest
 ```
 
-`GET /health` is operator-token authenticated for managed broker discovery;
-state persists under `/data`;
-`SIGTERM` drains cleanly. Full guidance, including the worker and the
-security-relevant configuration (`RUNTIME_OPERATOR_TOKEN`,
-`PROVIDER_SHARED_SECRET`), is in [docs/ops/deployment.md](docs/ops/deployment.md).
+`GET /health` with `x-operator-token` returns runtime mode and `database_path`;
+with `x-health-challenge` it returns a `health_proof` HMAC instead. State
+persists under `/data`; `SIGTERM` drains cleanly. Full guidance, including the
+worker, spend ceiling, and security-relevant configuration
+(`RUNTIME_OPERATOR_TOKEN`, `PROVIDER_SHARED_SECRET`,
+`VOUCH_REAL_SPEND_CEILING_USD`), is in
+[docs/ops/deployment.md](docs/ops/deployment.md).
 
 ## How it fits together
 
