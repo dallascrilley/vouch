@@ -2,7 +2,10 @@ import { DatabaseSync } from "node:sqlite";
 
 import { describe, expect, it } from "vitest";
 
-import { SpendCeiling } from "../../src/api/spend-ceiling.js";
+import {
+  SpendCeiling,
+  parseDispatchPricing
+} from "../../src/api/spend-ceiling.js";
 
 describe("SpendCeiling", () => {
   it("reserves once per idempotency key and blocks cumulative overage", () => {
@@ -33,5 +36,21 @@ describe("SpendCeiling", () => {
     expect(ceiling.current()).toBe(0.6);
 
     database.close();
+  });
+
+  it("parses structured pairwise and self-verification templates", () => {
+    expect(
+      parseDispatchPricing(
+        JSON.stringify({
+          v: 1,
+          pairwise_tie_break: true,
+          pricing: { max_assignments: 1, reward: "0.10" }
+        })
+      )
+    ).toEqual({ max_assignments: 1, reward: "0.10" });
+    expect(parseDispatchPricing("pairwise-tie-break")).toBeUndefined();
+    expect(
+      parseDispatchPricing("self-verification-escalation")
+    ).toBeUndefined();
   });
 });
