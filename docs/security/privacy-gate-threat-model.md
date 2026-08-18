@@ -21,8 +21,8 @@
 - Dispatch re-evaluates policy for the **stored** task `reviewerPool`
   (`assertProviderDispatchAllowed` in `human-review.ts`, `evidence.ts`, and
   `provider-callback.ts`). The pool asserted on the current request body is
-  not enough: `createOrGet` returns an existing task by `idempotency_key`
-  without requiring that pool to match
+  not enough on its own: `createOrGet` returns an existing task by
+  `idempotency_key`, and before #38 it did not require that pool to match
 - Agent external review requires the server-held go-live grant
   (`LOCAL_PROVIDER_MODE=disabled` with `PROVIDER_ENABLED=true` for live
   providers). See [`docs/architecture/privacy-gate.md`](../architecture/privacy-gate.md)
@@ -50,9 +50,9 @@
 - Provider config in the composition root is still an in-memory map; task
   mappings persist only when `PROVIDER_SQLITE_PATH` is set (default on
   non-test runs)
-- `createOrGet` still ignores mismatched replay fields other than the
-  idempotency key (`criterion_ids`, `sanitized_package_id`,
-  `provider_adapter`). Gating the stored pool closes the billing-route
-  bypass; it is not a full idempotency-equality contract
+- `createOrGet` now rejects a replay that changes a task-identifying field
+  (#38), so the stored-pool gate and the replay check are independent
+  defences. `deadline_at` and visual evidence are still not compared, by
+  design
 - The gate runs after `createOrGet` commits. A blocked first attempt still
   leaves a queued task; operators should not assume 403 means no row

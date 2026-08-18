@@ -40,11 +40,16 @@ classifications, then re-evaluates policy at dispatch for the stored task
 | Self-verification escalation  | `src/api/routes/evidence.ts`          | `task.reviewerPool`       |
 | Pairwise follow-up            | `src/api/routes/provider-callback.ts` | `task.reviewerPool`       |
 
-Do not substitute `request.body.reviewer_pool`.
-`HumanReviewTaskService.createOrGet` resolves `idempotency_key` to the
-existing row **without requiring the requested pool to match**, so a replay
-can assert `internal` while the stored task is still `managed`. On a first
-create the two values are the same; the divergence is the replay path.
+Do not substitute `request.body.reviewer_pool`. `HumanReviewTaskService.createOrGet`
+resolves `idempotency_key` to an existing row, and until #38 it did so without
+requiring the requested pool to match — so a replay could assert `internal`
+while the stored task was still `managed`. On a first create the two values are
+always the same; the divergence was only ever on the replay path.
+
+#38 now rejects a replay whose `reviewer_pool` (or other task-identifying
+field) differs from the stored task, so the two defences are independent: even
+if the replay check were removed, gating the stored pool still blocks the
+bypass. Keep both.
 
 `createOrGet` runs **before** the gate. A 403 still leaves a queued task.
 Replaying the same key with a pool the billing rule would permit must still
@@ -113,11 +118,13 @@ path does not return `database_path`. The full health document still requires
 - Do not treat a 403 from `POST .../human-review-tasks` as "no task exists".
   The row is committed first; a later replay with the same
   `idempotency_key` retries dispatch of that stored task.
-- `createOrGet` also ignores other mismatched replay fields
-  (`criterion_ids`, `sanitized_package_id`, `provider_adapter`). Gating the
-  stored pool closes the privacy bypass; it does not make idempotency a
-  full request-equality check. Contrast the spend ledger, which does reject
-  a reused key with a different job or amount
+- `createOrGet` rejects a replay that changes `reviewer_pool`,
+  `criterion_ids`, `sanitized_package_id`, `task_template`, `quality_policy`,
+  or `provider_adapter` (#38). `deadline_at` and visual evidence are
+  deliberately not compared: a legitimate dispatch retry may carry a refreshed
+  deadline, and evidence is addressed by the sanitized package id. This puts
+  review tasks in line with the spend ledger, which already rejected a reused
+  key with a different job or amount
   ([`docs/ops/spend-ceiling.md`](../ops/spend-ceiling.md)).
 - Enabling `PROVIDER_ENABLED=true` without `LOCAL_PROVIDER_MODE=disabled`
   blocks agent external review. Use `/vouch-go-live` rather than toggling one
