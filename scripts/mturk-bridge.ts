@@ -6,6 +6,8 @@ import { promisify } from "node:util";
 
 import Fastify from "fastify";
 
+import { createHealthProof } from "../src/domain/privacy/health-proof.js";
+
 import {
   buildHtmlQuestion,
   loadBridgeState,
@@ -90,13 +92,120 @@ if (safetyErrors.length > 0) {
   );
 }
 
+const awsCommandTimeoutMs = Number(
+  process.env.MTURK_AWS_COMMAND_TIMEOUT_MS ?? 30_000
+);
+if (!Number.isFinite(awsCommandTimeoutMs) || awsCommandTimeoutMs <= 0) {
+  throw new Error(
+    "MTURK_AWS_COMMAND_TIMEOUT_MS must be a finite positive number"
+  );
+}
+
+function execAws(args: string[]) {
+  return execFileAsync("aws", args, {
+    env: process.env,
+    killSignal: "SIGKILL",
+    timeout: awsCommandTimeoutMs
+  });
+}
+
+async function findExistingMturkHit(
+  body: BridgeDispatchBody
+): Promise<string | undefined> {
+  const { stdout } = await execAws([
+    "mturk",
+    "list-hits",
+    "--endpoint-url",
+    config.awsEndpointUrl,
+    "--region",
+    config.awsRegion,
+    "--max-results",
+    "100",
+    "--output",
+    "json"
+  ]);
+  const payload = JSON.parse(stdout) as {
+    HITs?: Array<{ HITId?: string; RequesterAnnotation?: string }>;
+  };
+  return payload.HITs?.find((hit) => {
+    if (!hit.HITId || !hit.RequesterAnnotation) return false;
+    try {
+      const annotation = JSON.parse(hit.RequesterAnnotation) as {
+        idempotency_key?: string;
+        review_task_id?: string;
+      };
+      return (
+        annotation.review_task_id === body.review_task_id ||
+        (body.idempotency_key !== undefined &&
+          annotation.idempotency_key === body.idempotency_key)
+      );
+    } catch {
+      return false;
+    }
+  })?.HITId;
+}
+
+function persistMturkTask(
+  hitId: string,
+  body: BridgeDispatchBody,
+  maxAssignments: number
+): void {
+  const state = loadBridgeState(config.statePath);
+  state.tasks[hitId] = {
+    approvedAssignmentIds: [],
+    createdAt: new Date().toISOString(),
+    criterionIds: body.criterion_ids,
+    callbackAttempts: {},
+    deadLetterAssignments: [],
+    deliveredAssignmentIds: [],
+    hitId,
+    lastHitStatusAt: new Date().toISOString(),
+    maxAssignments,
+    qualificationRequirements: config.qualificationRequirements,
+    idempotencyKey: body.idempotency_key,
+    reviewTaskId: body.review_task_id,
+    reviewerPool: body.reviewer_pool,
+    sanitizedPackageId: body.sanitized_package_id,
+    taskTemplate: body.task_template,
+    visualEvidence: body.visual_evidence
+  };
+  mergeSaveBridgeState(config.statePath, state);
+}
+
 function isAuthorized(authorization: string | undefined) {
   return authorization === `Bearer ${config.bridgeApiKey}`;
 }
 
+function isHealthAuthorized(operatorToken: string | string[] | undefined) {
+  const token = Array.isArray(operatorToken) ? operatorToken[0] : operatorToken;
+  return (
+    Boolean(process.env.RUNTIME_OPERATOR_TOKEN) &&
+    token === process.env.RUNTIME_OPERATOR_TOKEN
+  );
+}
+
 const app = Fastify({ logger: true });
 
-app.get("/health", () => ({ ok: true, provider_id: config.providerId }));
+app.get("/health", (request, reply) => {
+  const challenge = request.headers["x-health-challenge"];
+  if (typeof challenge === "string" && challenge.length > 0) {
+    return {
+      health_proof: createHealthProof(
+        process.env.RUNTIME_OPERATOR_TOKEN ?? "",
+        challenge
+      ),
+      ok: true,
+      provider_id: config.providerId
+    };
+  }
+  if (!isHealthAuthorized(request.headers["x-operator-token"])) {
+    return reply
+      .code(401)
+      .send({ message: "Invalid bridge health authorization" });
+  }
+
+  return { ok: true, provider_id: config.providerId };
+});
 
 app.get("/state", (request, reply) => {
   if (!isAuthorized(request.headers.authorization)) {
@@ -120,6 +229,41 @@ app.get("/dead-letters", (request, reply) => {
 app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
   if (!isAuthorized(request.headers.authorization)) {
     return reply.code(401).send({ message: "Invalid bridge authorization" });
+  }
+
+  // The broker route is idempotent too, but keep the external money boundary
+  // safe if a direct bridge caller retries after losing the first response.
+  const existingTask = Object.values(
+    loadBridgeState(config.statePath).tasks
+  ).find(
+    (task) =>
+      task.reviewTaskId === request.body.review_task_id ||
+      (request.body.idempotency_key !== undefined &&
+        task.idempotencyKey === request.body.idempotency_key)
+  );
+  if (existingTask) {
+    return reply.code(202).send({
+      provider_assignment_scope: existingTask.reviewerPool,
+      provider_task_id: existingTask.hitId
+    });
+  }
+
+  let recoveredHitId: string | undefined;
+  try {
+    recoveredHitId = await findExistingMturkHit(request.body);
+  } catch (error) {
+    request.log.error({ err: error }, "mturk bridge could not reconcile HITs");
+    return reply.code(503).send({
+      message:
+        "MTurk dispatch reconciliation is unavailable; retry with the same idempotency key"
+    });
+  }
+  if (recoveredHitId) {
+    persistMturkTask(recoveredHitId, request.body, config.maxAssignments);
+    return reply.code(202).send({
+      provider_assignment_scope: request.body.reviewer_pool,
+      provider_task_id: recoveredHitId
+    });
   }
 
   let parsedTemplate;
@@ -187,6 +331,7 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
       `file://${questionPath}`,
       "--requester-annotation",
       JSON.stringify({
+        idempotency_key: request.body.idempotency_key,
         review_task_id: request.body.review_task_id,
         reviewer_pool: request.body.reviewer_pool
       }),
@@ -199,34 +344,14 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
         JSON.stringify(config.qualificationRequirements)
       );
     }
-    const { stdout } = await execFileAsync("aws", args, {
-      env: process.env
-    });
+    const { stdout } = await execAws(args);
     const payload = JSON.parse(stdout) as { HIT?: { HITId?: string } };
     const hitId = payload.HIT?.HITId;
     if (!hitId) {
       throw new Error("MTurk create-hit did not return a HIT ID");
     }
 
-    const state = loadBridgeState(config.statePath);
-    state.tasks[hitId] = {
-      approvedAssignmentIds: [],
-      createdAt: new Date().toISOString(),
-      criterionIds: request.body.criterion_ids,
-      callbackAttempts: {},
-      deadLetterAssignments: [],
-      deliveredAssignmentIds: [],
-      hitId,
-      lastHitStatusAt: new Date().toISOString(),
-      maxAssignments: pricing.maxAssignments,
-      qualificationRequirements: config.qualificationRequirements,
-      reviewTaskId: request.body.review_task_id,
-      reviewerPool: request.body.reviewer_pool,
-      sanitizedPackageId: request.body.sanitized_package_id,
-      taskTemplate: request.body.task_template,
-      visualEvidence: request.body.visual_evidence
-    };
-    mergeSaveBridgeState(config.statePath, state);
+    persistMturkTask(hitId, request.body, pricing.maxAssignments);
     app.log.info(
       {
         hitId,
@@ -241,12 +366,21 @@ app.post<{ Body: BridgeDispatchBody }>("/dispatch", async (request, reply) => {
       provider_assignment_scope: request.body.reviewer_pool,
       provider_task_id: hitId
     });
+  } catch (error) {
+    request.log.error(
+      { err: error, reviewTaskId: request.body.review_task_id },
+      "mturk dispatch outcome is unknown"
+    );
+    return reply.code(503).send({
+      message:
+        "MTurk dispatch outcome is unknown; retry with the same idempotency key"
+    });
   } finally {
     rmSync(tempDir, { force: true, recursive: true });
   }
 });
 
-async function pollAssignments() {
+async function pollAssignmentsOnce() {
   const state = loadBridgeState(config.statePath);
   const hitIds = Object.keys(state.tasks);
 
@@ -281,26 +415,22 @@ async function pollAssignments() {
     try {
       await refreshHitStatus({ hitId, state, task });
 
-      const { stdout } = await execFileAsync(
-        "aws",
-        [
-          "mturk",
-          "list-assignments-for-hit",
-          "--endpoint-url",
-          config.awsEndpointUrl,
-          "--region",
-          config.awsRegion,
-          "--hit-id",
-          hitId,
-          "--assignment-statuses",
-          "Submitted",
-          "Approved",
-          "Rejected",
-          "--output",
-          "json"
-        ],
-        { env: process.env }
-      );
+      const { stdout } = await execAws([
+        "mturk",
+        "list-assignments-for-hit",
+        "--endpoint-url",
+        config.awsEndpointUrl,
+        "--region",
+        config.awsRegion,
+        "--hit-id",
+        hitId,
+        "--assignment-statuses",
+        "Submitted",
+        "Approved",
+        "Rejected",
+        "--output",
+        "json"
+      ]);
 
       const payload = JSON.parse(stdout) as {
         Assignments?: Array<{
@@ -404,22 +534,18 @@ async function refreshHitStatus(input: {
 }) {
   const { hitId, state, task } = input;
   try {
-    const { stdout } = await execFileAsync(
-      "aws",
-      [
-        "mturk",
-        "get-hit",
-        "--endpoint-url",
-        config.awsEndpointUrl,
-        "--region",
-        config.awsRegion,
-        "--hit-id",
-        hitId,
-        "--output",
-        "json"
-      ],
-      { env: process.env }
-    );
+    const { stdout } = await execAws([
+      "mturk",
+      "get-hit",
+      "--endpoint-url",
+      config.awsEndpointUrl,
+      "--region",
+      config.awsRegion,
+      "--hit-id",
+      hitId,
+      "--output",
+      "json"
+    ]);
 
     const payload = JSON.parse(stdout) as {
       HIT?: {
@@ -580,22 +706,18 @@ async function approveAssignmentAfterCallback(input: {
   }
 
   try {
-    await execFileAsync(
-      "aws",
-      [
-        "mturk",
-        "approve-assignment",
-        "--endpoint-url",
-        config.awsEndpointUrl,
-        "--region",
-        config.awsRegion,
-        "--assignment-id",
-        assignment.AssignmentId,
-        "--requester-feedback",
-        `Broker callback accepted for ${task.reviewTaskId}`
-      ],
-      { env: process.env }
-    );
+    await execAws([
+      "mturk",
+      "approve-assignment",
+      "--endpoint-url",
+      config.awsEndpointUrl,
+      "--region",
+      config.awsRegion,
+      "--assignment-id",
+      assignment.AssignmentId,
+      "--requester-feedback",
+      `Broker callback accepted for ${task.reviewTaskId}`
+    ]);
 
     task.approvedAssignmentIds.push(assignment.AssignmentId);
     task.lastApprovalAt = new Date().toISOString();
@@ -631,9 +753,22 @@ async function approveAssignmentAfterCallback(input: {
 }
 
 async function main() {
-  await app.listen({ host: "0.0.0.0", port: config.port });
+  await app.listen({
+    host: process.env.MTURK_BRIDGE_HOST ?? "127.0.0.1",
+    port: config.port
+  });
   app.log.info({ port: config.port }, "mturk bridge listening");
 
+  let pollInFlight = false;
+  const pollAssignments = async () => {
+    if (pollInFlight) return;
+    pollInFlight = true;
+    try {
+      await pollAssignmentsOnce();
+    } finally {
+      pollInFlight = false;
+    }
+  };
   setInterval(() => {
     void pollAssignments().catch((error) => {
       app.log.error({ err: error }, "mturk bridge polling failed");

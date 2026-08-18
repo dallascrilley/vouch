@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import { createHealthProof } from "../domain/privacy/health-proof.js";
 
 import { internalReviewerCapability } from "../adapters/providers/internal-reviewer-adapter.js";
 import {
@@ -61,10 +62,14 @@ import { registerEvidenceRoutes } from "./routes/evidence.js";
 import { registerHumanReviewRoutes } from "./routes/human-review.js";
 import { registerProviderCallbackRoutes } from "./routes/provider-callback.js";
 import { registerReleaseArtifactRoutes } from "./routes/release-artifact.js";
-import { registerRuntimeOperationsRoutes } from "./routes/runtime-operations.js";
+import {
+  authorizeOperator,
+  registerRuntimeOperationsRoutes
+} from "./routes/runtime-operations.js";
 import { registerStuckStateRoutes } from "./routes/stuck-state.js";
 import { registerVerificationJobRoutes } from "./routes/verification-jobs.js";
 import { registerVerdictFeedbackRoutes } from "./routes/verdict-feedback.js";
+import { SpendCeiling } from "./spend-ceiling.js";
 
 type BuildAppOptions = {
   config?: RuntimeConfig;
@@ -140,6 +145,7 @@ export type AppServices = {
   providerWorkflowService: ProviderWorkflowService;
   queueStore: SQLiteLocalQueueStore;
   responseValidationService: ResponseValidationService;
+  spendCeiling: SpendCeiling;
   runtimeConfig: RuntimeConfig;
   runtimeRepositories: SQLiteRuntimeRepositories;
   selfVerificationService: SelfVerificationService;
@@ -179,6 +185,11 @@ export function buildApp(
 ): FastifyInstance {
   const { config, env, fetchImpl } = resolveConfig(input);
   validateRuntimeConfig(config);
+  if (config.nodeEnv === "production" && !config.operatorToken) {
+    throw new Error(
+      "RUNTIME_OPERATOR_TOKEN is required when NODE_ENV=production"
+    );
+  }
 
   const app = Fastify({
     logger: {
@@ -187,6 +198,10 @@ export function buildApp(
   });
 
   const repositories = createSQLiteRuntimeRepositories(config.databasePath);
+  const spendCeiling = new SpendCeiling(
+    repositories.store.db,
+    config.realSpendCeilingUsd
+  );
   const queueStore = new SQLiteLocalQueueStore(repositories.store);
   const transactionManager = repositories.store;
 
@@ -255,7 +270,8 @@ export function buildApp(
     ledgerService,
     verdictService,
     feedbackService,
-    transactionManager
+    transactionManager,
+    config.localProviderMode === "disabled" || env.PROVIDER_ENABLED !== "true"
   );
   const selfVerificationService = new SelfVerificationService(
     repositories.selfVerificationResultRepository,
@@ -341,6 +357,7 @@ export function buildApp(
     providerWorkflowService,
     queueStore,
     responseValidationService,
+    spendCeiling,
     runtimeConfig: config,
     runtimeRepositories: repositories,
     selfVerificationService,
@@ -348,14 +365,36 @@ export function buildApp(
     verdictRepository: repositories.finalVerdictRepository
   });
 
+  // The spawned broker is a local control plane, not an open localhost API.
+  // Provider callbacks authenticate with their separate shared secret and are
+  // intentionally exempt from the operator-token gate.
+  app.addHook("onRequest", async (request, reply) => {
+    const pathname = request.url.split("?", 1)[0];
+    if (pathname === "/provider-callback" || pathname === "/health") return;
+    if (!authorizeOperator(app, request, reply)) return reply;
+  });
+
   app.addHook("onClose", () => {
     providerStateStore?.close();
     repositories.store.close();
   });
 
-  app.get("/health", () => {
+  app.get("/health", (request, reply) => {
+    const challenge = request.headers["x-health-challenge"];
+    if (typeof challenge === "string" && challenge.length > 0) {
+      return {
+        broker_version: "vouch-broker-v1",
+        health_proof: createHealthProof(config.operatorToken ?? "", challenge),
+        local_provider_mode: config.localProviderMode,
+        status: "ok"
+      };
+    }
+    if (!authorizeOperator(app, request, reply)) {
+      return reply;
+    }
     app.services.metrics.increment("broker.health.requests");
     return {
+      broker_version: "vouch-broker-v1",
       database_path: config.databasePath,
       docs_url: "docs/architecture/agent-loop-integration.md",
       local_provider_mode: config.localProviderMode,

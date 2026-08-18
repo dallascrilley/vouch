@@ -7,6 +7,8 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { extname } from "node:path";
 
+import type { ReviewerPoolType } from "../../src/domain/shared/types.js";
+
 import {
   buildStructuredTaskTemplate,
   estimateTemplateCost,
@@ -46,6 +48,7 @@ export type AgentFeedback = {
 };
 
 export type RequestHumanReviewOptions = {
+  agentControlled?: boolean;
   agentRunId?: string;
   brokerBaseUrl: string;
   budget?: { maxAssignments: number; maxJobCost: number; maxRetries: number };
@@ -61,6 +64,7 @@ export type RequestHumanReviewOptions = {
   reviewerPool?: string;
   riskTier?: RiskTier;
   screenshot?: ReviewScreenshot;
+  signal?: AbortSignal;
   source?: {
     commit?: string;
     environment?: string;
@@ -81,6 +85,23 @@ export type HumanReviewRequestResult = {
   stuckState?: unknown;
   timedOut: boolean;
 };
+
+export class BrokerHttpError extends Error {
+  constructor(
+    readonly url: string,
+    readonly status: number,
+    readonly body: unknown
+  ) {
+    const message =
+      typeof body === "object" && body !== null && "message" in body
+        ? String(body.message)
+        : typeof body === "string"
+          ? body
+          : `HTTP ${status}`;
+    super(`${url} failed: ${status} ${message}`);
+    this.name = "BrokerHttpError";
+  }
+}
 
 const MIME_BY_EXTENSION: Record<string, string> = {
   ".gif": "image/gif",
@@ -128,6 +149,10 @@ export async function requestHumanReview(
   const fetchImpl = options.fetchImpl ?? fetch;
   const baseUrl = options.brokerBaseUrl.replace(/\/$/, "");
   const riskTier = options.riskTier ?? "medium";
+  const requestSignal = AbortSignal.any([
+    options.signal ?? new AbortController().signal,
+    AbortSignal.timeout(Math.max(options.timeoutMs ?? 0, 30_000))
+  ]);
   const idempotencyKey =
     options.idempotencyKey ?? `agent-review-${randomUUID()}`;
   const deadlineAt =
@@ -161,7 +186,9 @@ export async function requestHumanReview(
     commit: options.source?.commit ?? "unknown",
     environment: options.source?.environment ?? "agent-loop",
     feature_flags: [],
-    repository: options.source?.repository ?? "agent-review",
+    repository:
+      options.source?.repository ??
+      (options.agentControlled ? "pi-extension" : "review-client"),
     route: options.source?.route ?? "/"
   };
 
@@ -186,54 +213,70 @@ export async function requestHumanReview(
         evidence_requirements: [visualEvidence ? "screenshot" : "text"],
         human_visible_text: criterion.humanVisibleText
       })),
-      agent_run_id: options.agentRunId ?? `agent-review-${randomUUID()}`,
+      agent_run_id:
+        options.agentRunId ??
+        (options.agentControlled ? `agent-review-${randomUUID()}` : undefined),
       budget_policy: budget,
       deadline_at: deadlineAt,
       idempotency_key: idempotencyKey,
       risk_tier: riskTier,
       source
-    }
+    },
+    options.operatorToken,
+    requestSignal
   );
   const jobId = (createPayload as { job_id: string }).job_id;
+  const allowedReviewerRoutes = [
+    options.reviewerPool ?? "managed"
+  ] as ReviewerPoolType[];
+  const dataClass = options.dataClass ?? "internal_low";
 
-  await postJson(fetchImpl, `${baseUrl}/verification-jobs/${jobId}/artifacts`, {
-    artifact_quality: "sufficient",
-    environment: source,
-    job_id: jobId,
-    manifest_id: `${idempotencyKey}-manifest`,
-    raw_artifacts: [
-      {
-        artifact_id: artifactId,
-        artifact_type: visualEvidence ? "screenshot" : "trace_summary",
-        content_hash: contentHash,
-        provenance: options.screenshot?.path ?? "agent-task-template"
-      }
-    ],
-    sanitized_packages: [
-      {
-        externalization_decision: "allowed",
-        package_hash: contentHash,
-        package_id: `${idempotencyKey}-package`,
-        redaction_policy_version: "agent-review-v1",
-        transform_hash: contentHash
-      }
-    ]
-  });
+  await postJson(
+    fetchImpl,
+    `${baseUrl}/verification-jobs/${jobId}/artifacts`,
+    {
+      artifact_quality: "sufficient",
+      environment: source,
+      job_id: jobId,
+      manifest_id: `${idempotencyKey}-manifest`,
+      raw_artifacts: [
+        {
+          artifact_id: artifactId,
+          artifact_type: visualEvidence ? "screenshot" : "trace_summary",
+          content_hash: contentHash,
+          provenance: options.screenshot?.path ?? "agent-task-template"
+        }
+      ],
+      sanitized_packages: [
+        {
+          externalization_decision: "allowed",
+          package_hash: contentHash,
+          package_id: `${idempotencyKey}-package`,
+          redaction_policy_version: "agent-review-v1",
+          transform_hash: contentHash
+        }
+      ]
+    },
+    options.operatorToken,
+    requestSignal
+  );
 
   await postJson(
     fetchImpl,
     `${baseUrl}/verification-jobs/${jobId}/privacy-classification`,
     {
-      allowed_reviewer_routes: [options.reviewerPool ?? "managed"],
+      allowed_reviewer_routes: allowedReviewerRoutes,
       artifact_manifest_id: `${idempotencyKey}-manifest`,
       audit_record_id: `${idempotencyKey}-audit`,
       classification_id: `${idempotencyKey}-classification`,
-      data_class: options.dataClass ?? "internal_low",
+      data_class: dataClass,
       externalization_decision: "allowed",
       job_id: jobId,
       policy_version: "v1",
       redaction_status: "completed"
-    }
+    },
+    options.operatorToken,
+    requestSignal
   );
 
   const taskPayload = (await postJson(
@@ -247,8 +290,11 @@ export async function requestHumanReview(
       reviewer_pool: options.reviewerPool ?? "managed",
       sanitized_package_id: `${idempotencyKey}-package`,
       task_template: taskTemplate,
+      idempotency_key: idempotencyKey,
       visual_evidence: visualEvidence
-    }
+    },
+    options.operatorToken,
+    requestSignal
   )) as { provider_task_id?: string; review_task_id: string };
 
   const base: HumanReviewRequestResult = {
@@ -263,15 +309,29 @@ export async function requestHumanReview(
     return base;
   }
 
-  const wait = await waitForFeedback({
-    brokerBaseUrl: baseUrl,
-    fetchImpl,
-    includeStuckStateOnTimeout: true,
-    jobId,
-    operatorToken: options.operatorToken ?? process.env.RUNTIME_OPERATOR_TOKEN,
-    pollIntervalMs: options.pollIntervalMs,
-    timeoutMs: options.timeoutMs
-  });
+  let wait;
+  try {
+    wait = await waitForFeedback({
+      brokerBaseUrl: baseUrl,
+      fetchImpl,
+      includeStuckStateOnTimeout: true,
+      jobId,
+      operatorToken:
+        options.operatorToken ?? process.env.RUNTIME_OPERATOR_TOKEN,
+      pollIntervalMs: options.pollIntervalMs,
+      signal: requestSignal,
+      timeoutMs: options.timeoutMs
+    });
+  } catch (error) {
+    if (options.signal?.aborted) {
+      return {
+        ...base,
+        stuckState: { aborted: true, job_id: jobId },
+        timedOut: true
+      };
+    }
+    throw error;
+  }
   return {
     ...base,
     feedback: wait.feedback,
@@ -287,6 +347,8 @@ export async function waitForFeedback(options: {
   jobId: string;
   operatorToken?: string;
   pollIntervalMs?: number;
+  signal?: AbortSignal;
+  singleCheck?: boolean;
   timeoutMs?: number;
 }): Promise<{
   feedback?: AgentFeedback;
@@ -296,12 +358,30 @@ export async function waitForFeedback(options: {
   const fetchImpl = options.fetchImpl ?? fetch;
   const baseUrl = options.brokerBaseUrl.replace(/\/$/, "");
   const deadline = Date.now() + (options.timeoutMs ?? 30 * 60_000);
-  let interval = options.pollIntervalMs ?? 15_000;
+  let interval = options.pollIntervalMs ?? 250;
 
   for (;;) {
-    const response = await fetchImpl(
-      `${baseUrl}/verification-jobs/${options.jobId}/feedback`
-    );
+    if (options.signal?.aborted) {
+      throw new Error("Human review feedback wait aborted");
+    }
+    const pollSignal = signalUntil(deadline, options.signal);
+    let response: Response;
+    try {
+      response = await fetchImpl(
+        `${baseUrl}/verification-jobs/${options.jobId}/feedback`,
+        options.operatorToken
+          ? {
+              headers: { "x-operator-token": options.operatorToken },
+              signal: pollSignal
+            }
+          : { signal: pollSignal }
+      );
+    } catch (error) {
+      if (pollSignal.aborted && !options.signal?.aborted) {
+        return { timedOut: true };
+      }
+      throw error;
+    }
     if (response.ok) {
       const feedback = (await response.json()) as AgentFeedback;
       if (
@@ -316,19 +396,59 @@ export async function waitForFeedback(options: {
       );
     }
 
+    if (options.singleCheck) {
+      const stuckState = await maybeFetchStuckState({
+        baseUrl,
+        fetchImpl,
+        include: options.includeStuckStateOnTimeout,
+        jobId: options.jobId,
+        operatorToken: options.operatorToken,
+        signal: pollSignal
+      });
+      return { stuckState, timedOut: true };
+    }
+
     if (Date.now() + interval > deadline) {
       const stuckState = await maybeFetchStuckState({
         baseUrl,
         fetchImpl,
         include: options.includeStuckStateOnTimeout,
         jobId: options.jobId,
-        operatorToken: options.operatorToken
+        operatorToken: options.operatorToken,
+        signal: pollSignal
       });
       return { stuckState, timedOut: true };
     }
-    await new Promise((resolveSleep) => setTimeout(resolveSleep, interval));
+    await waitForInterval(interval, options.signal);
     interval = Math.min(Math.round(interval * 1.5), 60_000);
   }
+}
+
+async function waitForInterval(intervalMs: number, signal?: AbortSignal) {
+  if (signal?.aborted) {
+    throw new Error("Human review feedback wait aborted");
+  }
+  await new Promise<void>((resolveSleep, rejectSleep) => {
+    const timer = setTimeout(resolveSleep, intervalMs);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        rejectSleep(new Error("Human review feedback wait aborted"));
+      },
+      { once: true }
+    );
+  });
+}
+
+function signalUntil(
+  deadline: number,
+  callerSignal?: AbortSignal
+): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(Math.max(1, deadline - Date.now()));
+  return callerSignal
+    ? AbortSignal.any([callerSignal, timeoutSignal])
+    : timeoutSignal;
 }
 
 async function maybeFetchStuckState(input: {
@@ -337,13 +457,17 @@ async function maybeFetchStuckState(input: {
   include?: boolean;
   jobId: string;
   operatorToken?: string;
+  signal?: AbortSignal;
 }): Promise<unknown> {
   if (!input.include || !input.operatorToken) {
     return undefined;
   }
   const response = await input.fetchImpl(
     `${input.baseUrl}/verification-jobs/${input.jobId}/stuck-state`,
-    { headers: { "x-operator-token": input.operatorToken } }
+    {
+      headers: { "x-operator-token": input.operatorToken },
+      signal: input.signal
+    }
   );
   if (!response.ok) {
     return undefined;
@@ -354,17 +478,31 @@ async function maybeFetchStuckState(input: {
 async function postJson(
   fetchImpl: typeof fetch,
   url: string,
-  payload: unknown
+  payload: unknown,
+  operatorToken?: string,
+  signal?: AbortSignal
 ) {
+  const headers: Record<string, string> = {
+    "content-type": "application/json"
+  };
+  if (operatorToken) {
+    headers["x-operator-token"] = operatorToken;
+  }
   const response = await fetchImpl(url, {
     body: JSON.stringify(payload),
-    headers: { "content-type": "application/json" },
-    method: "POST"
+    headers,
+    method: "POST",
+    signal
   });
   if (!response.ok) {
-    throw new Error(
-      `${url} failed: ${response.status} ${await response.text()}`
-    );
+    const text = await response.text();
+    let body: unknown = text;
+    try {
+      body = JSON.parse(text) as unknown;
+    } catch {
+      // Preserve the plain response body when it is not JSON.
+    }
+    throw new BrokerHttpError(url, response.status, body);
   }
   return response.json();
 }

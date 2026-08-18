@@ -8,6 +8,7 @@ export function validateRuntimeConfig(config: RuntimeConfig) {
   if (config.databasePath !== ":memory:") {
     mkdirSync(dirname(config.databasePath), { recursive: true });
     const database = new DatabaseSync(config.databasePath);
+    database.exec("PRAGMA busy_timeout = 5000;");
     database.exec("PRAGMA journal_mode = WAL;");
     database.close();
     accessSync(config.databasePath, constants.R_OK | constants.W_OK);

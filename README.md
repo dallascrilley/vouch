@@ -13,8 +13,9 @@ privacy, routes what machines cannot settle to human reviewers, aggregates their
 answers into a consensus verdict, adjudicates disagreement, and hands the agent
 back a machine-readable next action and repair hints.
 
-> **Formerly Quorum.** The npm package name may still be `quorum`; user-facing copy
-> uses **Vouch**. See [docs/brand/BRAND.md](docs/brand/BRAND.md) for the brand kit.
+> **Formerly Quorum.** The repository, package, and Docker image are now `vouch`.
+> `quorum_state` and related consensus fields stay as domain terms, not branding.
+> See [docs/brand/BRAND.md](docs/brand/BRAND.md) for the brand kit.
 
 ## Provenance
 
@@ -25,8 +26,8 @@ code against external platforms; those platforms are not part of this repo. Ther
 no upstream template this service is forked from.
 
 **What CI proves offline:** install, build, lint, typecheck, unit/contract tests, and
-the four simulated harnesses (local runtime, provider e2e, proof-bundle replay, agent
-loop). **What is self-reported:** live crowd platforms such as MTurk require your own
+the five simulated harnesses (local runtime, provider e2e, proof-bundle replay, agent
+loop, Pi extension). **What is self-reported:** live crowd platforms such as MTurk require your own
 AWS/requester setup and are not exercised in CI.
 
 ## See it in under a minute
@@ -82,6 +83,15 @@ the checks become acceptance criteria on a verification job, and the resulting
 verdict decides whether the change is allowed. `./script/cibuild` is what CI
 runs, and it calls `verify`.
 
+## Use it from Pi
+
+The repository also ships a Pi extension that wraps the five-call review
+choreography behind one `human_review` tool. It starts an authenticated,
+loopback-only broker lazily, defaults to simulated reviewers, and exposes
+`/vouch-review` plus a guided sandbox go-live command. See
+[extensions/pi/README.md](extensions/pi/README.md) for install, retention, and
+the real-reviewer safety gates.
+
 ## Running it for real
 
 Start the API and the dispatch worker, then commission a review from the CLI:
@@ -117,7 +127,8 @@ docker run -d -p 3000:3000 -v vouch-data:/data \
   vouch:latest
 ```
 
-`GET /health` is unauthenticated for liveness; state persists under `/data`;
+`GET /health` is operator-token authenticated for managed broker discovery;
+state persists under `/data`;
 `SIGTERM` drains cleanly. Full guidance, including the worker and the
 security-relevant configuration (`RUNTIME_OPERATOR_TOKEN`,
 `PROVIDER_SHARED_SECRET`), is in [docs/ops/deployment.md](docs/ops/deployment.md).

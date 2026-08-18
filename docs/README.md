@@ -6,6 +6,8 @@
 | `ops/`          | Running the service: deployment, CI, the dev-workflow gate, and validation procedures.                |
 | `security/`     | Privacy-gate threat model, local data handling, and provider secret handling.                         |
 | `decisions/`    | Architecture Decision Records. One file per decision, numbered.                                       |
+| `plans/`        | Implementation plans for larger features, kept after the work ships.                                  |
+| `brand/`        | Vouch brand kit: marks, palette, and usage rules.                                                     |
 
 Wire contracts live outside `docs/` in [`contracts/`](../contracts/), because
 they are asserted by `tests/contract/` rather than read by humans alone.

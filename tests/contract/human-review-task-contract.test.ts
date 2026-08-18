@@ -110,4 +110,37 @@ describe("POST /verification-jobs/{jobId}/human-review-tasks", () => {
       reviewer_pool: "public_crowd"
     });
   });
+
+  it("returns the existing task on an idempotent replay", async () => {
+    const jobId = await createBaseJob(app);
+    const payload = {
+      criterion_ids: ["hero-visible"],
+      deadline_at: "2026-06-01T00:00:00.000Z",
+      idempotency_key: "human-task-replay",
+      quality_policy: "three-reviewers",
+      reviewer_pool: "public_crowd" as const,
+      sanitized_package_id: "package-replay",
+      task_template: "visual-check"
+    };
+
+    const first = await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${jobId}/human-review-tasks`,
+      payload
+    });
+    const second = await app.inject({
+      method: "POST",
+      url: `/verification-jobs/${jobId}/human-review-tasks`,
+      payload
+    });
+
+    expect(first.statusCode).toBe(202);
+    expect(second.statusCode).toBe(202);
+    expect(second.json().review_task_id).toBe(first.json().review_task_id);
+    await expect(
+      app.services.runtimeRepositories.humanReviewTaskRepository.findByJobId(
+        jobId
+      )
+    ).resolves.toHaveLength(1);
+  });
 });

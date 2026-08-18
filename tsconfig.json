@@ -16,6 +16,7 @@
   "include": [
     "src/**/*.ts",
     "tests/**/*.ts",
+    "extensions/pi/**/*.ts",
     "scripts/**/*.ts",
     "eslint.config.js",
     "vitest.config.ts"

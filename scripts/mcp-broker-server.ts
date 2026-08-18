@@ -152,7 +152,7 @@ const TOOLS = [
 ] as const;
 
 const server = new Server(
-  { name: "quorum", version: "0.1.0" },
+  { name: "vouch", version: "0.1.0" },
   { capabilities: { tools: {} } }
 );
 

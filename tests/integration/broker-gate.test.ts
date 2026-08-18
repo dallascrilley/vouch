@@ -11,7 +11,7 @@ import {
 } from "../../scripts/lib/broker-gate.js";
 
 const source = {
-  repository: "quorum",
+  repository: "vouch",
   branch: "test",
   commit: "deadbeefcafe",
   environment: "ci",

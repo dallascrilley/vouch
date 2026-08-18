@@ -7,6 +7,7 @@ export type RuntimeConfig = {
   providerStateDbPath?: string;
   providerValidationScript: string;
   queueClaimTtlSeconds: number;
+  realSpendCeilingUsd?: number;
   runtimeValidationScript: string;
   logLevel: string;
   operatorToken?: string;
@@ -24,6 +25,9 @@ export function loadRuntimeConfig(
   const queueClaimTtlValue =
     env.RUNTIME_QUEUE_CLAIM_TTL_SECONDS ?? `${DEFAULT_QUEUE_CLAIM_TTL_SECONDS}`;
   const queueClaimTtlSeconds = Number.parseInt(queueClaimTtlValue, 10);
+  const spendCeilingValue = env.VOUCH_REAL_SPEND_CEILING_USD;
+  const realSpendCeilingUsd =
+    spendCeilingValue === undefined ? undefined : Number(spendCeilingValue);
 
   if (!Number.isFinite(port) || port <= 0) {
     throw new Error(`Invalid PORT value: ${portValue}`);
@@ -32,6 +36,17 @@ export function loadRuntimeConfig(
   if (!Number.isFinite(queueClaimTtlSeconds) || queueClaimTtlSeconds <= 0) {
     throw new Error(
       `Invalid RUNTIME_QUEUE_CLAIM_TTL_SECONDS value: ${queueClaimTtlValue}`
+    );
+  }
+
+  if (
+    spendCeilingValue !== undefined &&
+    (realSpendCeilingUsd === undefined ||
+      !Number.isFinite(realSpendCeilingUsd) ||
+      realSpendCeilingUsd <= 0)
+  ) {
+    throw new Error(
+      `Invalid VOUCH_REAL_SPEND_CEILING_USD value: ${spendCeilingValue}`
     );
   }
 
@@ -54,6 +69,7 @@ export function loadRuntimeConfig(
     providerValidationScript:
       env.PROVIDER_VALIDATION_SCRIPT ?? "npm run validate:provider",
     queueClaimTtlSeconds,
+    realSpendCeilingUsd,
     runtimeValidationScript: "npm run validate:local-runtime",
     logLevel: env.LOG_LEVEL ?? "info",
     operatorToken: env.RUNTIME_OPERATOR_TOKEN,

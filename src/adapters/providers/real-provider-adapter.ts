@@ -4,14 +4,26 @@ import type {
 } from "../../domain/human-review/models.js";
 import { redactProviderSecrets } from "../observability/provider-log-redaction.js";
 
-type ProviderDispatchResult = {
+export type ProviderDispatchResult = {
   providerAssignmentScope: string;
   providerTaskId: string;
 };
 
+export class ProviderDispatchError extends Error {
+  constructor(
+    message: string,
+    readonly ambiguous: boolean,
+    options?: ErrorOptions
+  ) {
+    super(message, options);
+    this.name = "ProviderDispatchError";
+  }
+}
+
 type ProviderDispatchBody = {
   callback_url?: string;
   criterion_ids: string[];
+  idempotency_key: string;
   review_task_id: string;
   reviewer_pool: HumanReviewTask["reviewerPool"];
   sanitized_package_id: string;
@@ -46,6 +58,7 @@ export class RealProviderAdapter {
     const body: ProviderDispatchBody = {
       review_task_id: task.reviewTaskId,
       criterion_ids: task.criterionIds,
+      idempotency_key: task.idempotencyKey ?? task.reviewTaskId,
       reviewer_pool: task.reviewerPool,
       sanitized_package_id: task.sanitizedPackageId,
       task_template: task.taskTemplate,
@@ -63,26 +76,58 @@ export class RealProviderAdapter {
         : undefined
     };
 
-    const response = await this.fetchImpl(this.config.dispatchUrl, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${this.config.apiKey}`
-      },
-      body: JSON.stringify(body)
-    });
-
-    if (!response.ok) {
-      const errorText = redactProviderSecrets(await response.text());
-      throw new Error(
-        `Provider dispatch failed: ${response.status} ${errorText}`
+    let response: Response;
+    try {
+      response = await this.fetchImpl(this.config.dispatchUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${this.config.apiKey}`
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(this.config.dispatchTimeoutMs ?? 30_000)
+      });
+    } catch (error) {
+      throw new ProviderDispatchError(
+        "Provider dispatch outcome is unknown after the request failed",
+        true,
+        { cause: error }
       );
     }
 
-    const payload = (await response.json()) as {
+    if (!response.ok) {
+      const errorText = redactProviderSecrets(await response.text());
+      const ambiguous =
+        response.status >= 500 ||
+        response.headers.get("x-provider-dispatch-ambiguous") === "true";
+      throw new ProviderDispatchError(
+        `Provider dispatch failed: ${response.status} ${errorText}`,
+        ambiguous
+      );
+    }
+
+    let payload: {
       provider_assignment_scope?: string;
-      provider_task_id: string;
+      provider_task_id?: string;
     };
+    try {
+      payload = (await response.json()) as {
+        provider_assignment_scope?: string;
+        provider_task_id?: string;
+      };
+    } catch (error) {
+      throw new ProviderDispatchError(
+        "Provider accepted dispatch but returned an unreadable response",
+        true,
+        { cause: error }
+      );
+    }
+    if (!payload.provider_task_id?.trim()) {
+      throw new ProviderDispatchError(
+        "Provider accepted dispatch but did not return a task identifier",
+        true
+      );
+    }
 
     return {
       providerAssignmentScope:

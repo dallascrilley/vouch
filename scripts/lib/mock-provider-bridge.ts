@@ -58,6 +58,18 @@ export function buildMockProviderBridge(
 
       const providerTaskId = `mock_task_${request.body.review_task_id}`;
       const state = loadBridgeState(config.statePath);
+      const existingTask = Object.values(state.tasks).find(
+        (task) =>
+          task.reviewTaskId === request.body.review_task_id ||
+          (request.body.idempotency_key !== undefined &&
+            task.idempotencyKey === request.body.idempotency_key)
+      );
+      if (existingTask) {
+        return reply.code(202).send({
+          provider_assignment_scope: existingTask.reviewerPool,
+          provider_task_id: existingTask.hitId
+        });
+      }
       state.tasks[providerTaskId] = createTaskRecord({
         body: request.body,
         providerTaskId
@@ -163,6 +175,7 @@ function createTaskRecord(input: {
     deadLetterAssignments: [],
     deliveredAssignmentIds: [],
     hitId: input.providerTaskId,
+    idempotencyKey: input.body.idempotency_key,
     reviewTaskId: input.body.review_task_id,
     reviewerPool: input.body.reviewer_pool,
     sanitizedPackageId: input.body.sanitized_package_id,

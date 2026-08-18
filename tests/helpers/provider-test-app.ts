@@ -29,7 +29,11 @@ export function buildProviderTestApp(options: ProviderTestAppOptions = {}) {
 }
 
 export async function createProviderEligibleJob(app: FastifyInstance) {
+  const headers = app.services.runtimeConfig.operatorToken
+    ? { "x-operator-token": app.services.runtimeConfig.operatorToken }
+    : undefined;
   const createResponse = await app.inject({
+    headers,
     method: "POST",
     url: "/verification-jobs",
     payload: {
@@ -60,6 +64,7 @@ export async function createProviderEligibleJob(app: FastifyInstance) {
   const jobId = createResponse.json().job_id as string;
 
   await app.inject({
+    headers,
     method: "POST",
     url: `/verification-jobs/${jobId}/artifacts`,
     payload: {
@@ -84,6 +89,7 @@ export async function createProviderEligibleJob(app: FastifyInstance) {
   });
 
   await app.inject({
+    headers,
     method: "POST",
     url: `/verification-jobs/${jobId}/privacy-classification`,
     payload: {

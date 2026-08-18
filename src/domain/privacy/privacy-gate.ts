@@ -8,6 +8,13 @@ import type { JobService } from "../jobs/job-service.js";
 import type { FeedbackService } from "../feedback/feedback-service.js";
 import type { VerdictService } from "../feedback/verdict-service.js";
 
+export class PrivacyPolicyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PrivacyPolicyError";
+  }
+}
+
 export class PrivacyGate {
   private readonly classifications = new Map<string, PrivacyClassification>();
 
@@ -17,7 +24,8 @@ export class PrivacyGate {
     private readonly ledgerService: LedgerService,
     private readonly verdictService: VerdictService,
     private readonly feedbackService: FeedbackService,
-    private readonly transactionManager: TransactionManager
+    private readonly transactionManager: TransactionManager,
+    private readonly agentExternalizationEnabled = false
   ) {}
 
   async record(input: PrivacyClassification): Promise<void> {
@@ -25,12 +33,22 @@ export class PrivacyGate {
     if (!job) {
       throw new Error(`Verification job not found: ${input.jobId}`);
     }
+    if (!job.artifactManifestId) {
+      throw new PrivacyPolicyError(
+        "Privacy classification requires a persisted artifact manifest"
+      );
+    }
+    if (job.artifactManifestId !== input.artifactManifestId) {
+      throw new PrivacyPolicyError(
+        "Privacy classification does not match the job artifact manifest"
+      );
+    }
 
     // The externalization decision is authoritative on the server, never the
     // client. Redaction that did not complete cleanly always fails closed
     // regardless of what the caller asserts (defence-in-depth; the per-pool
     // policy is re-checked at dispatch time in assertProviderDispatchAllowed).
-    const classification = this.enforceServerSideDecision(input);
+    const classification = this.enforceServerSideDecision(input, job);
 
     await this.transactionManager.inTransaction(async () => {
       await this.ledgerService.recordStateTransition(
@@ -91,16 +109,16 @@ export class PrivacyGate {
       route: ""
     });
     if (!policy.allowed) {
-      throw new Error(
+      throw new PrivacyPolicyError(
         `Provider dispatch is blocked by privacy policy: ${policy.blockedReasons.join("; ")}`
       );
     }
 
     if (
-      classification.allowedReviewerRoutes.length > 0 &&
+      classification.allowedReviewerRoutes.length === 0 ||
       !classification.allowedReviewerRoutes.includes(providerRoute)
     ) {
-      throw new Error(
+      throw new PrivacyPolicyError(
         `Provider dispatch is not allowed for route: ${providerRoute}`
       );
     }
@@ -109,8 +127,47 @@ export class PrivacyGate {
   }
 
   private enforceServerSideDecision(
-    input: PrivacyClassification
+    input: PrivacyClassification,
+    job: { agentRunId?: string; jobId: string; source?: { repository: string } }
   ): PrivacyClassification {
+    // Agent authority is derived from a server-held go-live grant, not from
+    // editable source metadata or an approval value supplied by the agent.
+    // Simulated reviews do not cross the externalization boundary; real agent
+    // reviews require the operator-enabled runtime configuration.
+    const requestsExternalReview =
+      input.allowedReviewerRoutes.length === 0 ||
+      input.allowedReviewerRoutes.some((route) => route !== "internal");
+    const isServerRecordedAgentWorkflow =
+      job.source?.repository === "pi-extension";
+    if (
+      isServerRecordedAgentWorkflow &&
+      requestsExternalReview &&
+      !job.agentRunId
+    ) {
+      input = {
+        ...input,
+        dataClass: "regulated_or_secret",
+        externalizationDecision: "blocked_fail_closed",
+        blockedReasons: [
+          ...input.blockedReasons,
+          "external review requires a server-recorded agent run"
+        ]
+      };
+    } else if (
+      job.agentRunId &&
+      requestsExternalReview &&
+      !this.agentExternalizationEnabled
+    ) {
+      input = {
+        ...input,
+        dataClass: "regulated_or_secret",
+        externalizationDecision: "blocked_fail_closed",
+        blockedReasons: [
+          ...input.blockedReasons,
+          "agent externalization requires the server-held go-live grant"
+        ]
+      };
+    }
     if (
       input.redactionStatus === "failed" ||
       input.redactionStatus === "insufficient_confidence"

@@ -26,8 +26,8 @@ Thumbs.db
 .specify/
 .todos/
 .compound-engineering/
-AGENTS.md
 CLAUDE.md
+/LAUNCH_CRITERIA.md
 /STATUS.md
 /TODO.md
 /BACKLOG.md
@@ -35,12 +35,10 @@ CLAUDE.md
 /NOTES.md
 /SCRATCH.md
 /PROJECT_CONTEXT.md
-/LAUNCH_CRITERIA.md
 /initial.md
 /goalplan.md
 /handoff.md
 prd.json
-docs/plans/
 docs/ideation/
 docs/whats-next/
 docs/residual-review-findings/

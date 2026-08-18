@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { buildMockProviderBridge } from "../../scripts/lib/mock-provider-bridge.js";
 import { buildApp } from "../../src/api/app.js";
 
+const operatorHeaders = { "x-operator-token": "agent-test-token" };
+
 describe("mock second-provider bridge e2e", () => {
   let app: ReturnType<typeof buildApp>;
   let mockBridge: ReturnType<typeof buildMockProviderBridge>;
@@ -27,7 +29,9 @@ describe("mock second-provider bridge e2e", () => {
         PROVIDER_API_KEY: bridgeApiKey,
         PROVIDER_CALLBACK_BASE_URL: "http://broker.test",
         PROVIDER_DISPATCH_URL: "http://mock-provider.test/dispatch",
-        PROVIDER_SHARED_SECRET: sharedSecret
+        PROVIDER_SHARED_SECRET: sharedSecret,
+        LOCAL_PROVIDER_MODE: "disabled",
+        RUNTIME_OPERATOR_TOKEN: "agent-test-token"
       },
       fetchImpl: async (input, init) => {
         const url =
@@ -89,6 +93,7 @@ describe("mock second-provider bridge e2e", () => {
   it("lets an agent commission ambiguous evidence review and consume an unambiguous retry decision", async () => {
     const jobId = await createProviderEligibleJob(app);
     const taskResponse = await app.inject({
+      headers: operatorHeaders,
       method: "POST",
       url: `/verification-jobs/${jobId}/human-review-tasks`,
       payload: {
@@ -135,6 +140,7 @@ describe("mock second-provider bridge e2e", () => {
     // Ambiguous provider responses stay manual under the honest-provenance
     // model: the agent (or operator) resolves via consensus + adjudication.
     const consensusResponse = await app.inject({
+      headers: operatorHeaders,
       method: "POST",
       url: `/verification-jobs/${jobId}/consensus`,
       payload: {
@@ -149,6 +155,7 @@ describe("mock second-provider bridge e2e", () => {
       }
     });
     const adjudicationResponse = await app.inject({
+      headers: operatorHeaders,
       method: "POST",
       url: `/verification-jobs/${jobId}/adjudications`,
       payload: {
@@ -159,10 +166,12 @@ describe("mock second-provider bridge e2e", () => {
     });
 
     const verdictResponse = await app.inject({
+      headers: operatorHeaders,
       method: "GET",
       url: `/verification-jobs/${jobId}/verdict`
     });
     const feedbackResponse = await app.inject({
+      headers: operatorHeaders,
       method: "GET",
       url: `/verification-jobs/${jobId}/feedback`
     });
@@ -203,6 +212,7 @@ describe("mock second-provider bridge e2e", () => {
 
 async function createProviderEligibleJob(app: ReturnType<typeof buildApp>) {
   const createResponse = await app.inject({
+    headers: operatorHeaders,
     method: "POST",
     url: "/verification-jobs",
     payload: {
@@ -234,6 +244,7 @@ async function createProviderEligibleJob(app: ReturnType<typeof buildApp>) {
   const jobId = createResponse.json().job_id as string;
 
   await app.inject({
+    headers: operatorHeaders,
     method: "POST",
     url: `/verification-jobs/${jobId}/artifacts`,
     payload: {
@@ -258,6 +269,7 @@ async function createProviderEligibleJob(app: ReturnType<typeof buildApp>) {
   });
 
   await app.inject({
+    headers: operatorHeaders,
     method: "POST",
     url: `/verification-jobs/${jobId}/privacy-classification`,
     payload: {
