@@ -16,7 +16,8 @@ export type RecommendedNextAction =
   | "post_consensus"
   | "await_pairwise_tie_break"
   | "post_adjudication"
-  | "raise_budget_or_accept_fail_closed";
+  | "raise_budget_or_accept_fail_closed"
+  | "continue_pipeline";
 
 export type StuckState = {
   stuck: boolean;
@@ -32,6 +33,23 @@ const TERMINAL_STATES: ReadonlySet<VerificationJob["state"]> = new Set([
   "canceled",
   "agent_retry_requested",
   "artifact_recapture_requested"
+]);
+
+// States before any review has been queued. Nothing is blocked in them: the
+// caller simply has not taken the next lifecycle step yet. They used to fall
+// through to the awaiting_consensus catch-all, which reported a freshly
+// created job as stuck and told the operator to post consensus for responses
+// that cannot exist yet.
+//
+// Deliberately excludes external_review_queued and internal_review_queued: a
+// queued review reporting awaiting_consensus is intended, and pinned by
+// tests/integration/self-verification-escalation.test.ts.
+const PRE_REVIEW_STATES: ReadonlySet<VerificationJob["state"]> = new Set([
+  "created",
+  "artifacts_collected",
+  "privacy_classified",
+  "self_verifying",
+  "decision_point"
 ]);
 
 export function deriveStuckState(input: {
@@ -64,6 +82,22 @@ export function deriveStuckState(input: {
       stuckReason: "budget_blocked",
       recommendedNextAction: "raise_budget_or_accept_fail_closed",
       pairwiseReviewTaskId: pairwiseTask?.reviewTaskId ?? null
+    };
+  }
+
+  // Placed after the budget-blocked check so a real budget signal still wins.
+  // The adjudication and pairwise branches below cannot apply here: their
+  // states are not pre-review, and a pre-review job has no review task.
+  if (
+    PRE_REVIEW_STATES.has(job.state) &&
+    reviewTasks.length === 0 &&
+    responses.length === 0
+  ) {
+    return {
+      stuck: false,
+      stuckReason: null,
+      recommendedNextAction: "continue_pipeline",
+      pairwiseReviewTaskId: null
     };
   }
 

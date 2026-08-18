@@ -19,7 +19,8 @@ const RECOMMENDED_NEXT_ACTIONS = [
   "post_consensus",
   "await_pairwise_tie_break",
   "post_adjudication",
-  "raise_budget_or_accept_fail_closed"
+  "raise_budget_or_accept_fail_closed",
+  "continue_pipeline"
 ];
 
 describe("stuck-state contract", () => {

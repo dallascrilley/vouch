@@ -55,6 +55,37 @@ function callbackPayload(
   };
 }
 
+describe("stuck-state before any review is queued", () => {
+  let app: FastifyInstance;
+
+  beforeEach(async () => {
+    app = buildProviderTestApp();
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  it("does not report a freshly created job as stuck awaiting consensus", async () => {
+    // These states used to fall through to the awaiting_consensus catch-all,
+    // which told an operator to post consensus for responses that cannot
+    // exist yet on a job that is not blocked at all.
+    const jobId = await createProviderEligibleJob(app);
+
+    const stuck = await app.inject({
+      method: "GET",
+      url: `/verification-jobs/${jobId}/stuck-state`
+    });
+
+    expect(stuck.json()).toMatchObject({
+      stuck: false,
+      stuck_reason: null,
+      recommended_next_action: "continue_pipeline"
+    });
+  });
+});
+
 describe("stuck-state subscription API", () => {
   let app: FastifyInstance;
 
