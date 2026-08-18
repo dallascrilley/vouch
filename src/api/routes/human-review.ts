@@ -82,6 +82,14 @@ export function registerHumanReviewRoutes(app: FastifyInstance) {
           >["task"]
         | undefined;
       try {
+        // Reject a policy-disallowed pool before anything is persisted.
+        // createOrGet commits the task and advances the job state, so a later
+        // rejection would leave a job that can never dispatch.
+        await app.services.privacyGate.assertRequestedPoolAllowed(
+          request.params.jobId,
+          request.body.reviewer_pool
+        );
+
         const result = await app.services.humanReviewTaskService.createOrGet({
           criterionIds: request.body.criterion_ids,
           deadlineAt: new Date(request.body.deadline_at),

@@ -86,6 +86,29 @@ export class PrivacyGate {
     });
   }
 
+  // Cheap pre-check on the pool the caller is asking for, run *before* the
+  // review task is persisted. createOrGet commits the task and advances the
+  // job to *_review_queued, so gating only afterwards left a job that could
+  // never dispatch and that deriveStuckState then reported as
+  // "awaiting_consensus" with a "post_consensus" next action -- advice for a
+  // review that will never happen.
+  //
+  // Silent when no classification exists yet: those callers are gated at
+  // dispatch instead. This does not replace assertProviderDispatchAllowed,
+  // which remains authoritative because it gates the *stored* pool.
+  async assertRequestedPoolAllowed(
+    jobId: string,
+    requestedPool: ReviewerPoolType
+  ): Promise<void> {
+    const classification =
+      this.classifications.get(jobId) ??
+      (await this.privacyRepository.findByJobId(jobId));
+    if (!classification) return;
+    const job = await this.jobService.get(jobId);
+    if (!job) return;
+    this.assertPolicyAllows(classification, job.source.route, requestedPool);
+  }
+
   async assertProviderDispatchAllowed(
     jobId: string,
     providerRoute: ReviewerPoolType
@@ -108,17 +131,7 @@ export class PrivacyGate {
     // and the job's recorded route, rather than trusting the stored
     // (originally client-supplied) decision. An empty route would skip the
     // /billing internal-only rule.
-    const policy = evaluateExternalizationPolicy({
-      dataClass: classification.dataClass,
-      redactionStatus: classification.redactionStatus,
-      reviewerPool: providerRoute,
-      route: job.source.route
-    });
-    if (!policy.allowed) {
-      throw new PrivacyPolicyError(
-        `Provider dispatch is blocked by privacy policy: ${policy.blockedReasons.join("; ")}`
-      );
-    }
+    this.assertPolicyAllows(classification, job.source.route, providerRoute);
 
     if (
       classification.allowedReviewerRoutes.length === 0 ||
@@ -130,6 +143,24 @@ export class PrivacyGate {
     }
 
     return classification;
+  }
+
+  private assertPolicyAllows(
+    classification: PrivacyClassification,
+    route: string,
+    reviewerPool: ReviewerPoolType
+  ): void {
+    const policy = evaluateExternalizationPolicy({
+      dataClass: classification.dataClass,
+      redactionStatus: classification.redactionStatus,
+      reviewerPool,
+      route
+    });
+    if (!policy.allowed) {
+      throw new PrivacyPolicyError(
+        `Provider dispatch is blocked by privacy policy: ${policy.blockedReasons.join("; ")}`
+      );
+    }
   }
 
   private enforceServerSideDecision(
