@@ -237,34 +237,75 @@ describe("security regressions", () => {
       expect(response.statusCode).toBe(403);
     });
 
-    it("blocks a replayed idempotency key that asserts a different pool than the stored task", async () => {
-      // The gate recomputes the policy from request.body.reviewer_pool, but
-      // dispatch uses the stored task's reviewerPool. createOrGet returns an
-      // existing task by idempotency key without checking that the requested
-      // pool matches, so the two can diverge on the replay path.
+    it("a policy-blocked pool leaves no task and does not advance the job", async () => {
+      // createOrGet persists the task and moves the job to
+      // *_review_queued. Gating only after that left a job that could never
+      // dispatch, which deriveStuckState reported as "awaiting_consensus"
+      // with a "post_consensus" next action -- guidance for a review that
+      // would never happen. The pool is now checked before anything commits.
       const jobId = await createClassifiedJob(app, {
         decision: "allowed",
-        route: "/billing/invoices",
-        allowedReviewerRoutes: ["managed", "internal"]
+        route: "/billing/invoices"
       });
-      const idempotencyKey = crypto.randomUUID();
 
-      // Managed on a billing route is blocked -- but the task is persisted
-      // before the gate runs.
-      const blocked = await createTask(app, jobId, {
-        reviewerPool: "managed",
-        idempotencyKey
-      });
+      const blocked = await createTask(app, jobId);
       expect(blocked.statusCode).toBe(403);
 
-      // Replay the same key asserting "internal", which the billing rule
-      // permits. The stored task is still managed.
-      const replay = await createTask(app, jobId, {
-        reviewerPool: "internal",
-        idempotencyKey
+      const job = await app.inject({
+        method: "GET",
+        url: `/verification-jobs/${jobId}`
       });
-      expect(replay.statusCode).toBe(403);
-      expect(replay.json().reviewer_pool).not.toBe("managed");
+      expect(job.json().state).toBe("privacy_classified");
+
+      // The state transition and the task row are saved in one transaction,
+      // so an unchanged job state is also proof that no task was persisted.
+      // Confirm directly that the queue transition never reached the ledger.
+      const stuck = await app.inject({
+        method: "GET",
+        url: `/verification-jobs/${jobId}/stuck-state`
+      });
+      const ledgerEvents = stuck
+        .json()
+        .ledger_tail.map((event: { event_type: string }) => event.event_type);
+      expect(
+        ledgerEvents.some((eventType: string) =>
+          eventType.includes("external_review_queued")
+        )
+      ).toBe(false);
+    });
+
+    it("blocks self-verification escalation to the managed pool on a billing route", async () => {
+      // The domain layer picks "managed" for a human_review escalation with
+      // no pre-check of its own, so this exercises the authoritative
+      // stored-pool gate in evidence.ts rather than the pre-check above.
+      const jobId = await createClassifiedJob(app, {
+        decision: "allowed",
+        route: "/billing/invoices"
+      });
+
+      const escalation = await app.inject({
+        method: "POST",
+        url: `/verification-jobs/${jobId}/self-verification-results`,
+        payload: {
+          result_id: `result-${crypto.randomUUID()}`,
+          job_id: "ignored",
+          confidence: "low",
+          recommended_action: "human_review",
+          criterion_results: [
+            {
+              criterion_id: "managed-check",
+              status: "unclear",
+              confidence: "low"
+            }
+          ],
+          failure_categories: ["visual-ambiguous"]
+        }
+      });
+
+      expect(escalation.json().escalated).toBe(true);
+      // The task is queued but the privacy block stops dispatch, so no
+      // provider ever receives the billing evidence.
+      expect(escalation.json().provider_task_id).toBeNull();
     });
 
     it("rejects an idempotency replay that changes a task-identifying parameter", async () => {
