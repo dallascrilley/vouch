@@ -29,5 +29,7 @@ production persistence layer.
 ## Rule for agents
 
 - Treat the README and this doc as the source of truth for what runs today.
-- Treat `docs/architecture/verification-control-plane.md` as the **target** architecture.
+- Treat `docs/architecture/verification-control-plane.md` as the implemented
+  control-plane flow (SQLite-backed). The PostgreSQL / pg-boss / S3 / OTel
+  shape in this file is the **unbuilt** production target, not current `src/`.
 - Do not assume PostgreSQL, pg-boss, S3, or OTel are available without checking `src/`.

@@ -8,8 +8,14 @@ import type { VerdictService } from "../feedback/verdict-service.js";
 import type { HumanReviewTaskService } from "../human-review/human-review-task-service.js";
 import type { HumanReviewTask } from "../human-review/models.js";
 
-export const SELF_VERIFICATION_ESCALATION_TEMPLATE =
-  "self-verification-escalation";
+export const SELF_VERIFICATION_ESCALATION_TEMPLATE = JSON.stringify({
+  v: 1,
+  self_verification_escalation: true,
+  pricing: {
+    max_assignments: 1,
+    reward: "0.05"
+  }
+});
 
 export type SelfVerificationOutcome = {
   escalated: boolean;

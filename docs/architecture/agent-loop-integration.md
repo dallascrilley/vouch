@@ -130,6 +130,8 @@ The client defaults to `data_class: internal_low` /
 crowd workers _is_ externalization. Callers reviewing anything user-derived
 must pass `--data-class` honestly; the broker's privacy gate still blocks
 externalization for restricted classes regardless of what the client asks for.
+The go-live grant, dispatch-time recompute, and health proof are documented in
+[`privacy-gate.md`](privacy-gate.md).
 
 ## Structured task-template envelope
 
@@ -164,7 +166,10 @@ forms:
   (`MTURK_MAX_REWARD_USD`, `MTURK_MAX_ASSIGNMENTS_PER_HIT`,
   `MTURK_MAX_SPEND_PER_HIT_USD`); violations reject the dispatch. The bridge
   also uses `max_assignments` as the per-task expected delivery count, so
-  `deliveryComplete` no longer assumes the global default.
+  `deliveryComplete` no longer assumes the global default. The broker spend
+  ceiling uses the same `pricing` object (`reward * max_assignments`); without
+  it, a configured `VOUCH_REAL_SPEND_CEILING_USD` blocks real dispatch. See
+  [`docs/ops/spend-ceiling.md`](../ops/spend-ceiling.md).
 - `attention_check` renders one extra row visually identical to the real
   questions with a stated correct answer. Responses that fail it are still
   delivered (consensus owns weighting) but carry the

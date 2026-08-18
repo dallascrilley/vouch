@@ -13,24 +13,44 @@
 
 `docs/architecture/agent-review-contract.md` defines the agent-facing
 commissioning and completion fields for autonomous self-verification loops.
+Privacy classification is not client-authoritative; see
+[`privacy-gate.md`](privacy-gate.md). Real-provider cost is capped by
+[`docs/ops/spend-ceiling.md`](../ops/spend-ceiling.md).
 
 ## Main Modules
 
 - `src/domain/jobs`: job identity, acceptance criteria, and budget policy
 - `src/domain/artifacts`: artifact manifests and artifact handling
-- `src/domain/privacy`: privacy gate and externalization policy
+- `src/domain/privacy`: privacy gate, externalization policy, and health proof
 - `src/domain/self-verification`: self-verification result handling
 - `src/domain/human-review`: task creation, response validation, provider registry, routing, and provider operations
 - `src/domain/consensus`: consensus aggregation
 - `src/domain/adjudication`: adjudicated outcomes
 - `src/domain/feedback`: verdicts, feedback signals, and calibration
 - `src/domain/ledger`: append-only ledger and retention policy
-- `src/api`: Fastify routes and in-memory composition root
+- `src/api`: Fastify routes and SQLite composition root (`app.ts`)
+- `src/api/spend-ceiling.ts`: durable real-dispatch reservation ledger
 - `src/workers`: queue handler entrypoints
 
 ## Current Runtime Shape
 
-The app currently uses in-memory repositories and provider stubs so the lifecycle
-can be exercised by tests without requiring PostgreSQL, object storage, or live
-provider accounts. The repository and adapter interfaces are already defined to
-support a later swap to durable implementations.
+The shipped broker is a **SQLite-first local runtime**, not an in-memory
+prototype. `src/api/app.ts` wires `createSQLiteRuntimeRepositories` and a
+filesystem artifact store.
+
+| Surface                               | Shipped implementation                                                          |
+| ------------------------------------- | ------------------------------------------------------------------------------- |
+| Job / privacy / review / ledger state | `RUNTIME_SQLITE_PATH` (`node:sqlite`)                                           |
+| Provider task mappings and receipts   | `PROVIDER_SQLITE_PATH` (in-memory only when that path is unset, which tests do) |
+| Real-dispatch spend reservations      | `vouch_spend_reservations` in the runtime DB                                    |
+| Queue                                 | `SQLiteLocalQueueStore` in the runtime DB                                       |
+| Artifacts                             | `RUNTIME_ARTIFACT_ROOT` on disk                                                 |
+| Metrics                               | `InMemoryMetricsRecorder` (no OpenTelemetry export)                             |
+
+PostgreSQL, pg-boss, S3, and OTel adapters are **not** implemented. See
+[`runtime-target.md`](runtime-target.md) for shipped vs production-target and
+[`sqlite-local-runtime.md`](sqlite-local-runtime.md) for persistence surfaces.
+
+Vitest still uses `:memory:` SQLite and in-memory provider mapping so the
+lifecycle can run without live provider accounts. That test substitute is not
+the developer or Docker runtime.

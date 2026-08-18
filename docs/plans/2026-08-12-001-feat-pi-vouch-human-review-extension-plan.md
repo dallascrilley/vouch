@@ -144,6 +144,7 @@ Vouch has the hard parts built — a typed one-call client, a structured feedbac
 - Changes to consensus, adjudication, privacy, or provider internals under `src/domain/`; the extension consumes existing behavior. Adding a sixth `AgentNextAction` value is such a change and is explicitly avoided by KD4.
 
 <!-- ce-section: work-relationships -->
+
 ### How This Work Fits Together
 
 This plan owns the packaging piece of the agent-native verification stack laid out in an internal ideation document (idea 1), which is not published in this repository. The breakdown below is the current understanding, not a committed roadmap.
@@ -377,15 +378,15 @@ Directional guidance, not implementation specification: exact module boundaries 
 
 ## Verification Contract
 
-| Gate | Command | Proves |
-|---|---|---|
-| Typecheck | `npm run build` | New package compiles under root strict config |
-| Lint | `npm run lint` | Type-aware lint resolves for `extensions/pi` |
-| Unit/integration tests | `npx vitest run extensions/pi` | U1–U6 scenarios, including AE5, AE6, AE7, AE8, AE9, AE10 |
-| Offline harness | `npm run validate:pi-extension` | F1 end-to-end: spawn → demo review → settled envelope in < 60s (AE1), no orphan processes |
-| Pi runtime smoke | `pi -e ./extensions/pi` (manual) | Tool/command/widget register in a real Pi session; F2 walkthrough with a long-latency simulated review |
-| Bridge survival | manual sandbox walkthrough | Dispatch a sandbox review, close Pi, reopen after the bridge poll interval → verdict surfaced (F2/R7 for the real path) |
-| Full CI | `./script/cibuild` | Nothing else in the repo regressed |
+| Gate                   | Command                          | Proves                                                                                                                  |
+| ---------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Typecheck              | `npm run build`                  | New package compiles under root strict config                                                                           |
+| Lint                   | `npm run lint`                   | Type-aware lint resolves for `extensions/pi`                                                                            |
+| Unit/integration tests | `npx vitest run extensions/pi`   | U1–U6 scenarios, including AE5, AE6, AE7, AE8, AE9, AE10                                                                |
+| Offline harness        | `npm run validate:pi-extension`  | F1 end-to-end: spawn → demo review → settled envelope in < 60s (AE1), no orphan processes                               |
+| Pi runtime smoke       | `pi -e ./extensions/pi` (manual) | Tool/command/widget register in a real Pi session; F2 walkthrough with a long-latency simulated review                  |
+| Bridge survival        | manual sandbox walkthrough       | Dispatch a sandbox review, close Pi, reopen after the bridge poll interval → verdict surfaced (F2/R7 for the real path) |
+| Full CI                | `./script/cibuild`               | Nothing else in the repo regressed                                                                                      |
 
 The sandbox MTurk path (F3, AE-level for R12/R17) is verified manually at go-live; the harness never spends money.
 

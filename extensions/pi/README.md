@@ -66,3 +66,29 @@ simulated verdict.
 
 The real MTurk sandbox path and cross-session bridge survival still require a
 manual operator walkthrough with valid AWS/MTurk setup; CI never spends money.
+
+## Pitfalls
+
+- **Port.** `npm run dev` listens on `:3000`. The extension-managed broker
+  listens on `:31337` (`DEFAULT_BROKER_PORT`) and the MTurk bridge on
+  `:3100`. Do not point `VOUCH_PI_BROKER_URL` at a leftover `:3000` process
+  unless that process was started with the same operator token.
+- **Health probe.** The supervisor calls `GET /health` with
+  `x-health-challenge` and checks `health_proof`. A broker that returns the
+  full inspection document (token, no challenge) or a foreign process on that
+  port fails the probe. See [`docs/architecture/privacy-gate.md`](../../docs/architecture/privacy-gate.md).
+- **Go-live grant.** `PROVIDER_ENABLED=true` with default
+  `LOCAL_PROVIDER_MODE=simulated` fail-closes agent external review. Use
+  `/vouch-go-live`; it writes `LOCAL_PROVIDER_MODE=disabled`.
+- **Secrets.** `live.env` must contain `op://…` references. Resolved AWS keys
+  pasted into the ceremony are rejected.
+- **Spend.** A missing `v:1` pricing envelope, missing task
+  `idempotency_key`, or an exceeded `VOUCH_REAL_SPEND_CEILING_USD` returns
+  `not_reviewed` — never a simulated pass. Details:
+  [`docs/ops/spend-ceiling.md`](../../docs/ops/spend-ceiling.md).
+- **Expired ambient reviews.** Deadline-elapsed handles are
+  `status: "not_reviewed"` with `expired: true` so go-live does not treat them
+  as in-flight.
+- **Reset.** Delete `~/.vouch/pi` only after no review is in flight. Also
+  reset `.runtime/` if you used the repo-local broker rather than the managed
+  one.
