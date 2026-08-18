@@ -27,7 +27,48 @@ Pi `/vouch-go-live` writes this into `~/.vouch/pi/live.env`. Docker and
 Estimated cost is `reward * max_assignments`, rounded to six decimal places
 (`0.24` in the example). Legacy free-text templates have no pricing object;
 with a ceiling configured, dispatch is blocked until the template is a `v: 1`
-envelope with `pricing`.
+envelope with `pricing`. That rule also applies to tasks the broker creates
+itself (pairwise tie-break and self-verification escalation). Opaque markers
+such as `pairwise-tie-break` cannot be priced.
+
+## Broker-generated follow-ups
+
+### Pairwise tie-break
+
+A split crowd review with no S0/S1 minority queues one micro-task. That is
+**not** the catalog `pairwise_screenshot_compare` template. The broker emits:
+
+```json
+{
+  "v": 1,
+  "pairwise_tie_break": true,
+  "pricing": { "reward": "0.10", "max_assignments": 1 }
+}
+```
+
+`reward` is copied from the source task when that source is a `v: 1` envelope;
+otherwise `"0.05"`. `max_assignments` is always `1`. Identity for stuck-state
+and the one-per-job guard is `v === 1 && pairwise_tie_break === true`, plus the
+legacy string `pairwise-tie-break`. Only the priced envelope can reserve spend.
+
+With a ceiling set, an opaque marker 422s the successful worker callback
+(`Real spend is blocked: structured task pricing and an idempotency key are
+required`) and the paid split can stall with no verdict.
+
+### Self-verification escalation
+
+Unresolved machine checks dispatch this envelope, not the opaque string
+`self-verification-escalation`:
+
+```json
+{
+  "v": 1,
+  "self_verification_escalation": true,
+  "pricing": { "reward": "0.05", "max_assignments": 1 }
+}
+```
+
+Both follow-ups reserve with `idempotency_key` `review-task:<reviewTaskId>`.
 
 ## Ledger
 
@@ -47,7 +88,7 @@ already full. A key reused with a different job or amount throws. Over-ceiling
 `Real spend ceiling reached; operator confirmation required`.
 
 Human-review dispatch requires `idempotency_key` on the task body whenever the
-ceiling is set. Self-verification escalation uses
+ceiling is set. Pairwise and self-verification follow-ups use
 `review-task:<reviewTaskId>`. Failed dispatch (except an ambiguous
 `ProviderDispatchError`) **releases** the reservation.
 
@@ -67,7 +108,18 @@ write a reservation.
   not this ledger.
 - Simulated local dispatch never calls `reserveRealProviderDispatch`.
 - Wiping only `provider-state.sqlite` does not reset spend.
+- A tie-break that splits again does not spawn another pairwise task; it
+  goes to consensus/adjudication.
+- Recovered MTurk HITs must poll `pricing.max_assignments`, not the bridge
+  default. See
+  [`provider-integration.md`](../architecture/provider-integration.md).
 
 Code: `src/api/spend-ceiling.ts`, `src/config/runtime.ts`,
-`src/api/routes/human-review.ts`, `src/api/routes/evidence.ts`.
-Tests: `tests/unit/spend-ceiling.test.ts`.
+`src/api/routes/human-review.ts`, `src/api/routes/evidence.ts`,
+`src/api/routes/provider-callback.ts`,
+`src/domain/human-review/provider-workflow-service.ts`,
+`src/domain/self-verification/self-verification-service.ts`.
+Tests: `tests/unit/spend-ceiling.test.ts`,
+`tests/unit/pairwise-template.test.ts`,
+`tests/integration/provider-pairwise-tiebreak.test.ts`,
+`tests/integration/self-verification-escalation.test.ts`.

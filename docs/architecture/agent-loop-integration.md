@@ -270,7 +270,10 @@ Guidance:
 - **low**: reversible decisions where a wrong answer costs one retry. One
   worker, no attention check.
 - **medium** (default): the broker's consensus layer gets a 3-vote majority;
-  disagreement triggers the existing pairwise tie-break flow.
+  disagreement queues a priced pairwise micro-task (`pairwise_tie_break: true`,
+  one assignment, inherited reward). That follow-up is not
+  `pairwise_screenshot_compare`. See
+  [`docs/ops/spend-ceiling.md`](../ops/spend-ceiling.md).
 - **high**: release gates and `critical` criteria. Five votes plus an
   attention check; combine with qualification requirements
   (`MTURK_QUALIFICATION_REQUIREMENTS_JSON`, e.g. ≥ 98% approval and ≥ 1000
@@ -295,12 +298,12 @@ the bridge-side safety rails agree.
 
 ## File map
 
-| Path                                             | Role                                                                                          |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| `scripts/lib/review-templates.ts`                | Envelope types/parsing, template catalog, render + normalize, pricing presets, cost estimator |
-| `scripts/lib/agent-review-client.ts`             | `requestHumanReview()` — commissioning + feedback polling                                     |
-| `scripts/request-review.ts`                      | CLI (`npm run review`)                                                                        |
-| `scripts/lib/mturk-bridge.ts`                    | Envelope-aware `buildHtmlQuestion` / `normalizeAssignment`, pricing clamps                    |
-| `scripts/mturk-bridge.ts`                        | `/dispatch` envelope validation, per-HIT pricing, per-task expected assignment count          |
-| `tests/contract/review-template-catalog.test.ts` | Envelope/render/normalize/pricing contract                                                    |
-| `tests/integration/agent-review-client.test.ts`  | One-call flow against a live broker app + stub bridge                                         |
+| Path                                             | Role                                                                                                      |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `scripts/lib/review-templates.ts`                | Envelope types/parsing, template catalog, render + normalize, pricing presets, cost estimator             |
+| `scripts/lib/agent-review-client.ts`             | `requestHumanReview()` — commissioning + feedback polling                                                 |
+| `scripts/request-review.ts`                      | CLI (`npm run review`)                                                                                    |
+| `scripts/lib/mturk-bridge.ts`                    | Envelope-aware `buildHtmlQuestion` / `normalizeAssignment`, pricing clamps, HIT recovery assignment count |
+| `scripts/mturk-bridge.ts`                        | `/dispatch` envelope validation, per-HIT pricing, per-task expected assignment count                      |
+| `tests/contract/review-template-catalog.test.ts` | Envelope/render/normalize/pricing contract                                                                |
+| `tests/integration/agent-review-client.test.ts`  | One-call flow against a live broker app + stub bridge                                                     |

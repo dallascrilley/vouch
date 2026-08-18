@@ -116,4 +116,9 @@ script/validate-docker-smoke
 ```
 
 Expect exit `0` and JSON ending with `"status":"docker smoke passed"`. Requires
-Docker daemon; not run in CI by default.
+a Docker daemon. This is **not** part of `./script/cibuild` or
+`.github/workflows/ci.yml`. A separate workflow
+(`.github/workflows/docker-smoke.yml`) runs it on pull requests that touch
+`Dockerfile`, `.dockerignore`, `script/validate-docker-smoke`, `src/**`,
+`package.json`, `package-lock.json`, or `tsconfig*.json`, and on
+`workflow_dispatch`.
