@@ -106,10 +106,23 @@ buildApp({ env: { ...process.env, PROVIDER_ENABLED: "true", ... } })
 
 Drop `...process.env` and `VITEST` goes missing, at which point
 `loadRuntimeConfig` silently switches `databasePath` from `:memory:` to
-`.runtime/local-runtime.sqlite` — a test that writes to a real file and leaks
-state between runs, with no error. All 12 test sites currently get this right
-(10 spread it directly, 2 route through `tests/helpers/provider-test-app.ts`,
-which spreads it for them), so this is a live footgun rather than a live bug.
+`.runtime/local-runtime.sqlite` — which is not merely "a real file" but the
+same on-disk store `npm run verify` and the offline harnesses use, so the test
+suite would silently write into it and leak state between runs. All 12 test
+sites got this right (10 spread it directly, 2 route through
+`tests/helpers/provider-test-app.ts`, which spreads it for them), so it was a
+footgun rather than a live bug.
+
+**The footgun half is now closed.** `resolveConfig` layers the caller's env
+over the ambient one (`{ ...process.env, ...options.env }`) instead of
+replacing it, so the spread is no longer load-bearing. Every existing caller
+already spread `process.env`, so the merge is a no-op for all of them.
+Regression test: `tests/unit/build-app-env.test.ts`.
+
+The **typed-options** half of this finding still stands: provider config is
+still read off `env` inside `buildApp`, callers still pass a
+`NodeJS.ProcessEnv` to enable providers, and the duplicated derivation below
+is unchanged.
 
 The same fact is also derived twice, 12 lines apart and in opposite polarity:
 
@@ -261,9 +274,10 @@ Two changes are worth making regardless of A/B/C, because each closes a
 specific hazard identified above:
 
 1. Keep the `const services: AppServices` annotation (finding 1). **Already done.**
-2. Move provider config into typed options (finding 2), which retires both the
-   load-bearing `...process.env` spread and the duplicated `PROVIDER_ENABLED`
-   derivation.
+2. Move provider config into typed options (finding 2), which retires the
+   duplicated `PROVIDER_ENABLED` derivation and stops callers from having to
+   hand `buildApp` a `NodeJS.ProcessEnv` at all. The load-bearing spread half
+   of that finding is **already done**.
 
 And one smaller cleanup: replace the structural sniff in `resolveConfig`
 (finding 3) with a tagged discriminator.
